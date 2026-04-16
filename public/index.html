@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crash Club Prototype</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <div class="brand">
+        <span class="eyebrow">Arena Prototype</span>
+        <h1>Crash Club</h1>
+      </div>
+      <div class="status-grid">
+        <div class="panel">
+          <span class="label">Room</span>
+          <strong id="room-code">main</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Players</span>
+          <strong id="player-count">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Speed</span>
+          <strong><span id="speed-value">0</span> mph</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Boost</span>
+          <strong><span id="boost-value">0</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Score</span>
+          <strong id="score-value">0</strong>
+        </div>
+      </div>
+      <div class="card controls">
+        <p>Drive with <kbd>WASD</kbd> or arrow keys. Hold <kbd>Shift</kbd> to spend boost. Tap <kbd>R</kbd> if you get stuck.</p>
+        <p>Collect the glowing pickups for extra boost, and stay inside the center score ring to farm points.</p>
+        <p>Share the room code in the URL. Example: <code>?room=after-school</code></p>
+      </div>
+      <div class="card leaderboard">
+        <div class="leaderboard-header">
+          <span class="label">Leader</span>
+          <strong id="leader-value">You - 0</strong>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
+      </div>
+      <div class="card connection" id="connection-card">
+        Connecting to multiplayer server...
+      </div>
+    </div>
+
+    <div class="join-banner" id="join-banner">
+      <label>
+        Driver Name
+        <input id="name-input" maxlength="18" placeholder="Pick a name" />
+      </label>
+      <button id="rename-button">Update</button>
+    </div>
+
+    <div id="app"></div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.164.1/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
