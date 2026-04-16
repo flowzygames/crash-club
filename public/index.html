@@ -30,7 +30,7 @@
             Driver Name
             <input id="name-input" maxlength="18" placeholder="Pick a name" />
           </label>
-          <button id="start-button" class="primary-action">Start Driving</button>
+          <button id="start-button" class="primary-action" onclick="document.getElementById('name-input')?.blur();this.blur();">Start Driving</button>
           <button id="rename-button" class="secondary-action">Save Name</button>
         </div>
         <div class="release-notes">
