@@ -1,0 +1,55 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="157" y1="42" x2="1046" y2="594" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1623"/>
+      <stop offset="1" stop-color="#17354B"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(924 122) rotate(133.499) scale(367.953 414.786)">
+      <stop stop-color="#5AF0C1" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#5AF0C1" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="road" x1="241" y1="516" x2="1042" y2="311" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2C313B"/>
+      <stop offset="1" stop-color="#535D68"/>
+    </linearGradient>
+    <linearGradient id="carA" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#69FFD4"/>
+      <stop offset="1" stop-color="#16C79A"/>
+    </linearGradient>
+    <linearGradient id="carB" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFB77A"/>
+      <stop offset="1" stop-color="#FF6B57"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" rx="32" fill="url(#bg)"/>
+  <rect width="1280" height="640" rx="32" fill="url(#glow)"/>
+  <circle cx="1046" cy="128" r="10" fill="#5AF0C1"/>
+  <circle cx="1096" cy="180" r="5" fill="#FFCF6B"/>
+  <circle cx="1015" cy="206" r="4" fill="#7EB8FF"/>
+  <path d="M176 470C311 396 457 370 640 372C823 374 993 417 1107 502" stroke="url(#road)" stroke-width="112" stroke-linecap="round"/>
+  <path d="M242 472C349 418 476 390 640 392C804 394 932 428 1043 490" stroke="#F4F7FB" stroke-opacity="0.9" stroke-width="12" stroke-linecap="round" stroke-dasharray="28 24"/>
+  <g opacity="0.95">
+    <rect x="699" y="340" width="180" height="94" rx="32" transform="rotate(18 699 340)" fill="url(#carA)"/>
+    <rect x="737" y="354" width="92" height="34" rx="14" transform="rotate(18 737 354)" fill="#DDF2FF"/>
+    <rect x="697" y="386" width="168" height="12" rx="6" transform="rotate(18 697 386)" fill="#111827"/>
+    <circle cx="739" cy="428" r="21" fill="#101826"/>
+    <circle cx="839" cy="460" r="21" fill="#101826"/>
+  </g>
+  <g opacity="0.95">
+    <rect x="451" y="369" width="176" height="92" rx="30" transform="rotate(-10 451 369)" fill="url(#carB)"/>
+    <rect x="487" y="383" width="88" height="34" rx="14" transform="rotate(-10 487 383)" fill="#F8E9FF"/>
+    <rect x="457" y="416" width="162" height="12" rx="6" transform="rotate(-10 457 416)" fill="#111827"/>
+    <circle cx="491" cy="451" r="21" fill="#101826"/>
+    <circle cx="591" cy="434" r="21" fill="#101826"/>
+  </g>
+  <rect x="102" y="112" width="206" height="34" rx="17" fill="#152A3D" stroke="#294865"/>
+  <text x="126" y="135" fill="#5AF0C1" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="18" font-weight="700" letter-spacing="0.18em">MULTIPLAYER ARENA</text>
+  <text x="98" y="252" fill="#F5F7FB" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="92" font-weight="700">Crash Club</text>
+  <text x="103" y="307" fill="#A7B8C9" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="28">A 3D browser driving game for local chaos, boost grabs, and</text>
+  <text x="103" y="345" fill="#A7B8C9" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="28">Wi-Fi multiplayer flexes with your friends.</text>
+  <rect x="104" y="396" width="178" height="58" rx="20" fill="#5AF0C1"/>
+  <text x="136" y="432" fill="#09121D" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="24" font-weight="700">Three.js + WS</text>
+  <rect x="299" y="396" width="168" height="58" rx="20" fill="#1E3144" stroke="#35536D"/>
+  <text x="332" y="432" fill="#F5F7FB" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="24" font-weight="700">Playable V1</text>
+  <text x="1015" y="590" fill="#7FA6C0" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="18">flowzygames / crash-club</text>
+</svg>
