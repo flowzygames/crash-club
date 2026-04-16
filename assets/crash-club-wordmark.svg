@@ -1,0 +1,8 @@
+<svg width="980" height="220" viewBox="0 0 980 220" xmlns="http://www.w3.org/2000/svg">
+  <rect width="980" height="220" rx="32" fill="#07111d"/>
+  <path d="M34 176C150 40 312 44 448 142" fill="none" stroke="#5af0c2" stroke-width="18" stroke-linecap="round" opacity=".36"/>
+  <text x="48" y="136" fill="#ffffff" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="96" font-weight="900" letter-spacing="-5">CRASH CLUB</text>
+  <path d="M52 162H432" stroke="#ffcf6b" stroke-width="7" stroke-linecap="round"/>
+  <text x="620" y="95" fill="#5af0c2" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="22" font-weight="900" letter-spacing="5">V1.0</text>
+  <text x="620" y="134" fill="#a4b4c7" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="25">3D browser arena</text>
+</svg>

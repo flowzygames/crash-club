@@ -1,0 +1,17 @@
+{
+  "name": "Crash Club",
+  "short_name": "Crash Club",
+  "description": "A multiplayer 3D browser driving arena with bot-filled rooms and Wi-Fi play.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08121d",
+  "theme_color": "#59f0c2",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

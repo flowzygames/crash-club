@@ -3,13 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crash Club Prototype</title>
+    <title>Crash Club v1.0</title>
+    <meta
+      name="description"
+      content="Crash Club is a multiplayer 3D browser driving arena with bot-filled rooms, powerups, wrecks, and Wi-Fi play."
+    />
+    <meta name="theme-color" content="#08121d" />
+    <meta property="og:title" content="Crash Club" />
+    <meta property="og:description" content="A chaotic browser driving arena for friends on the same Wi-Fi." />
+    <meta property="og:image" content="/og-image.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
+  <body class="is-menu-open">
+    <div class="release-screen" id="release-screen">
+      <div class="release-card">
+        <span class="eyebrow">Crash Club v1.0</span>
+        <h1>Multiplayer car chaos in your browser.</h1>
+        <p>
+          Jump into a room, fight bots while friends connect, grab powerups, and win rounds by wrecking rivals
+          or owning the gold scoring ring.
+        </p>
+        <div class="release-actions">
+          <label>
+            Driver Name
+            <input id="name-input" maxlength="18" placeholder="Pick a name" />
+          </label>
+          <button id="start-button" class="primary-action">Start Driving</button>
+          <button id="rename-button" class="secondary-action">Save Name</button>
+        </div>
+        <div class="release-notes">
+          <span><strong>WASD</strong> drive</span>
+          <span><strong>Shift</strong> boost</span>
+          <span><strong>R</strong> respawn</span>
+          <span><strong>Esc</strong> menu</span>
+        </div>
+      </div>
+    </div>
+
     <div class="hud">
       <div class="brand">
-        <span class="eyebrow">Arena Prototype</span>
+        <span class="eyebrow">Release 1.0</span>
         <h1>Crash Club</h1>
       </div>
       <div class="status-grid">
@@ -33,11 +68,45 @@
           <span class="label">Score</span>
           <strong id="score-value">0</strong>
         </div>
+        <div class="panel">
+          <span class="label">Health</span>
+          <strong><span id="health-value">100</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Round</span>
+          <strong id="round-value">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Timer</span>
+          <strong id="timer-value">3:00</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Power</span>
+          <strong id="power-value">None</strong>
+        </div>
+      </div>
+      <div class="meter-stack">
+        <div class="meter health-meter">
+          <span id="health-bar"></span>
+        </div>
+        <div class="meter boost-meter">
+          <span id="boost-bar"></span>
+        </div>
       </div>
       <div class="card controls">
-        <p>Drive with <kbd>WASD</kbd> or arrow keys. Hold <kbd>Shift</kbd> to use boost. Tap <kbd>R</kbd> if you get stuck.</p>
-        <p>Collect the glowing pickups for extra boost, and stay inside the center score ring to farm points.</p>
+        <p>Drive with <kbd>WASD</kbd> or arrow keys. Hold <kbd>Shift</kbd> to boost. Pickups now include boost, repair, shield, and slam.</p>
+        <p>Crash into rivals to damage them. Wrecks score big, and the round ends at the timer or target score.</p>
         <p>Share the room code in the URL. Example: <code>?room=after-school</code></p>
+      </div>
+      <div class="card objective" id="objective-card">
+        Round live. Control the gold ring, grab powerups, and wreck your friends.
+      </div>
+      <div class="card radar-card">
+        <div class="leaderboard-header">
+          <span class="label">Radar</span>
+          <strong id="version-value">v1.0</strong>
+        </div>
+        <canvas id="radar-canvas" width="152" height="152" aria-label="Arena radar"></canvas>
       </div>
       <div class="card leaderboard">
         <div class="leaderboard-header">
@@ -51,14 +120,27 @@
       </div>
     </div>
 
-    <div class="join-banner" id="join-banner">
-      <label>
-        Driver Name
-        <input id="name-input" maxlength="18" placeholder="Pick a name" />
-      </label>
-      <button id="rename-button">Update</button>
+    <div class="toast-stack" id="toast-stack"></div>
+    <div class="round-banner hidden" id="round-banner">
+      <span class="eyebrow" id="round-kicker">Round Live</span>
+      <strong id="round-message">Crash Club</strong>
     </div>
 
+    <div class="quick-actions" id="quick-actions">
+      <button id="menu-button">Menu</button>
+      <button id="copy-invite-button">Copy Invite</button>
+    </div>
+
+    <div class="touch-controls" aria-label="Touch driving controls">
+      <button data-key="w">Gas</button>
+      <button data-key="a">Left</button>
+      <button data-key="d">Right</button>
+      <button data-key="s">Brake</button>
+      <button data-key="shift">Boost</button>
+      <button data-key="r">Reset</button>
+    </div>
+
+    <div class="damage-vignette" id="damage-vignette"></div>
     <div id="app"></div>
 
     <script type="importmap">
