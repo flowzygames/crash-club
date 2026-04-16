@@ -36,7 +36,7 @@
 ## Controls
 
 - `WASD` or arrow keys: drive
-- `Shift`: spend boost
+- `Shift`: use boost
 - `R`: respawn if stuck
 
 ## Quick Start
