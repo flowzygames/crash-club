@@ -1,0 +1,21 @@
+{
+  "name": "crash-club",
+  "version": "0.1.0",
+  "description": "Multiplayer 3D browser driving arena with Wi-Fi play, boost pickups, collisions, and score zones.",
+  "author": "flowzygames",
+  "license": "MIT",
+  "keywords": [
+    "threejs",
+    "websocket",
+    "multiplayer",
+    "browser-game",
+    "driving-game",
+    "arena"
+  ],
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
