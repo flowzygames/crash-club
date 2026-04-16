@@ -2,7 +2,7 @@
   <img src="./assets/crash-club-banner.svg" alt="Crash Club banner" width="100%" />
 </p>
 
-<h1 align="center">Crash Club</h1>
+<h1 align="center">Crash Club Alpha 0.1</h1>
 
 <p align="center">
   A multiplayer 3D browser driving arena where friends can join the same room,
