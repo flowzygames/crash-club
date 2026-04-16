@@ -45,6 +45,15 @@
 
   <rect width="1280" height="640" fill="url(#bgGlow)"/>
   <rect width="1280" height="640" fill="url(#dotGrid)"/>
+  <rect x="18" y="18" width="1244" height="604" rx="28" stroke="#5AF0C1" stroke-opacity="0.22" stroke-width="2"/>
+  <rect x="30" y="30" width="1220" height="580" rx="20" stroke="#FF2A6D" stroke-opacity="0.12" stroke-width="1"/>
+
+  <g opacity="0.72" filter="url(#glowSubtle)">
+    <path d="M54 96V54H96" stroke="#5AF0C1" stroke-width="5" stroke-linecap="round"/>
+    <path d="M1226 96V54H1184" stroke="#FF2A6D" stroke-width="5" stroke-linecap="round"/>
+    <path d="M54 544V586H96" stroke="#FFCF6B" stroke-width="5" stroke-linecap="round"/>
+    <path d="M1226 544V586H1184" stroke="#5AF0C1" stroke-width="5" stroke-linecap="round"/>
+  </g>
 
   <g opacity="0.8">
     <path d="M 500 800 C 650 350, 1050 200, 1400 450" stroke="#1C283D" stroke-width="180" fill="none" stroke-linecap="round"/>
@@ -56,6 +65,11 @@
   <g transform="translate(1000, 310) rotate(15)">
     <polygon points="0,-16 14,-8 14,8 0,16 -14,8 -14,-8" fill="rgba(255, 207, 107, 0.15)" stroke="#FFCF6B" stroke-width="2" filter="url(#glowSubtle)"/>
     <polygon points="0,-8 7,-4 7,4 0,8 -7,4 -7,-4" fill="#FFCF6B"/>
+  </g>
+
+  <g transform="translate(1052, 92)">
+    <rect width="124" height="34" rx="17" fill="rgba(255, 42, 109, 0.12)" stroke="rgba(255, 42, 109, 0.45)" stroke-width="1.5"/>
+    <text x="62" y="22" fill="#FF8AAA" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1.5">BOOST READY</text>
   </g>
   <g transform="translate(750, 290) rotate(45)" opacity="0.7">
     <polygon points="0,-16 14,-8 14,8 0,16 -14,8 -14,-8" fill="rgba(255, 207, 107, 0.15)" stroke="#FFCF6B" stroke-width="2" filter="url(#glowSubtle)"/>
@@ -103,6 +117,8 @@
 
     <text x="4" y="274" fill="rgba(255, 42, 109, 0.4)" font-family="system-ui, -apple-system, sans-serif" font-size="88" font-weight="900" font-style="italic" letter-spacing="-1" filter="url(#glowSubtle)">CRASH CLUB</text>
     <text x="0" y="270" fill="url(#textGrad)" font-family="system-ui, -apple-system, sans-serif" font-size="88" font-weight="900" font-style="italic" letter-spacing="-1">CRASH CLUB</text>
+    <path d="M4 292H390" stroke="#5AF0C1" stroke-width="5" stroke-linecap="round" filter="url(#glowSubtle)"/>
+    <path d="M4 292H244" stroke="#FF2A6D" stroke-width="2" stroke-linecap="round"/>
 
     <text x="0" y="330" fill="#8A98A5" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400">A 3D browser driving game for local chaos,</text>
     <text x="0" y="365" fill="#8A98A5" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400">boost grabs, and Wi-Fi multiplayer flexes</text>
@@ -113,6 +129,10 @@
 
     <rect x="240" y="450" width="180" height="56" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
     <text x="330" y="484" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Playable V1</text>
+
+    <g transform="translate(0, 522)" opacity="0.88">
+      <text x="0" y="0" fill="#FFCF6B" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="800" letter-spacing="2.5">ROOMS / RAMPS / RIVALRIES</text>
+    </g>
 
     <g transform="translate(0, 550)">
       <path d="M 8 10 L 2 16 L 8 22 M 16 10 L 22 16 L 16 22 M 14 6 L 10 26" stroke="#607080" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>

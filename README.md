@@ -33,6 +33,14 @@
 - Grab glowing boost pickups before someone else does
 - Respawn quickly if you get stuck and get right back into the chaos
 
+## Arcade Flavor
+
+This is built to feel like a tiny browser arcade cabinet: quick to join, loud in the best way, and chaotic enough that the room starts yelling after the first good crash.
+
+- Neon boost pickups create mini races inside the bigger arena
+- Center-ring scoring turns the map into a fight zone instead of an empty sandbox
+- Ramps, bumps, camera shake, and respawns keep the match moving
+
 ## Controls
 
 - `WASD` or arrow keys: drive
