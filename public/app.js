@@ -1,5 +1,5 @@
 const chunks = [0, 1, 2, 3, 4];
-const bundleVersion = "2026-04-17-start-fix";
+const bundleVersion = "2026-04-17-parse-fix";
 
 Promise.all(
   chunks.map((i) =>
@@ -32,7 +32,12 @@ Promise.all(
     const status = document.getElementById("connection-card");
     if (status) status.textContent = "Could not load the Crash Club client bundle.";
     const start = document.getElementById("start-button");
-    if (start) start.textContent = "Reload Game";
+    if (start) {
+      start.textContent = "Reload Game";
+      start.onclick = () => location.reload();
+    }
+    const rename = document.getElementById("rename-button");
+    if (rename) rename.onclick = () => location.reload();
     const card = document.querySelector(".release-card p");
     if (card) card.textContent = "Crash Club could not load cleanly. Refresh once to grab the latest game files.";
   });
