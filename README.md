@@ -5,15 +5,20 @@
 <h1 align="center">Crash Club</h1>
 
 <p align="center">
-  A multiplayer 3D browser driving arena where friends can join the same room,
-  slam into each other, steal boost pickups, and fight for the top score.
+  <strong>A multiplayer 3D browser driving arena built for quick Wi-Fi chaos.</strong>
+</p>
+
+<p align="center">
+  Pick a name, share a room URL, and throw tiny low-poly cars into a score-chasing crash arena with bots,
+  pickups, round timers, radar, damage, and instant browser play.
 </p>
 
 <p align="center">
   <img alt="Node" src="https://img.shields.io/badge/Node.js-24+-43853D?style=for-the-badge&logo=node.js&logoColor=white">
   <img alt="Three.js" src="https://img.shields.io/badge/Three.js-WebGL-111111?style=for-the-badge&logo=three.js&logoColor=white">
   <img alt="WebSockets" src="https://img.shields.io/badge/Realtime-WebSockets-0EA5E9?style=for-the-badge">
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-5AF0C1?style=for-the-badge">
+  <img alt="No Build Step" src="https://img.shields.io/badge/Setup-No_Build_Step-5AF0C1?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-FFCF6B?style=for-the-badge">
 </p>
 
 <p align="center">
@@ -22,68 +27,135 @@
 
 ## Release 1.0
 
-`Crash Club` is now a playable v1.0 browser release. It is still intentionally lightweight and easy to run, but the game loop has moved beyond a driving demo into a real arcade match: bot-filled rooms, timed rounds, health, powerups, wrecks, radar, touch controls, audio feedback, and a release-ready menu.
+<p align="center">
+  <img src="./assets/readme/release.svg" alt="Crash Club release overview image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club release overview animation" width="49%" />
+</p>
 
-## Why It's Cool
+`Crash Club` is a playable v1.0 browser game, not just a loose driving demo. It has a start screen, active multiplayer rooms, bot opponents, round flow, HUD feedback, powerups, scoring, and a compact arena designed to get people playing quickly.
 
-- Real-time local multiplayer over Wi-Fi
-- Bot opponents keep solo rooms playable while friends join
-- 3D browser arena with roads, guardrails, cones, visible powerup beacons, and scoring
-- Full match loop with timed rounds, health, wrecks, respawns, and winners
-- Tuned arcade driving with boost, damage, shields, slam hits, and impact feedback
-- Release UI with start menu, invite copy, radar, event feed, and touch buttons
-- Simple setup: no build step, just Node + browser
-- Easy to expand into rounds, powerups, maps, and cosmetics
+The goal of this release is simple: open a browser, start a local Node server, send a room link to friends on the same Wi-Fi, and immediately have something that feels like a small arcade cabinet. It is intentionally lightweight so it stays easy to read, modify, and remix.
+
+## Why It Stands Out
+
+<p align="center">
+  <img src="./assets/readme/why.svg" alt="Crash Club standout features image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club standout features animation" width="49%" />
+</p>
+
+Most tiny browser car projects stop at "you can drive around." Crash Club pushes further by wrapping the driving inside an actual match loop. There are rooms, bots, timed rounds, health, boosts, shields, slam hits, wreck scoring, radar, mobile controls, and status feedback.
+
+The best part is that it still stays approachable. There is no giant framework wall, no account system, and no asset pipeline required just to experiment. It is the kind of project you can show someone, play immediately, and then keep expanding piece by piece.
+
+- Real-time rooms use WebSockets so multiple players can share the same arena.
+- Bot racers fill empty rooms so solo testing still feels alive.
+- The arena has roads, guardrails, scoring zones, cones, visible pickups, and a readable sky pass.
+- The HUD shows speed, boost, health, score, powerup state, timer, leaderboard, radar, and connection status.
+- The setup stays small: install dependencies, run Node, open the browser.
 
 ## Gameplay
 
-`Crash Club` drops players into the same arena using a shared room URL. From there, the loop is simple:
+<p align="center">
+  <img src="./assets/readme/gameplay.svg" alt="Crash Club gameplay loop image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club gameplay loop animation" width="49%" />
+</p>
 
-- Drive fast and control the center ring for passive points
-- Smash into friends to damage them and score wreck bonuses
-- Grab boost, repair, shield, and slam pickups before someone else does
-- Win by reaching the score target or leading when the timer runs out
-- Respawn quickly if you get stuck or get wrecked and jump back into the chaos
+The core loop is built around fast decisions instead of complicated rules. You drive into the arena, chase the gold scoring ring, grab pickups before rivals do, and ram other cars hard enough to turn collisions into points.
+
+Every round creates a little story. One player might camp the ring, another might chase shield pickups, a bot might steal repair at the worst possible moment, and a last-second slam hit can flip the leaderboard. The game is arcade-simple, but the scoring gives players reasons to move instead of just wandering around.
+
+- Control the center ring for steady passive points.
+- Grab boost, repair, shield, and slam pickups for tactical swings.
+- Crash into rivals to deal damage and earn hit points.
+- Wreck opponents for bigger score bursts.
+- Respawn quickly and get back into the match instead of sitting out.
+- Win by reaching the target score or leading when the timer ends.
 
 ## Version 1.0 Features
 
-- Bot-filled rooms target four racers, so the arena is active even solo
-- Round wins persist across rounds on the live leaderboard
-- Radar shows your car, rivals, bots, and active pickups
-- Release start screen gates audio and gives the game a real first impression
-- Copy-invite button makes sharing a room URL easy
-- Touch controls make phones and tablets usable on the same Wi-Fi
-- Damage vignette, camera shake, pickup tones, and round banners add feedback
-- `/health` endpoint reports version and server status
+<p align="center">
+  <img src="./assets/readme/features.svg" alt="Crash Club v1.0 features image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club v1.0 features animation" width="49%" />
+</p>
+
+Version 1.0 focuses on making the whole thing feel complete from boot to match end. The release screen gives the game a clean first impression, the room system makes sharing easy, and the HUD keeps the action understandable while the 3D scene stays visible.
+
+This is also the first version where the game has enough systems to feel expandable. Pickups, scoring, health, bots, and round phases are all separate concepts, which makes future modes and maps much easier to add.
+
+- Bot-filled rooms target four racers so matches do not feel empty.
+- Timed rounds include intermission, winner banners, and persistent round wins.
+- Radar shows your car, rivals, bots, and active pickups.
+- Health, boost, powerup timers, and damage vignette make feedback readable.
+- Copy Invite creates a shareable room URL.
+- Touch controls appear automatically on narrow screens.
+- `/health` reports server status, version, and room count.
 
 ## Arcade Flavor
 
-This is built to feel like a tiny browser arcade cabinet: quick to join, loud in the best way, and chaotic enough that the room starts yelling after the first good crash.
+<p align="center">
+  <img src="./assets/readme/flavor.svg" alt="Crash Club arcade style image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club arcade style animation" width="49%" />
+</p>
 
-- Neon boost pickups create mini races inside the bigger arena
-- Center-ring scoring turns the map into a fight zone instead of an empty sandbox
-- Repair, shield, and slam pickups create comeback moments instead of pure driving
-- Readable roads, guardrails, pickup beacons, camera shake, wrecks, and respawns keep the match moving
+Crash Club is supposed to feel loud, readable, and a little ridiculous. The cars are chunky, the pickups glow, the ring is obvious, and the arena is shaped so players naturally meet in the middle instead of drifting forever.
+
+The visual style is intentionally low-poly and browser-friendly. That means it can run on normal school or home laptops while still having enough personality to show off. It is not trying to be realistic; it is trying to be instantly playable.
+
+- Neon-style pickup beacons make powerups easier to find.
+- Roads and lane markers make the map feel less like a flat green plane.
+- Guardrails and cones give the arena stronger shape and depth.
+- Camera follow, impact feedback, audio blips, and toast messages sell the arcade feel.
+- The center ring turns the map into a fight zone instead of an empty sandbox.
 
 ## Controls
 
-- `WASD` or arrow keys: drive
-- `Shift`: use boost
-- `R`: respawn if stuck
-- `Esc`: open the release menu
-- Touch buttons appear automatically on narrow screens
+<p align="center">
+  <img src="./assets/readme/controls.svg" alt="Crash Club controls image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club controls animation" width="49%" />
+</p>
+
+The controls are intentionally simple so new players can join without learning a simulation. Acceleration, braking, turning, boost, respawn, and menu access are all mapped to familiar keys, with touch buttons available on smaller screens.
+
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Drive forward | `W` or `ArrowUp` | `Gas` |
+| Brake/reverse | `S` or `ArrowDown` | `Brake` |
+| Turn left | `A` or `ArrowLeft` | `Left` |
+| Turn right | `D` or `ArrowRight` | `Right` |
+| Boost | `Shift` | `Boost` |
+| Respawn | `R` | `Reset` |
+| Menu | `Esc` | `Menu` |
+
+Tip: boost is strongest when you are already pointed where you want to go. The speed cap keeps the map readable, but boost still gives enough punch to win races to pickups or land a harder crash.
 
 ## Game Rules
 
-- A round lasts 3 minutes or ends when someone reaches the score target
-- Center-ring control gives steady points
-- Pickup grabs give small score bursts and tactical effects
-- Ramming deals health damage based on impact speed
-- Wrecking another player gives a bigger score bonus
-- Shield reduces incoming damage for a short window
-- Slam powers up your next big hit
+<p align="center">
+  <img src="./assets/readme/rules.svg" alt="Crash Club rules image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club rules animation" width="49%" />
+</p>
+
+Rounds are short so the game keeps moving. You score by controlling space, grabbing powerups, and hitting other cars. Health and wrecks make impacts matter, while respawn keeps the match from turning into a waiting room.
+
+| Rule | What It Means |
+| --- | --- |
+| Round timer | Each round lasts 3 minutes unless someone reaches the target score first. |
+| Target score | The first player to the target score wins immediately. |
+| Center ring | Staying inside the gold ring gives steady points. |
+| Pickups | Boost, repair, shield, and slam create small tactical moments. |
+| Damage | Faster impacts deal more damage. |
+| Wrecks | Destroying another car gives a larger score bonus. |
+| Shield | Reduces incoming damage for a short window. |
+| Slam | Powers up your next big hit. |
 
 ## Quick Start
+
+<p align="center">
+  <img src="./assets/readme/quick-start.svg" alt="Crash Club quick start image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club quick start animation" width="49%" />
+</p>
+
+Crash Club is designed to run locally with almost no ceremony. If Node is installed, the whole game starts from one command and serves the static client, WebSocket server, and health endpoint from the same process.
 
 ```powershell
 npm.cmd install
@@ -97,7 +169,7 @@ http://localhost:3000
 http://localhost:3000?room=after-school
 ```
 
-Use the same room URL on other devices on your Wi-Fi to join the same arena.
+To play with other devices on the same Wi-Fi, use your computer's local network address instead of `localhost`, then keep the same `?room=` code. The room code is what puts everyone in the same match.
 
 Check the server:
 
@@ -105,48 +177,78 @@ Check the server:
 http://localhost:3000/health
 ```
 
+If the browser ever acts weird after an update, press `Ctrl + F5` once to force fresh game files.
+
 ## Stack
 
-- `Three.js` for rendering
-- `ws` for WebSocket multiplayer
-- plain `Node.js` static hosting + room state
-- vanilla browser client with no build tooling
+<p align="center">
+  <img src="./assets/readme/stack.svg" alt="Crash Club tech stack image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club tech stack animation" width="49%" />
+</p>
+
+The stack is intentionally small and transparent. The server is plain Node, multiplayer uses the `ws` package, and the 3D client is rendered with Three.js in the browser. There is no bundler step required to play the current release.
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Server | Node.js | Easy to run locally and easy to inspect. |
+| Realtime | WebSockets via `ws` | Simple room state and low-latency player updates. |
+| Rendering | Three.js | Browser-native 3D with a huge ecosystem. |
+| UI | HTML/CSS overlay | Keeps HUD readable and separate from the 3D scene. |
+| Assets | SVG + generated bundle chunks | Lightweight files that GitHub can display and serve. |
 
 ## Project Structure
 
-- [`server.js`](./server.js): static hosting, room state, pickups, respawns, and score updates
-- [`public/index.html`](./public/index.html): HUD, controls, and leaderboard shell
-- [`public/app.js`](./public/app.js): client loader for the generated game bundle
-- [`public/app.bundle.*.txt`](./public/app.bundle.0.txt): generated 3D scene, driving feel, pickups, and client networking chunks
-- [`public/styles.css`](./public/styles.css): HUD and leaderboard styling
-- [`assets/crash-club-banner.svg`](./assets/crash-club-banner.svg): GitHub-ready repo banner
-- [`assets/crash-club-logo.svg`](./assets/crash-club-logo.svg): square project logo
-- [`assets/crash-club-release-card.svg`](./assets/crash-club-release-card.svg): v1.0 release card
-- [`assets/crash-club-wordmark.svg`](./assets/crash-club-wordmark.svg): compact wordmark
-- [`public/og-image.svg`](./public/og-image.svg): social preview image
+<p align="center">
+  <img src="./assets/readme/structure.svg" alt="Crash Club project structure image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club project structure animation" width="49%" />
+</p>
 
-## Current Features
+The repo is small enough to understand quickly. Server code, public browser files, and project art are separated so it is clear where to look when changing gameplay, HUD, or GitHub presentation.
 
-- Multiplayer room join flow
-- Bot-filled solo and small-room play
-- Car-to-car collision response
-- Health, damage, wrecks, and timed respawns
-- Timed rounds with intermission and winner banners
-- Road-cross arena with guardrails, cones, richer sky, and center-plaza scoring
-- Shared boost, repair, shield, and slam pickup spawning
-- Center-zone scoring
-- Manual and automatic respawn recovery
-- Live leaderboard, round wins, radar, health/boost meters, round timer, and event feed
-- Release menu, copy invite, mobile touch controls, favicon, manifest, and social art
+```text
+crash-club/
+|-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage
+|-- public/
+|   |-- index.html               # HUD, menu, radar, controls, and page shell
+|   |-- styles.css               # Visual styling for menus, HUD, meters, and mobile layout
+|   |-- app.js                   # Client loader, cache busting, bundle safety patches
+|   |-- app.bundle.*.txt         # Generated Three.js game client chunks
+|   |-- favicon.svg              # Browser tab icon
+|   |-- manifest.webmanifest     # Install metadata
+|   `-- og-image.svg             # Social preview image
+|-- assets/
+|   |-- crash-club-banner.svg    # Main GitHub banner
+|   |-- crash-club-logo.svg      # Square logo
+|   |-- crash-club-release-card.svg
+|   |-- crash-club-wordmark.svg
+|   `-- readme/                  # Section images and GIFs used in this README
+|-- package.json
+`-- README.md
+```
 
 ## Roadmap
 
-1. Move full collision authority onto the server with rewind checks
-2. Add selectable modes like derby, king-of-the-ring, and stunt race
-3. Replace blockout props with a proper low-poly art pass
-4. Add more pickups like jump, oil slick, magnet, or shockwave
-5. Expand the arena into a larger map with districts and stunt routes
+<p align="center">
+  <img src="./assets/readme/roadmap.svg" alt="Crash Club roadmap image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club roadmap animation" width="49%" />
+</p>
+
+Crash Club has a strong v1.0 foundation, but there is a lot of room to push it from a fun local arena into a bigger browser game. The next improvements should focus on deeper collision authority, better maps, more reasons to chase players, and stronger personalization.
+
+| Priority | Upgrade | Why It Matters |
+| --- | --- | --- |
+| 1 | Server-authoritative collision checks | Makes multiplayer hits fairer and harder to spoof. |
+| 2 | Derby, king-of-the-ring, and stunt race modes | Gives the same arena multiple ways to play. |
+| 3 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
+| 4 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
+| 5 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
+| 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
 
 ## License
+
+<p align="center">
+  <img src="./assets/readme/license.svg" alt="Crash Club license image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club license animation" width="49%" />
+</p>
 
 MIT. See [`LICENSE`](./LICENSE).
