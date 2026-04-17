@@ -223,10 +223,6 @@ crash-club/
 
 ## Roadmap
 
-<p align="center">
-<img src="./assets/readme/showcase-loop.gif" alt="Crash Club roadmap animation" width="49%" />
-</p>
-
 Crash Club has a strong v1.0 foundation, but there is a lot of room to push it from a fun local arena into a bigger browser game. The next improvements should focus on deeper collision authority, better maps, more reasons to chase players, and stronger personalization.
 
 | Priority | Upgrade | Why It Matters |
