@@ -73,11 +73,6 @@ Every round creates a little story. One player might camp the ring, another migh
 
 ## Version 1.0 Features
 
-<p align="center">
-  <img src="./assets/readme/features.svg" alt="Crash Club v1.0 features image" width="49%" />
-  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club v1.0 features animation" width="49%" />
-</p>
-
 Version 1.0 focuses on making the whole thing feel complete from boot to match end. The release screen gives the game a clean first impression, the room system makes sharing easy, and the HUD keeps the action understandable while the 3D scene stays visible.
 
 This is also the first version where the game has enough systems to feel expandable. Pickups, scoring, health, bots, and round phases are all separate concepts, which makes future modes and maps much easier to add.
