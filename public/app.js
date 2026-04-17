@@ -1,4 +1,4 @@
-const chunks = [0, 1, 2, 3];
+const chunks = [0, 1, 2, 3, 4];
 Promise.all(chunks.map((i) => fetch(`app.bundle.${i}.txt`).then((r) => r.text())))
   .then((parts) => {
     const source = atob(parts.join(""));
