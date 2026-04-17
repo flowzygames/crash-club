@@ -28,9 +28,9 @@
 
 - Real-time local multiplayer over Wi-Fi
 - Bot opponents keep solo rooms playable while friends join
-- 3D browser arena with ramps, obstacles, powerups, and scoring
+- 3D browser arena with roads, guardrails, cones, visible powerup beacons, and scoring
 - Full match loop with timed rounds, health, wrecks, respawns, and winners
-- Heavier arcade driving with boost, damage, shields, slam hits, and impact feedback
+- Tuned arcade driving with boost, damage, shields, slam hits, and impact feedback
 - Release UI with start menu, invite copy, radar, event feed, and touch buttons
 - Simple setup: no build step, just Node + browser
 - Easy to expand into rounds, powerups, maps, and cosmetics
@@ -63,7 +63,7 @@ This is built to feel like a tiny browser arcade cabinet: quick to join, loud in
 - Neon boost pickups create mini races inside the bigger arena
 - Center-ring scoring turns the map into a fight zone instead of an empty sandbox
 - Repair, shield, and slam pickups create comeback moments instead of pure driving
-- Ramps, bumps, camera shake, wrecks, and respawns keep the match moving
+- Readable roads, guardrails, pickup beacons, camera shake, wrecks, and respawns keep the match moving
 
 ## Controls
 
@@ -116,7 +116,8 @@ http://localhost:3000/health
 
 - [`server.js`](./server.js): static hosting, room state, pickups, respawns, and score updates
 - [`public/index.html`](./public/index.html): HUD, controls, and leaderboard shell
-- [`public/app.js`](./public/app.js): 3D scene, driving feel, hitboxes, pickups, and client networking
+- [`public/app.js`](./public/app.js): client loader for the generated game bundle
+- [`public/app.bundle.*.txt`](./public/app.bundle.0.txt): generated 3D scene, driving feel, pickups, and client networking chunks
 - [`public/styles.css`](./public/styles.css): HUD and leaderboard styling
 - [`assets/crash-club-banner.svg`](./assets/crash-club-banner.svg): GitHub-ready repo banner
 - [`assets/crash-club-logo.svg`](./assets/crash-club-logo.svg): square project logo
@@ -131,7 +132,7 @@ http://localhost:3000/health
 - Car-to-car collision response
 - Health, damage, wrecks, and timed respawns
 - Timed rounds with intermission and winner banners
-- Arena wall, crate, tree, and center-plaza hitboxes
+- Road-cross arena with guardrails, cones, richer sky, and center-plaza scoring
 - Shared boost, repair, shield, and slam pickup spawning
 - Center-zone scoring
 - Manual and automatic respawn recovery
