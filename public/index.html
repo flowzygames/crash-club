@@ -30,7 +30,7 @@
             Driver Name
             <input id="name-input" maxlength="18" placeholder="Pick a name" />
           </label>
-          <button id="start-button" class="primary-action" onclick="document.getElementById('name-input')?.blur();this.blur();">Start Driving</button>
+          <button id="start-button" class="primary-action">Start Driving</button>
           <button id="rename-button" class="secondary-action">Save Name</button>
         </div>
         <div class="release-notes">
@@ -42,23 +42,106 @@
       </div>
     </div>
 
-    <div class="hud"> ... (same as before, unchanged for brevity) ... </div>
+    <div class="hud">
+      <div class="brand">
+        <span class="eyebrow">Release 1.0</span>
+        <h1>Crash Club</h1>
+      </div>
+      <div class="status-grid">
+        <div class="panel">
+          <span class="label">Room</span>
+          <strong id="room-code">main</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Players</span>
+          <strong id="player-count">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Speed</span>
+          <strong><span id="speed-value">0</span> mph</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Boost</span>
+          <strong><span id="boost-value">0</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Score</span>
+          <strong id="score-value">0</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Health</span>
+          <strong><span id="health-value">100</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Round</span>
+          <strong id="round-value">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Timer</span>
+          <strong id="timer-value">3:00</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Power</span>
+          <strong id="power-value">None</strong>
+        </div>
+      </div>
+      <div class="meter-stack">
+        <div class="meter health-meter">
+          <span id="health-bar"></span>
+        </div>
+        <div class="meter boost-meter">
+          <span id="boost-bar"></span>
+        </div>
+      </div>
+      <div class="card controls">
+        <p>Drive with <kbd>WASD</kbd> or arrow keys. Hold <kbd>Shift</kbd> to boost. Pickups now include boost, repair, shield, and slam.</p>
+        <p>Crash into rivals to damage them. Wrecks score big, and the round ends at the timer or target score.</p>
+        <p>Share the room code in the URL. Example: <code>?room=after-school</code></p>
+      </div>
+      <div class="card objective" id="objective-card">
+        Round live. Control the gold ring, grab powerups, and wreck your friends.
+      </div>
+      <div class="card radar-card">
+        <div class="leaderboard-header">
+          <span class="label">Radar</span>
+          <strong id="version-value">v1.0</strong>
+        </div>
+        <canvas id="radar-canvas" width="152" height="152" aria-label="Arena radar"></canvas>
+      </div>
+      <div class="card leaderboard">
+        <div class="leaderboard-header">
+          <span class="label">Leader</span>
+          <strong id="leader-value">You - 0</strong>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
+      </div>
+      <div class="card connection" id="connection-card">
+        Connecting to multiplayer server...
+      </div>
+    </div>
 
-    <script>
-      window.addEventListener(
-        'keydown',
-        (event) => {
-          const drivingKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
-          const key = (event.key || '').toLowerCase();
-          if (!drivingKeys.has(key)) return;
-          const active = document.activeElement;
-          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
-            active.blur();
-          }
-        },
-        true
-      );
-    </script>
+    <div class="toast-stack" id="toast-stack"></div>
+    <div class="round-banner hidden" id="round-banner">
+      <span class="eyebrow" id="round-kicker">Round Live</span>
+      <strong id="round-message">Crash Club</strong>
+    </div>
+
+    <div class="quick-actions" id="quick-actions">
+      <button id="menu-button">Menu</button>
+      <button id="copy-invite-button">Copy Invite</button>
+    </div>
+
+    <div class="touch-controls" aria-label="Touch driving controls">
+      <button data-key="w">Gas</button>
+      <button data-key="a">Left</button>
+      <button data-key="d">Right</button>
+      <button data-key="s">Brake</button>
+      <button data-key="shift">Boost</button>
+      <button data-key="r">Reset</button>
+    </div>
+
+    <div class="damage-vignette" id="damage-vignette"></div>
+    <div id="app"></div>
 
     <script type="importmap">
       {
