@@ -22,19 +22,19 @@
 </p>
 
 <p align="center">
-  <img src="./assets/crash-club-release-card.svg" alt="Crash Club v1.0 release card" width="78%" />
+  <img src="./assets/crash-club-release-card.svg" alt="Crash Club v1.1 release card" width="78%" />
 </p>
 
-## Release 1.0
+## Release 1.1
 
 <p align="center">
   <img src="./assets/readme/release.svg" alt="Crash Club release overview image" width="49%" />
   <img src="./assets/readme/showcase-loop.gif" alt="Crash Club release overview animation" width="49%" />
 </p>
 
-`Crash Club` is a playable v1.0 browser game, not just a loose driving demo. It has a start screen, active multiplayer rooms, bot opponents, round flow, HUD feedback, powerups, scoring, and a compact arena designed to get people playing quickly.
+`Crash Club` is a playable v1.1 browser game, not just a loose driving demo. It has a start screen, active multiplayer rooms, bot opponents, round flow, HUD feedback, powerups, scoring, and a compact arena designed to get people playing quickly.
 
-The goal of this release is simple: open a browser, start a local Node server, send a room link to friends on the same Wi-Fi, and immediately have something that feels like a small arcade cabinet. It is intentionally lightweight so it stays easy to read, modify, and remix.
+The goal of this release is simple: open a browser, start the Node server, send a room link to friends on the same Wi-Fi, and immediately have something that feels like a small arcade cabinet. It is intentionally lightweight so it stays easy to read, modify, and remix.
 
 ## Why It Stands Out
 
@@ -71,9 +71,14 @@ Every round creates a little story. One player might camp the ring, another migh
 - Respawn quickly and get back into the match instead of sitting out.
 - Win by reaching the target score or leading when the timer ends.
 
-## Version 1.0 Features
+## Version 1.1 Features
 
-Version 1.0 focuses on making the whole thing feel complete from boot to match end. The release screen gives the game a clean first impression, the room system makes sharing easy, and the HUD keeps the action understandable while the 3D scene stays visible.
+<p align="center">
+  <img src="./assets/readme/features.svg" alt="Crash Club v1.1 features image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club v1.1 features animation" width="49%" />
+</p>
+
+Version 1.1 focuses on making the whole thing feel complete from boot to match end. The release screen gives the game a clean first impression, the room system makes sharing easy, and the HUD keeps the action understandable while the 3D scene stays visible.
 
 This is also the first version where the game has enough systems to feel expandable. Pickups, scoring, health, bots, and round phases are all separate concepts, which makes future modes and maps much easier to add.
 
@@ -150,7 +155,7 @@ Rounds are short so the game keeps moving. You score by controlling space, grabb
   <img src="./assets/readme/showcase-loop.gif" alt="Crash Club quick start animation" width="49%" />
 </p>
 
-Crash Club is designed to run locally with almost no ceremony. If Node is installed, the whole game starts from one command and serves the static client, WebSocket server, and health endpoint from the same process.
+Crash Club is designed to run with almost no ceremony. If Node is installed, the whole game starts from one command and serves the static client, WebSocket server, and health endpoint from the same process.
 
 ```powershell
 npm.cmd install
@@ -164,7 +169,7 @@ http://localhost:3000
 http://localhost:3000?room=after-school
 ```
 
-To play with other devices on the same Wi-Fi, use your computer's local network address instead of `localhost`, then keep the same `?room=` code. The room code is what puts everyone in the same match.
+To play with other devices on the same Wi-Fi, use your computer's LAN address instead of `localhost`, then keep the same `?room=` code. The room code is what puts everyone in the same match.
 
 Check the server:
 
@@ -185,7 +190,7 @@ The stack is intentionally small and transparent. The server is plain Node, mult
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Server | Node.js | Easy to run locally and easy to inspect. |
+| Server | Node.js | Easy to run on your machine and easy to inspect. |
 | Realtime | WebSockets via `ws` | Simple room state and low-latency player updates. |
 | Rendering | Three.js | Browser-native 3D with a huge ecosystem. |
 | UI | HTML/CSS overlay | Keeps HUD readable and separate from the 3D scene. |
@@ -223,7 +228,12 @@ crash-club/
 
 ## Roadmap
 
-Crash Club has a strong v1.0 foundation, but there is a lot of room to push it from a fun local arena into a bigger browser game. The next improvements should focus on deeper collision authority, better maps, more reasons to chase players, and stronger personalization.
+<p align="center">
+  <img src="./assets/readme/roadmap.svg" alt="Crash Club roadmap image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club roadmap animation" width="49%" />
+</p>
+
+Crash Club has a strong v1.1 foundation, but there is a lot of room to push it from a fast Wi-Fi arena into a bigger browser game. The next improvements should focus on deeper collision authority, better maps, more reasons to chase players, and stronger personalization.
 
 | Priority | Upgrade | Why It Matters |
 | --- | --- | --- |
@@ -235,5 +245,10 @@ Crash Club has a strong v1.0 foundation, but there is a lot of room to push it f
 | 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
 
 ## License
+
+<p align="center">
+  <img src="./assets/readme/license.svg" alt="Crash Club license image" width="49%" />
+  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club license animation" width="49%" />
+</p>
 
 MIT. See [`LICENSE`](./LICENSE).
