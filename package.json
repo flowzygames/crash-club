@@ -1,7 +1,7 @@
 {
   "name": "crash-club",
-  "version": "1.0.0",
-  "description": "Release-ready multiplayer 3D browser driving arena with Wi-Fi play, bot-filled rooms, powerups, wrecks, and score zones.",
+  "version": "1.1.0",
+  "description": "Release-ready multiplayer 3D browser driving arena with Wi-Fi play, bot-filled rooms, powerups, and score zones.",
   "author": "flowzygames",
   "license": "MIT",
   "keywords": [
