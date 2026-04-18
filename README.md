@@ -246,9 +246,4 @@ Crash Club has a strong v1.1 foundation, but there is a lot of room to push it f
 
 ## License
 
-<p align="center">
-  <img src="./assets/readme/license.svg" alt="Crash Club license image" width="49%" />
-  <img src="./assets/readme/showcase-loop.gif" alt="Crash Club license animation" width="49%" />
-</p>
-
 MIT. See [`LICENSE`](./LICENSE).
