@@ -4,7 +4,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 
 const PORT = process.env.PORT || 3000;
-const GAME_VERSION = "1.0.0";
+const GAME_VERSION = "1.1.0";
 const TICK_RATE = 20;
 const SCORE_TICK_MS = 500;
 const PICKUP_RESPAWN_MS = 10000;
@@ -21,6 +21,7 @@ const BOT_TARGET_PLAYERS = 4;
 const BOT_DECISION_MIN_MS = 900;
 const BOT_DECISION_MAX_MS = 1800;
 const BOT_HIT_COOLDOWN_MS = 950;
+const STYLE_SCORE_COOLDOWN_MS = 1250;
 
 const PICKUP_TYPES = {
   boost: {
@@ -236,6 +237,7 @@ function createBot(room) {
     shieldUntil: 0,
     slamUntil: 0,
     wreckedUntil: 0,
+    nextStyleScoreAt: 0,
     botTarget: { x: 0, z: 0 },
     botNextDecisionAt: 0,
     botNextHitAt: 0,
@@ -285,7 +287,8 @@ function resetPlayerForRound(player) {
     hits: 0,
     shieldUntil: 0,
     slamUntil: 0,
-    wreckedUntil: 0
+    wreckedUntil: 0,
+    nextStyleScoreAt: 0
   });
 }
 
@@ -294,7 +297,8 @@ function respawnPlayer(player) {
     health: MAX_HEALTH,
     shieldUntil: 0,
     slamUntil: 0,
-    wreckedUntil: 0
+    wreckedUntil: 0,
+    nextStyleScoreAt: 0
   });
 }
 
@@ -647,6 +651,7 @@ wss.on("connection", (ws) => {
         shieldUntil: 0,
         slamUntil: 0,
         wreckedUntil: 0,
+        nextStyleScoreAt: 0,
         ...createSpawnState(id, msg.name, msg.color)
       };
       room.players.set(player.id, player);
@@ -753,6 +758,29 @@ wss.on("connection", (ws) => {
         impulse,
         slam: slamReady
       });
+      maybeFinishRound(room, now);
+      return;
+    }
+
+    if (msg.type === "style-score") {
+      const now = Date.now();
+      if (room.round.phase !== "live" || player.health <= 0 || player.wreckedUntil > now) {
+        return;
+      }
+      if (player.nextStyleScoreAt && player.nextStyleScoreAt > now) {
+        return;
+      }
+      const points = clamp(Math.round(Number(msg.points) || 1), 1, 5);
+      const reason = String(msg.reason || "style").replace(/[^a-z0-9 -]/gi, "").slice(0, 24) || "style";
+      player.score += points;
+      player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
+      send(player.ws, {
+        type: "style-awarded",
+        reason,
+        points,
+        player: serializePlayer(player)
+      });
+      broadcastEvent(room, `${player.name} +${points} ${reason}.`, "boost");
       maybeFinishRound(room, now);
     }
   });
