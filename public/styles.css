@@ -22,6 +22,7 @@ body {
   margin: 0;
   color: var(--text);
   background:
+    radial-gradient(circle at 72% 18%, rgba(255, 207, 107, 0.16), transparent 22%),
     radial-gradient(circle at top, rgba(89, 240, 194, 0.15), transparent 28%),
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
   overflow: hidden;
@@ -43,7 +44,7 @@ canvas {
 .hud {
   position: fixed;
   inset: 0 auto auto 0;
-  width: min(390px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
   padding: 16px;
   z-index: 20;
   pointer-events: none;
@@ -53,6 +54,19 @@ canvas {
 .is-menu-open .hud {
   opacity: 0.48;
   transform: translateX(-8px);
+}
+
+.is-driving .brand {
+  transform: translateY(-8px);
+  opacity: 0.78;
+}
+
+.is-driving .controls {
+  max-height: 58px;
+}
+
+.is-driving .controls p:nth-child(n + 2) {
+  display: none;
 }
 
 .brand h1 {
@@ -88,7 +102,7 @@ canvas {
 }
 
 .panel {
-  padding: 10px 12px;
+  padding: 9px 11px;
   border-radius: 14px;
 }
 
@@ -130,7 +144,7 @@ canvas {
 
 .card {
   border-radius: 18px;
-  padding: 12px 14px;
+  padding: 11px 13px;
   margin-top: 10px;
   pointer-events: auto;
 }
@@ -203,6 +217,9 @@ canvas {
 .objective {
   color: #f8e7ba;
   border-color: rgba(255, 207, 107, 0.22);
+  background:
+    linear-gradient(135deg, rgba(255, 207, 107, 0.1), rgba(8, 15, 24, 0.78)),
+    var(--panel);
 }
 
 .radar-card {
@@ -350,6 +367,7 @@ canvas {
   place-items: center;
   padding: 22px;
   background:
+    radial-gradient(circle at 52% 64%, rgba(126, 184, 255, 0.12), transparent 24%),
     radial-gradient(circle at 20% 20%, rgba(255, 207, 107, 0.16), transparent 30%),
     radial-gradient(circle at 82% 24%, rgba(89, 240, 194, 0.18), transparent 34%),
     linear-gradient(145deg, rgba(8, 18, 29, 0.82), rgba(5, 9, 16, 0.88));
