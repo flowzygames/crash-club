@@ -1,0 +1,85 @@
+name: Install Alpha 1.2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/install-alpha-1-2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download Alpha 1.2 files
+        run: |
+          set -euo pipefail
+          curl -L "https://litter.catbox.moe/laavth.zip" -o /tmp/alpha-1.2-upload.zip
+          unzip -o /tmp/alpha-1.2-upload.zip -d .
+          test -s server.js
+          test -s package.json
+          test -s package-lock.json
+          test -s public/app.js
+          test -s public/styles.css
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Alpha 1.2
+        run: |
+          npm run check
+          node - <<'NODE'
+          const fs = require("fs");
+          const app = fs.readFileSync("public/app.js", "utf8");
+          const server = fs.readFileSync("server.js", "utf8");
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const css = fs.readFileSync("public/styles.css", "utf8");
+          const checks = {
+            version: pkg.version === "1.2.2" && app.includes('const VERSION = "1.2.2"') && server.includes('GAME_VERSION = "1.2.2"'),
+            gulag: server.includes("GULAG_DURATION_MS") && app.includes("GULAG_ENEMY_MAX_HEALTH = 180"),
+            reverseFix: app.includes("car.velocity.addScaledVector(accelForward, engine * dt);") && !app.includes("engine * throttle * dt"),
+            overlay: css.includes(".mode-overlay")
+          };
+          console.log(checks);
+          if (Object.values(checks).some((value) => !value)) process.exit(1);
+          NODE
+
+      - name: Commit Alpha 1.2
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/install-alpha-1-2.yml
+          git add server.js package.json package-lock.json public/app.js public/styles.css
+          git commit -m "Release Alpha 1.2"
+          echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git push
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.commit.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          notes=$'Alpha 1.2 packages the first Gulag build of Crash Club.\n\nHighlights:\n- Death now sends players to a first-person Gulag duel.\n- Win the Gulag to redeploy; lose or time out to enter spectator free cam.\n- Added humanoid Gulag opponent, weapon/crosshair HUD, and multi-shot duel balancing.\n- Made bots tougher with more realistic randomized names.\n- Fixed reverse driving so W goes forward and S brakes/reverses correctly.\n\nValidation:\n- npm run check'
+          if gh release view alpha-1.2 >/dev/null 2>&1; then
+            gh release delete alpha-1.2 --yes --cleanup-tag
+          fi
+          gh release create alpha-1.2 --target "$RELEASE_SHA" --title "Alpha 1.2" --notes "$notes"
