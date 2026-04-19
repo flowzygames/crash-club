@@ -1,0 +1,91 @@
+name: Alpha 1.2 UI Polish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/alpha-1-2-ui-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download UI polish files
+        run: |
+          set -euo pipefail
+          curl -L "https://litter.catbox.moe/2gnb2i.zip" -o /tmp/alpha-1.2-ui-fixes.zip
+          set +e
+          unzip -o /tmp/alpha-1.2-ui-fixes.zip -d .
+          unzip_status=$?
+          set -e
+          if [ "$unzip_status" -gt 1 ]; then
+            exit "$unzip_status"
+          fi
+          test -s public/app.js
+          test -s public/styles.css
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify UI polish
+        run: |
+          npm run check
+          node - <<'NODE'
+          const fs = require("fs");
+          const app = fs.readFileSync("public/app.js", "utf8");
+          const css = fs.readFileSync("public/styles.css", "utf8");
+          const checks = {
+            silentStart: app.includes("saveName({ silent: true });"),
+            noStartBanner: !app.includes('showBanner("Round Live"'),
+            noGulagBanner: !app.includes('showBanner("Gulag", "Win the duel to respawn.")'),
+            noSpeedLinesRuntime: app.includes('els.speedLines.style.setProperty("--speed-line-opacity", "0")'),
+            speedLinesDisabled: css.includes(".speed-lines") && css.includes("display: none;") && css.includes("background: none;"),
+            compactCombatHud: app.includes("combatHud: true") && css.includes(".mode-overlay.combat-hud .mode-card")
+          };
+          console.log(checks);
+          if (Object.values(checks).some((value) => !value)) process.exit(1);
+          NODE
+
+      - name: Commit UI polish
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/alpha-1-2-ui-fixes.yml
+          git add public/app.js public/styles.css
+          git commit -m "Polish Alpha 1.2 gameplay HUD"
+          echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git push
+
+      - name: Update Alpha 1.2 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.commit.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          git tag -f alpha-1.2 "$RELEASE_SHA"
+          git push origin refs/tags/alpha-1.2 --force
+          notes=$'Alpha 1.2 packages the first Gulag build of Crash Club.\n\nLatest polish patch:\n- Removed the center popup after leaving the name/start screen.\n- Removed the center Gulag entry popup so it does not block shots.\n- Disabled the driving speed-lines overlay around the screen.\n- Kept Gulag combat info as a compact HUD instead of a big overlay.\n\nOriginal Alpha 1.2 highlights:\n- Death sends players to a first-person Gulag duel.\n- Win the Gulag to redeploy; lose or time out to enter spectator free cam.\n- Added humanoid Gulag opponent, weapon/crosshair HUD, and multi-shot duel balancing.\n- Made bots tougher with more realistic randomized names.\n- Fixed reverse driving so W goes forward and S brakes/reverses correctly.\n\nValidation:\n- npm run check'
+          if gh release view alpha-1.2 >/dev/null 2>&1; then
+            gh release edit alpha-1.2 --target "$RELEASE_SHA" --title "Alpha 1.2" --notes "$notes"
+          else
+            gh release create alpha-1.2 --target "$RELEASE_SHA" --title "Alpha 1.2" --notes "$notes"
+          fi
