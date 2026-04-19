@@ -821,7 +821,7 @@ import("three")
     }
 
     function startDriving() {
-      saveName();
+      saveName({ silent: true });
       setStatus("Connecting to Crash Club...", "offline");
       if (!state.socket || state.socket.readyState > WebSocket.OPEN) {
         connectSocket();
@@ -832,12 +832,12 @@ import("three")
       }
     }
 
-    function saveName() {
+    function saveName(options = {}) {
       state.car.name = String(els.name?.value || "Driver").trim().slice(0, 18) || "Driver";
       localStorage.setItem("crash-club-name", state.car.name);
       updateNameLabel(localCar.label, state.car.name, "#59f0c2");
       sendMessage({ type: "rename", name: state.car.name });
-      toast(`Name saved: ${state.car.name}`, "info");
+      if (!options.silent) toast(`Name saved: ${state.car.name}`, "info");
     }
 
     function connectSocket() {
@@ -876,7 +876,6 @@ import("three")
         setPickups(msg.pickups || []);
         setMenu(false);
         setStatus(`Online in room ${state.room.code}`, "online");
-        showBanner("Round Live", "Own the ring. Smash the lobby.");
         playTone(360, 0.08, "triangle", 0.05);
         return;
       }
@@ -1082,10 +1081,7 @@ import("three")
       for (const wheel of localCar.wheels) wheel.rotation.x += car.speed * dt * 2.8;
       localCar.label.quaternion.copy(camera.quaternion);
       localCar.underglow.intensity = boosting ? 2.2 : 1.05;
-      if (els.speedLines) {
-        const streaks = boosting ? 0.42 : THREE.MathUtils.clamp((car.speed - 28) / 46, 0, 0.25);
-        els.speedLines.style.setProperty("--speed-line-opacity", String(streaks));
-      }
+      if (els.speedLines) els.speedLines.style.setProperty("--speed-line-opacity", "0");
       car.inZone = isInCenterRing(car.x, car.z);
     }
 
@@ -1253,8 +1249,7 @@ import("three")
       localCar.group.visible = false;
       setMenu(false);
       setStatus("Gulag duel: win to redeploy.", "offline");
-      showModeOverlay("GULAG", "Win your 1v1 or spectate.", "WASD move. Mouse aim. Click or Space shoots.");
-      showBanner("Gulag", "Win the duel to respawn.");
+      showModeOverlay("GULAG", "Win your 1v1 or spectate.", "WASD move. Mouse aim. Click or Space shoots.", { combatHud: true });
       document.body.requestPointerLock?.();
     }
 
@@ -1419,10 +1414,11 @@ import("three")
       updateModeOverlay();
     }
 
-    function showModeOverlay(kicker, title, copy) {
+    function showModeOverlay(kicker, title, copy, options = {}) {
       modeOverlay.kicker.textContent = kicker;
       modeOverlay.title.textContent = title;
       modeOverlay.copy.textContent = copy;
+      modeOverlay.root.classList.toggle("combat-hud", options.combatHud === true);
       modeOverlay.root.classList.remove("hidden");
       updateModeOverlay();
     }

@@ -508,18 +508,10 @@ canvas {
   position: fixed;
   inset: 0;
   z-index: 17;
+  display: none;
   pointer-events: none;
-  opacity: var(--speed-line-opacity);
-  background:
-    radial-gradient(circle at 50% 54%, transparent 0 25%, rgba(255, 255, 255, 0.08) 26%, transparent 42%),
-    repeating-conic-gradient(
-      from 0deg at 50% 55%,
-      transparent 0deg 11deg,
-      rgba(126, 184, 255, 0.18) 12deg 13deg,
-      transparent 14deg 22deg
-    );
-  mix-blend-mode: screen;
-  transition: opacity 140ms ease;
+  opacity: 0;
+  background: none;
 }
 
 .mode-overlay {
@@ -572,11 +564,36 @@ canvas {
   font-weight: 700;
 }
 
+.mode-overlay.combat-hud .mode-card {
+  left: auto;
+  right: 14px;
+  top: 62px;
+  width: auto;
+  max-width: calc(100vw - 28px);
+  transform: none;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(8, 13, 20, 0.62);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(10px);
+}
+
+.mode-overlay.combat-hud .mode-kicker,
+.mode-overlay.combat-hud .mode-card strong,
+.mode-overlay.combat-hud .mode-card p {
+  display: none;
+}
+
 .mode-bars {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 12px;
+}
+
+.mode-overlay.combat-hud .mode-bars {
+  margin-top: 0;
+  gap: 5px;
 }
 
 .mode-bars span {
@@ -590,15 +607,31 @@ canvas {
   color: rgba(246, 251, 255, 0.8);
 }
 
+.mode-overlay.combat-hud .mode-bars span {
+  gap: 6px;
+  min-width: 62px;
+  padding: 6px 7px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
 .mode-bars b {
   font-size: 0.64rem;
   letter-spacing: 0.12em;
+}
+
+.mode-overlay.combat-hud .mode-bars b {
+  font-size: 0.56rem;
 }
 
 .mode-bars i {
   color: #59f0c2;
   font-style: normal;
   font-weight: 900;
+}
+
+.mode-overlay.combat-hud .mode-bars i {
+  font-size: 0.76rem;
 }
 
 .crosshair {
