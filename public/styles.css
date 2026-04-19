@@ -503,6 +503,25 @@ canvas {
   transition: opacity 80ms linear;
 }
 
+.speed-lines {
+  --speed-line-opacity: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 17;
+  pointer-events: none;
+  opacity: var(--speed-line-opacity);
+  background:
+    radial-gradient(circle at 50% 54%, transparent 0 25%, rgba(255, 255, 255, 0.08) 26%, transparent 42%),
+    repeating-conic-gradient(
+      from 0deg at 50% 55%,
+      transparent 0deg 11deg,
+      rgba(126, 184, 255, 0.18) 12deg 13deg,
+      transparent 14deg 22deg
+    );
+  mix-blend-mode: screen;
+  transition: opacity 140ms ease;
+}
+
 kbd,
 code {
   font-family: Consolas, "Courier New", monospace;

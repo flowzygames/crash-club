@@ -65,8 +65,10 @@ const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".gif": "image/gif",
   ".svg": "image/svg+xml"
 };
 
@@ -213,7 +215,7 @@ function createSpawnState(id, name, color) {
     name: String(name || `Driver ${id}`).slice(0, 18),
     color: color || randomColor(),
     x: Math.cos(spawnAngle) * spawnRadius,
-    y: 0.85,
+    y: 0.08,
     z: Math.sin(spawnAngle) * spawnRadius,
     angle: spawnAngle + Math.PI,
     speed: 0,
@@ -448,7 +450,7 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now()) {
   source.score += Math.max(1, Math.round(damage / 8));
 
   if (target.health <= 0) {
-    target.wrecks += 1;
+    source.wrecks = (source.wrecks || 0) + 1;
     target.wreckedUntil = now + WRECK_RESPAWN_MS;
     source.score += 8;
     broadcastEvent(room, `${source.name} wrecked ${target.name}!`, "danger");
@@ -528,7 +530,7 @@ function updateBots(room, now, deltaSeconds) {
     bot.z += Math.cos(bot.angle) * bot.speed * deltaSeconds;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
-    bot.y = 0.85;
+    bot.y = 0.08;
     bot.inZone = Math.hypot(bot.x, bot.z) >= 8 && Math.hypot(bot.x, bot.z) <= 18;
 
     if (targetDistance < 5) {
