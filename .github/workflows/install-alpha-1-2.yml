@@ -23,7 +23,7 @@ jobs:
       - name: Download Alpha 1.2 files
         run: |
           set -euo pipefail
-          curl -L "https://litter.catbox.moe/laavth.zip" -o /tmp/alpha-1.2-upload.zip
+          curl -L "https://litter.catbox.moe/qkra90.zip" -o /tmp/alpha-1.2-upload.zip
           unzip -o /tmp/alpha-1.2-upload.zip -d .
           test -s server.js
           test -s package.json
