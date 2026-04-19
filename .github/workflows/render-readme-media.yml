@@ -1,0 +1,52 @@
+name: Install README Media
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/render-readme-media.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Install verified 1080p README captures
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L "https://litter.catbox.moe/z5vtn9.zip" -o /tmp/readme-1080p-media.zip
+          rm -rf assets/readme/github
+          mkdir -p assets/readme/github
+          unzip -o /tmp/readme-1080p-media.zip -d assets/readme/github
+          test -s assets/readme/github/01-start-screen.png
+          test -s assets/readme/github/02-arena-hud.png
+          test -s assets/readme/github/03-center-ring-powerups.png
+          test -s assets/readme/github/04-bots-and-radar.png
+          test -s assets/readme/github/05-driving-action.png
+          test -s assets/readme/github/driving-loop.gif
+
+      - name: Commit media and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/render-readme-media.yml
+          git add README.md assets/readme/github
+          if git diff --cached --quiet; then
+            echo "No README media changes to commit."
+          else
+            git commit -m "Replace README media with 1080p captures"
+            git push
+          fi
