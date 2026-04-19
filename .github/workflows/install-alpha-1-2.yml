@@ -24,7 +24,13 @@ jobs:
         run: |
           set -euo pipefail
           curl -L "https://litter.catbox.moe/qkra90.zip" -o /tmp/alpha-1.2-upload.zip
+          set +e
           unzip -o /tmp/alpha-1.2-upload.zip -d .
+          unzip_status=$?
+          set -e
+          if [ "$unzip_status" -gt 1 ]; then
+            exit "$unzip_status"
+          fi
           test -s server.js
           test -s package.json
           test -s package-lock.json
