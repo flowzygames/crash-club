@@ -1,6 +1,6 @@
 import("three")
   .then((THREE) => {
-    const VERSION = "1.1.0";
+    const VERSION = "1.2.2";
     const WORLD_SIZE = 180;
     const STATE_SEND_MS = 50;
     const HIT_COOLDOWN_MS = 520;
@@ -9,6 +9,7 @@ import("three")
     const CENTER_MIN = 8;
     const CENTER_MAX = 19;
     const MAX_EFFECTS = 110;
+    const GULAG_ENEMY_MAX_HEALTH = 180;
 
     const pickupMeta = {
       boost: { label: "Boost", color: "#ffcf6b", emissive: "#8a5c00" },
@@ -49,6 +50,7 @@ import("three")
       damage: document.getElementById("damage-vignette"),
       speedLines: document.getElementById("speed-lines")
     };
+    const modeOverlay = createModeOverlay();
 
     const url = new URL(location.href);
     const roomCode = sanitizeRoom(url.searchParams.get("room") || "main");
@@ -65,11 +67,13 @@ import("three")
       id: null,
       socket: null,
       joined: false,
+      mode: "arena",
       menuOpen: true,
       lastStateAt: 0,
       lastHitAt: 0,
       lastStyleAt: 0,
       lastWallHitAt: 0,
+      mouseLook: false,
       room: {
         code: roomCode,
         phase: "live",
@@ -94,6 +98,7 @@ import("three")
         shieldUntil: 0,
         slamUntil: 0,
         wreckedUntil: 0,
+        gulagUntil: 0,
         driftCharge: 0,
         cameraShake: 0,
         lastBoostTrailAt: 0,
@@ -101,6 +106,30 @@ import("three")
         boosting: false,
         name: loadName(),
         color: loadColor()
+      },
+      gulag: {
+        active: false,
+        resultSent: false,
+        opponentName: "Warden",
+        health: 100,
+        enemyHealth: GULAG_ENEMY_MAX_HEALTH,
+        enemyFireAt: 0,
+        playerFireAt: 0,
+        firing: false,
+        hitFlash: 0,
+        endsAt: 0,
+        yaw: Math.PI,
+        pitch: 0,
+        position: new THREE.Vector3(0, 2.2, 268),
+        velocity: new THREE.Vector3(),
+        enemyPosition: new THREE.Vector3(0, 1.7, 310)
+      },
+      spectator: {
+        yaw: Math.PI,
+        pitch: -0.25,
+        speed: 42,
+        position: new THREE.Vector3(0, 58, 92),
+        velocity: new THREE.Vector3()
       }
     };
     let lightweightNoticeTimer = 0;
@@ -129,6 +158,11 @@ import("three")
     scene.add(localCar.group);
 
     buildWorld();
+    const gulagWorld = createGulagWorld();
+    scene.add(gulagWorld.group);
+    scene.add(camera);
+    const weapon = createWeaponMesh();
+    camera.add(weapon);
     setupLights();
     setupControls();
     showBanner("Garage Open", "Pick a name and start driving.");
@@ -138,11 +172,17 @@ import("three")
 
     function loop() {
       const dt = Math.min(clock.getDelta(), 0.05);
-      updateLocalCar(dt);
+      if (state.mode === "gulag") {
+        updateGulag(dt);
+      } else if (state.mode === "spectator") {
+        updateSpectator(dt);
+      } else {
+        updateLocalCar(dt);
+      }
       updateRemoteCars(dt);
       updatePickups(dt);
       updateEffects(dt);
-      updateCamera(dt);
+      if (state.mode === "arena") updateCamera(dt);
       updateHud();
       sendLocalState();
       renderer.render(scene, camera);
@@ -392,6 +432,183 @@ import("three")
       return texture;
     }
 
+    function createModeOverlay() {
+      const overlay = document.createElement("div");
+      overlay.className = "mode-overlay hidden";
+      overlay.innerHTML = `
+        <div class="mode-card">
+          <span class="mode-kicker" id="mode-kicker">GULAG</span>
+          <strong id="mode-title">Second chance duel</strong>
+          <p id="mode-copy">WASD to move, mouse to aim, click or Space to shoot.</p>
+          <div class="mode-bars">
+            <span><b>YOU</b><i id="mode-health">100</i></span>
+            <span><b>ENEMY</b><i id="mode-enemy">100</i></span>
+            <span><b>TIME</b><i id="mode-time">45</i></span>
+          </div>
+        </div>
+        <div class="crosshair" aria-hidden="true"></div>
+      `;
+      document.body.appendChild(overlay);
+      return {
+        root: overlay,
+        kicker: overlay.querySelector("#mode-kicker"),
+        title: overlay.querySelector("#mode-title"),
+        copy: overlay.querySelector("#mode-copy"),
+        health: overlay.querySelector("#mode-health"),
+        enemy: overlay.querySelector("#mode-enemy"),
+        time: overlay.querySelector("#mode-time")
+      };
+    }
+
+    function createGulagWorld() {
+      const group = new THREE.Group();
+      group.visible = false;
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(62, 78),
+        new THREE.MeshStandardMaterial({ color: "#151923", roughness: 0.86, metalness: 0.04 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(0, 0.02, 292);
+      floor.receiveShadow = true;
+      group.add(floor);
+
+      const wallMat = new THREE.MeshStandardMaterial({ color: "#242c3a", roughness: 0.72, metalness: 0.12 });
+      const accentMat = new THREE.MeshBasicMaterial({ color: "#ff4f8b", transparent: true, opacity: 0.62 });
+      for (const wall of [
+        { x: 0, z: 253, sx: 64, sz: 1.5 },
+        { x: 0, z: 331, sx: 64, sz: 1.5 },
+        { x: -32, z: 292, sx: 1.5, sz: 78 },
+        { x: 32, z: 292, sx: 1.5, sz: 78 }
+      ]) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.sx, 7, wall.sz), wallMat);
+        mesh.position.set(wall.x, 3.5, wall.z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
+      for (const cover of [
+        { x: -14, z: 282, sx: 7, sz: 2 },
+        { x: 14, z: 302, sx: 7, sz: 2 },
+        { x: 0, z: 292, sx: 3, sz: 9 }
+      ]) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(cover.sx, 3.2, cover.sz), wallMat);
+        mesh.position.set(cover.x, 1.6, cover.z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), accentMat);
+      sign.position.set(0, 6.2, 252.15);
+      sign.rotation.y = Math.PI;
+      group.add(sign);
+
+      const enemy = createGulagEnemyModel("Gulag Rival");
+      enemy.position.copy(state.gulag.enemyPosition);
+      group.add(enemy);
+
+      const light = new THREE.PointLight("#ff4f8b", 2.4, 56);
+      light.position.set(0, 9, 292);
+      group.add(light);
+
+      return { group, enemy };
+    }
+
+    function createGulagEnemyModel(name) {
+      const enemy = new THREE.Group();
+      const suitMat = new THREE.MeshStandardMaterial({
+        color: "#263247",
+        roughness: 0.48,
+        metalness: 0.18,
+        emissive: "#060b13",
+        emissiveIntensity: 0.22
+      });
+      const armorMat = new THREE.MeshStandardMaterial({
+        color: "#ff4f8b",
+        roughness: 0.38,
+        metalness: 0.24,
+        emissive: "#5c102b",
+        emissiveIntensity: 0.5
+      });
+      const skinMat = new THREE.MeshStandardMaterial({ color: "#d9a37c", roughness: 0.55 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: "#06080d", roughness: 0.7, metalness: 0.2 });
+      const glowMat = new THREE.MeshBasicMaterial({ color: "#d6f4ff" });
+
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.74, 1.55, 5, 12), suitMat);
+      body.position.y = 1.75;
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.05, 0.34), armorMat);
+      chest.position.set(0, 1.92, -0.45);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.44, 18, 14), skinMat);
+      head.position.y = 3.05;
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.49, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), darkMat);
+      helmet.position.y = 3.16;
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.14, 0.07), glowMat);
+      visor.position.set(0, 3.08, -0.42);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.28, 10), darkMat);
+      neck.position.y = 2.62;
+
+      const armGeo = new THREE.CapsuleGeometry(0.16, 0.86, 4, 8);
+      const legGeo = new THREE.CapsuleGeometry(0.18, 1.02, 4, 8);
+      const leftArm = new THREE.Mesh(armGeo, suitMat);
+      const rightArm = new THREE.Mesh(armGeo, suitMat);
+      leftArm.position.set(-0.88, 1.95, -0.12);
+      rightArm.position.set(0.88, 1.95, -0.12);
+      leftArm.rotation.z = 0.26;
+      rightArm.rotation.z = -0.26;
+      const leftLeg = new THREE.Mesh(legGeo, darkMat);
+      const rightLeg = new THREE.Mesh(legGeo, darkMat);
+      leftLeg.position.set(-0.34, 0.72, 0);
+      rightLeg.position.set(0.34, 0.72, 0);
+      const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.72), darkMat);
+      const rightBoot = leftBoot.clone();
+      leftBoot.position.set(-0.34, 0.13, -0.1);
+      rightBoot.position.set(0.34, 0.13, -0.1);
+
+      const gun = new THREE.Group();
+      const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.24, 1.08), darkMat);
+      const gunGlow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.34), glowMat);
+      gunBody.position.set(0, 0, -0.28);
+      gunGlow.position.set(0, 0.03, -0.9);
+      gun.add(gunBody, gunGlow);
+      gun.position.set(0.42, 2.08, -0.82);
+      gun.rotation.x = -0.08;
+
+      const label = createNameLabel(name, "#ffcf6b");
+      label.position.set(0, 3.9, 0);
+
+      enemy.add(body, chest, head, helmet, visor, neck, leftArm, rightArm, leftLeg, rightLeg, leftBoot, rightBoot, gun, label);
+      enemy.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      enemy.userData = {
+        label,
+        arms: [leftArm, rightArm],
+        legs: [leftLeg, rightLeg],
+        armorMat,
+        suitMat,
+        gun
+      };
+      return enemy;
+    }
+
+    function createWeaponMesh() {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: "#151b26", roughness: 0.48, metalness: 0.36 });
+      const accent = new THREE.MeshBasicMaterial({ color: "#59f0c2" });
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.58, 0.42), mat);
+      grip.position.set(0.48, -0.48, -0.92);
+      grip.rotation.x = -0.25;
+      const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 1.05), mat);
+      barrel.position.set(0.42, -0.3, -1.32);
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.48), accent);
+      glow.position.set(0.42, -0.12, -1.52);
+      group.add(grip, barrel, glow);
+      group.visible = false;
+      return group;
+    }
+
     function addSkyDetails() {
       const starGeo = new THREE.BufferGeometry();
       const starPositions = [];
@@ -524,16 +741,41 @@ import("three")
       els.name?.addEventListener("keydown", (event) => {
         if (event.key === "Enter") startDriving();
       });
+      addEventListener("pointermove", handlePointerLook);
+      addEventListener("pointerdown", (event) => {
+        if (state.mode === "gulag") {
+          event.preventDefault();
+          state.gulag.firing = true;
+          document.body.requestPointerLock?.();
+          fireGulagShot();
+        } else if (state.mode === "spectator") {
+          event.preventDefault();
+          document.body.requestPointerLock?.();
+        }
+      });
+      addEventListener("pointerup", () => {
+        state.mouseLook = false;
+        state.gulag.firing = false;
+      });
 
       addEventListener("keydown", (event) => {
         if (document.activeElement === els.name && event.key !== "Escape") return;
         const key = normalizeKey(event.key);
         if (key === "escape") {
+          if (state.mode === "gulag" || state.mode === "spectator") {
+            document.exitPointerLock?.();
+            return;
+          }
           if (state.joined) setMenu(!state.menuOpen);
           return;
         }
         if (key === "r") {
           sendMessage({ type: "respawn" });
+          return;
+        }
+        if ((key === " " || key === "f") && state.mode === "gulag") {
+          event.preventDefault();
+          fireGulagShot();
           return;
         }
         input.add(key);
@@ -562,6 +804,14 @@ import("three")
         button.addEventListener("pointercancel", release);
         button.addEventListener("pointerleave", release);
       }
+    }
+
+    function handlePointerLook(event) {
+      if (state.mode !== "gulag" && state.mode !== "spectator") return;
+      if (document.pointerLockElement !== document.body && event.buttons !== 1) return;
+      const target = state.mode === "gulag" ? state.gulag : state.spectator;
+      target.yaw -= event.movementX * 0.0024;
+      target.pitch = THREE.MathUtils.clamp(target.pitch - event.movementY * 0.002, -1.1, 1.05);
     }
 
     function unlockAudio(event) {
@@ -619,6 +869,7 @@ import("three")
       if (msg.type === "joined") {
         state.id = String(msg.id);
         state.joined = true;
+        state.mode = "arena";
         state.room.code = msg.room || roomCode;
         applyRoom(msg.roomState);
         setPlayers(msg.players || []);
@@ -665,6 +916,11 @@ import("three")
         return;
       }
 
+      if (msg.type === "player-updated" && msg.player) {
+        upsertPlayer(msg.player);
+        return;
+      }
+
       if (msg.type === "pickup-state") {
         const pickup = pickups.get(msg.pickupId);
         if (pickup) {
@@ -692,9 +948,38 @@ import("three")
       if (msg.type === "respawned" && msg.player) {
         upsertPlayer(msg.player, true);
         if (String(msg.player.id) === state.id) {
+          state.mode = "arena";
+          endGulag();
           syncLocalTransform(msg.player);
           state.car.velocity.set(0, 0);
+          showBanner("Redeployed", "You are back in the arena.");
         }
+        return;
+      }
+
+      if (msg.type === "gulag-started") {
+        if (msg.player) upsertPlayer(msg.player);
+        startGulag(msg);
+        return;
+      }
+
+      if (msg.type === "gulag-ended" && msg.player) {
+        upsertPlayer(msg.player, true);
+        if (String(msg.player.id) === state.id) {
+          state.mode = "arena";
+          endGulag();
+          syncLocalTransform(msg.player);
+          state.car.velocity.set(0, 0);
+          setMenu(false);
+          showBanner("Gulag Won", "You earned your respawn.");
+          playTone(820, 0.14, "triangle", 0.06);
+        }
+        return;
+      }
+
+      if (msg.type === "spectator-started") {
+        if (msg.player) upsertPlayer(msg.player);
+        startSpectator(msg.reason || "lost the Gulag");
         return;
       }
 
@@ -728,7 +1013,7 @@ import("three")
 
     function updateLocalCar(dt) {
       const car = state.car;
-      const blocked = state.menuOpen || !state.joined || car.wreckedUntil > Date.now();
+      const blocked = state.mode !== "arena" || state.menuOpen || !state.joined || car.wreckedUntil > Date.now();
       const throttle = blocked ? 0 : axis("w", "arrowup") - axis("s", "arrowdown");
       const steer = blocked ? 0 : axis("d", "arrowright") - axis("a", "arrowleft");
       const boosting = !blocked && input.has("shift") && car.boost > 3 && throttle > 0;
@@ -758,7 +1043,7 @@ import("three")
       }
 
       const accelForward = new THREE.Vector2(Math.sin(car.angle), Math.cos(car.angle));
-      car.velocity.addScaledVector(accelForward, engine * throttle * dt);
+      car.velocity.addScaledVector(accelForward, engine * dt);
 
       const drag = 1 - THREE.MathUtils.clamp((0.34 + car.velocity.length() * 0.018) * dt, 0, 0.12);
       car.velocity.multiplyScalar(drag);
@@ -850,6 +1135,7 @@ import("three")
       const now = performance.now();
       for (const [id, entry] of players) {
         if (id === state.id) continue;
+        if (entry.mode !== "arena") continue;
         const dx = car.x - entry.x;
         const dz = car.z - entry.z;
         const dist = Math.hypot(dx, dz);
@@ -893,6 +1179,11 @@ import("three")
     function updateRemoteCars(dt) {
       for (const [id, entry] of players) {
         if (id === state.id) continue;
+        if (entry.mode !== "arena") {
+          entry.mesh.group.visible = false;
+          continue;
+        }
+        entry.mesh.group.visible = true;
         const mesh = entry.mesh;
         mesh.target.set(entry.x, entry.y ?? 0.08, entry.z);
         mesh.group.position.lerp(mesh.target, 1 - Math.pow(0.002, dt));
@@ -932,6 +1223,220 @@ import("three")
 
       state.car.damageFlash = Math.max(0, (state.car.damageFlash || 0) - dt * 1.7);
       if (els.damage) els.damage.style.opacity = String(Math.min(0.72, state.car.damageFlash || 0));
+    }
+
+    function startGulag(msg) {
+      state.mode = "gulag";
+      state.menuOpen = false;
+      state.gulag.active = true;
+      state.gulag.resultSent = false;
+      state.gulag.health = 100;
+      state.gulag.enemyHealth = GULAG_ENEMY_MAX_HEALTH;
+      state.gulag.enemyFireAt = performance.now() + 900;
+      state.gulag.playerFireAt = 0;
+      state.gulag.firing = false;
+      state.gulag.hitFlash = 0;
+      state.gulag.opponentName = msg.opponentName || "Warden";
+      state.gulag.endsAt = msg.endsAt || Date.now() + 45000;
+      state.gulag.position.set(0, 2.2, 268);
+      state.gulag.velocity.set(0, 0, 0);
+      state.gulag.enemyPosition.set(0, 1.7, 310);
+      state.gulag.yaw = Math.PI;
+      state.gulag.pitch = 0;
+      clearInput();
+      gulagWorld.group.visible = true;
+      gulagWorld.enemy.visible = true;
+      if (gulagWorld.enemy.userData.label) {
+        updateNameLabel(gulagWorld.enemy.userData.label, state.gulag.opponentName, "#ffcf6b");
+      }
+      weapon.visible = true;
+      localCar.group.visible = false;
+      setMenu(false);
+      setStatus("Gulag duel: win to redeploy.", "offline");
+      showModeOverlay("GULAG", "Win your 1v1 or spectate.", "WASD move. Mouse aim. Click or Space shoots.");
+      showBanner("Gulag", "Win the duel to respawn.");
+      document.body.requestPointerLock?.();
+    }
+
+    function endGulag() {
+      state.gulag.active = false;
+      state.gulag.firing = false;
+      clearInput();
+      gulagWorld.group.visible = false;
+      weapon.visible = false;
+      modeOverlay.root.classList.add("hidden");
+      localCar.group.visible = true;
+      document.exitPointerLock?.();
+    }
+
+    function startSpectator(reason) {
+      state.mode = "spectator";
+      state.menuOpen = false;
+      endGulag();
+      clearInput();
+      localCar.group.visible = false;
+      state.spectator.position.set(state.car.x || 0, 58, (state.car.z || 0) + 76);
+      state.spectator.velocity.set(0, 0, 0);
+      showModeOverlay("SPECTATOR", "Free cam enabled.", `${reason}. WASD + mouse to fly around the match.`);
+      setStatus("Spectating the arena in free cam.", "offline");
+      showBanner("Spectator", "You lost the Gulag. Fly around and watch the chaos.");
+      document.body.requestPointerLock?.();
+    }
+
+    function updateGulag(dt) {
+      const gulag = state.gulag;
+      const forward = scratch3.set(-Math.sin(gulag.yaw), 0, -Math.cos(gulag.yaw)).normalize();
+      const right = new THREE.Vector3(Math.cos(gulag.yaw), 0, -Math.sin(gulag.yaw));
+      const moveX = signedAxis(["d", "arrowright"], ["a", "arrowleft"]);
+      const moveZ = signedAxis(["w", "arrowup"], ["s", "arrowdown"]);
+      const move = new THREE.Vector3();
+      move.addScaledVector(forward, moveZ);
+      move.addScaledVector(right, moveX);
+      if (move.lengthSq() > 0) move.normalize().multiplyScalar(input.has("shift") ? 18 : 12);
+      gulag.velocity.lerp(move, 1 - Math.pow(0.001, dt));
+      gulag.position.addScaledVector(gulag.velocity, dt);
+      gulag.position.x = THREE.MathUtils.clamp(gulag.position.x, -28, 28);
+      gulag.position.z = THREE.MathUtils.clamp(gulag.position.z, 257, 327);
+
+      updateGulagEnemy(dt);
+      if (gulag.firing) fireGulagShot();
+      camera.position.copy(gulag.position);
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = gulag.yaw;
+      camera.rotation.x = gulag.pitch;
+      camera.rotation.z = 0;
+
+      if (Date.now() >= gulag.endsAt && !gulag.resultSent) {
+        finishGulag("timeout");
+      }
+      updateModeOverlay();
+    }
+
+    function updateGulagEnemy(dt) {
+      const gulag = state.gulag;
+      const toPlayer = scratch3.copy(gulag.position).sub(gulag.enemyPosition);
+      toPlayer.y = 0;
+      const distance = Math.max(0.001, toPlayer.length());
+      const desired = toPlayer.normalize();
+      const strafe = new THREE.Vector3(desired.z, 0, -desired.x).multiplyScalar(Math.sin(performance.now() * 0.0024) * 0.85);
+      const enemyMove = desired.multiplyScalar(distance > 14 ? 7.5 : distance < 9 ? -5.5 : 2).add(strafe);
+      gulag.enemyPosition.addScaledVector(enemyMove, dt);
+      gulag.enemyPosition.x = THREE.MathUtils.clamp(gulag.enemyPosition.x, -27, 27);
+      gulag.enemyPosition.z = THREE.MathUtils.clamp(gulag.enemyPosition.z, 258, 326);
+      gulagWorld.enemy.position.copy(gulag.enemyPosition);
+      gulagWorld.enemy.lookAt(gulag.position.x, 1.7, gulag.position.z);
+      const runCycle = performance.now() * 0.009;
+      for (const [index, leg] of gulagWorld.enemy.userData.legs.entries()) {
+        leg.rotation.x = Math.sin(runCycle + index * Math.PI) * THREE.MathUtils.clamp(gulagWorld.enemy.position.distanceTo(gulag.position) / 28, 0.08, 0.36);
+      }
+      for (const [index, arm] of gulagWorld.enemy.userData.arms.entries()) {
+        arm.rotation.x = -0.28 + Math.sin(runCycle + index * Math.PI) * 0.12;
+      }
+      gulagWorld.enemy.userData.gun.rotation.x = -0.08 + Math.sin(performance.now() * 0.012) * 0.015;
+      gulag.hitFlash = Math.max(0, gulag.hitFlash - dt * 5);
+      const flash = gulag.hitFlash;
+      gulagWorld.enemy.userData.armorMat.emissiveIntensity = 0.5 + flash * 1.8;
+      gulagWorld.enemy.userData.suitMat.emissiveIntensity = 0.22 + flash * 0.7;
+
+      const now = performance.now();
+      if (now > gulag.enemyFireAt && distance < 42) {
+        const aimPressure = THREE.MathUtils.clamp(1 - distance / 50, 0.28, 0.84);
+        if (Math.random() < aimPressure) {
+          gulag.health = Math.max(0, gulag.health - (12 + Math.round(Math.random() * 9)));
+          state.car.damageFlash = 0.95;
+          playTone(120, 0.07, "sawtooth", 0.04);
+          spawnImpact(gulag.position.x, gulag.position.y - 0.4, gulag.position.z, "#ff4f8b", 5);
+        }
+        gulag.enemyFireAt = now + 560 + Math.random() * 520;
+      }
+      if (gulag.health <= 0 && !gulag.resultSent) {
+        finishGulag("loss");
+      }
+    }
+
+    function fireGulagShot() {
+      if (state.mode !== "gulag") return;
+      const gulag = state.gulag;
+      const now = performance.now();
+      if (now < gulag.playerFireAt) return;
+      gulag.playerFireAt = now + 285;
+      playTone(460, 0.045, "square", 0.045);
+      weapon.rotation.z = (Math.random() - 0.5) * 0.04;
+      setTimeout(() => {
+        weapon.rotation.z = 0;
+      }, 90);
+
+      const aim = new THREE.Vector3(-Math.sin(gulag.yaw) * Math.cos(gulag.pitch), Math.sin(gulag.pitch), -Math.cos(gulag.yaw) * Math.cos(gulag.pitch)).normalize();
+      const enemy = gulag.enemyPosition.clone().setY(2.35);
+      const toEnemy = enemy.sub(gulag.position);
+      const distance = toEnemy.length();
+      const alignment = aim.dot(toEnemy.normalize());
+      if (alignment > 0.975 && distance < 62) {
+        const headshot = alignment > 0.992;
+        const damage = headshot ? 32 : 16;
+        gulag.enemyHealth = Math.max(0, gulag.enemyHealth - damage);
+        gulag.hitFlash = 1;
+        spawnImpact(gulag.enemyPosition.x, 2.2, gulag.enemyPosition.z, headshot ? "#ffcf6b" : "#59f0c2", headshot ? 14 : 8);
+        playTone(headshot ? 920 : 680, 0.06, "triangle", 0.05);
+        if (gulag.enemyHealth <= 0 && !gulag.resultSent) {
+          finishGulag("win");
+        }
+      }
+      updateModeOverlay();
+    }
+
+    function finishGulag(result) {
+      state.gulag.resultSent = true;
+      sendMessage({ type: "gulag-result", result });
+      if (result === "win") {
+        showModeOverlay("GULAG WON", "Redeploying...", "Server is dropping you back into the arena.");
+      } else {
+        showModeOverlay("GULAG LOST", "Spectator incoming.", "You are moving to free cam.");
+      }
+    }
+
+    function updateSpectator(dt) {
+      const spectator = state.spectator;
+      const forward = scratch3.set(-Math.sin(spectator.yaw), 0, -Math.cos(spectator.yaw)).normalize();
+      const right = new THREE.Vector3(Math.cos(spectator.yaw), 0, -Math.sin(spectator.yaw));
+      const vertical = (input.has("e") ? 1 : 0) - (input.has("q") ? 1 : 0);
+      const moveX = signedAxis(["d", "arrowright"], ["a", "arrowleft"]);
+      const moveZ = signedAxis(["w", "arrowup"], ["s", "arrowdown"]);
+      const move = new THREE.Vector3(0, vertical, 0);
+      move.addScaledVector(forward, moveZ);
+      move.addScaledVector(right, moveX);
+      if (move.lengthSq() > 0) move.normalize().multiplyScalar(input.has("shift") ? 82 : 42);
+      spectator.velocity.lerp(move, 1 - Math.pow(0.002, dt));
+      spectator.position.addScaledVector(spectator.velocity, dt);
+      spectator.position.x = THREE.MathUtils.clamp(spectator.position.x, -190, 190);
+      spectator.position.y = THREE.MathUtils.clamp(spectator.position.y, 8, 115);
+      spectator.position.z = THREE.MathUtils.clamp(spectator.position.z, -190, 190);
+      camera.position.copy(spectator.position);
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = spectator.yaw;
+      camera.rotation.x = spectator.pitch;
+      camera.rotation.z = 0;
+      updateModeOverlay();
+    }
+
+    function showModeOverlay(kicker, title, copy) {
+      modeOverlay.kicker.textContent = kicker;
+      modeOverlay.title.textContent = title;
+      modeOverlay.copy.textContent = copy;
+      modeOverlay.root.classList.remove("hidden");
+      updateModeOverlay();
+    }
+
+    function updateModeOverlay() {
+      if (state.mode === "gulag") {
+        modeOverlay.health.textContent = String(Math.round(state.gulag.health));
+        modeOverlay.enemy.textContent = String(Math.round(state.gulag.enemyHealth));
+        modeOverlay.time.textContent = String(Math.max(0, Math.ceil((state.gulag.endsAt - Date.now()) / 1000)));
+      } else if (state.mode === "spectator") {
+        modeOverlay.health.textContent = "FREE";
+        modeOverlay.enemy.textContent = "CAM";
+        modeOverlay.time.textContent = "LIVE";
+      }
     }
 
     function updateCamera(dt) {
@@ -979,16 +1484,22 @@ import("three")
         els.leader.textContent = `${leader.name} - ${Math.round(leader.score || 0)}`;
       }
       if (els.objective) {
-        els.objective.textContent = car.inZone
-          ? "Scoring zone active. Hold the ring or ram anyone trying to steal it."
-          : "Chase the gold ring, grab glowing pickups, drift for style, and wreck rivals.";
+        if (state.mode === "gulag") {
+          els.objective.textContent = `Gulag: eliminate ${state.gulag.opponentName} to redeploy.`;
+        } else if (state.mode === "spectator") {
+          els.objective.textContent = "Spectator free cam: WASD to fly, mouse to look, Q/E for height.";
+        } else {
+          els.objective.textContent = car.inZone
+            ? "Scoring zone active. Hold the ring or ram anyone trying to steal it."
+            : "Chase the gold ring, grab glowing pickups, drift for style, and wreck rivals.";
+        }
       }
       drawLeaderboard(all);
       drawRadar(all);
     }
 
     function sendLocalState() {
-      if (!state.joined || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+      if (state.mode !== "arena" || !state.joined || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
       const now = performance.now();
       if (now - state.lastStateAt < STATE_SEND_MS) return;
       state.lastStateAt = now;
@@ -1027,12 +1538,14 @@ import("three")
       if (id === state.id) {
         state.car.name = player.name || state.car.name;
         state.car.color = player.color || state.car.color;
+        state.mode = player.mode || state.mode;
         state.car.health = player.health ?? state.car.health;
         state.car.score = player.score ?? state.car.score;
         state.car.roundWins = player.roundWins ?? state.car.roundWins;
         state.car.shieldUntil = player.shieldUntil || 0;
         state.car.slamUntil = player.slamUntil || 0;
         state.car.wreckedUntil = player.wreckedUntil || 0;
+        state.car.gulagUntil = player.gulagUntil || 0;
         if (hardSync) syncLocalTransform(player);
       }
 
@@ -1061,6 +1574,7 @@ import("three")
         z: player.z ?? entry.z,
         angle: player.angle ?? entry.angle,
         speed: player.speed ?? entry.speed,
+        mode: player.mode || "arena",
         score: player.score || 0,
         health: player.health ?? 100,
         roundWins: player.roundWins || 0,
@@ -1068,6 +1582,7 @@ import("three")
         slamUntil: player.slamUntil || 0,
         isBot: Boolean(player.isBot)
       });
+      entry.mesh.group.visible = entry.mode === "arena";
 
       if (id === state.id && hardSync) {
         entry.mesh.group.position.set(state.car.x, state.car.y, state.car.z);
@@ -1177,6 +1692,7 @@ import("three")
       }
 
       for (const player of all) {
+        if (player.mode && player.mode !== "arena") continue;
         const x = player.id === state.id ? state.car.x : player.x;
         const z = player.id === state.id ? state.car.z : player.z;
         const p = radarPoint(x, z, size);
@@ -1326,9 +1842,9 @@ import("three")
     }
 
     function getPlayerPosition(id) {
-      if (String(id) === state.id) return { x: state.car.x, y: state.car.y, z: state.car.z };
+      if (String(id) === state.id) return state.mode === "arena" ? { x: state.car.x, y: state.car.y, z: state.car.z } : null;
       const entry = players.get(String(id));
-      return entry ? { x: entry.x, y: entry.y ?? 0.08, z: entry.z } : null;
+      return entry && entry.mode === "arena" ? { x: entry.x, y: entry.y ?? 0.08, z: entry.z } : null;
     }
 
     function isInCenterRing(x, z) {
@@ -1338,6 +1854,17 @@ import("three")
 
     function axis(positive, altPositive) {
       return input.has(positive) || input.has(altPositive) ? 1 : 0;
+    }
+
+    function signedAxis(positiveKeys, negativeKeys) {
+      const positive = positiveKeys.some((key) => input.has(key)) ? 1 : 0;
+      const negative = negativeKeys.some((key) => input.has(key)) ? 1 : 0;
+      return positive - negative;
+    }
+
+    function clearInput() {
+      input.clear();
+      state.gulag.firing = false;
     }
 
     function normalizeKey(key) {

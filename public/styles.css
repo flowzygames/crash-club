@@ -522,6 +522,116 @@ canvas {
   transition: opacity 140ms ease;
 }
 
+.mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  pointer-events: none;
+  color: #f6fbff;
+}
+
+.mode-overlay.hidden {
+  display: none;
+}
+
+.mode-card {
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  width: min(560px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  padding: 16px 18px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(11, 18, 29, 0.9), rgba(22, 14, 23, 0.76)),
+    radial-gradient(circle at 20% 0%, rgba(255, 79, 139, 0.35), transparent 40%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(16px);
+}
+
+.mode-kicker {
+  display: block;
+  color: #ffcf6b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.mode-card strong {
+  display: block;
+  margin-top: 5px;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.mode-card p {
+  margin: 8px 0 0;
+  color: rgba(246, 251, 255, 0.78);
+  font-weight: 700;
+}
+
+.mode-bars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mode-bars span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(246, 251, 255, 0.8);
+}
+
+.mode-bars b {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+}
+
+.mode-bars i {
+  color: #59f0c2;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(246, 251, 255, 0.86);
+  box-shadow: 0 0 12px rgba(89, 240, 194, 0.72);
+}
+
+.crosshair::before {
+  left: 13px;
+  top: 3px;
+  width: 2px;
+  height: 22px;
+}
+
+.crosshair::after {
+  left: 3px;
+  top: 13px;
+  width: 22px;
+  height: 2px;
+}
+
 kbd,
 code {
   font-family: Consolas, "Courier New", monospace;
