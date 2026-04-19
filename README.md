@@ -38,7 +38,7 @@ The core loop is simple on purpose. Drive into the arena, own the gold scoring r
 ### Start Screen And Controls
 
 <p align="center">
-  <img src="./assets/readme/github/01-start-screen.jpg" alt="Actual Crash Club start screen with driver name input and control hints" width="88%" />
+  <img src="./assets/readme/github/01-start-screen.png" alt="Actual Crash Club start screen with driver name input and control hints" width="88%" />
 </p>
 
 The first screen gives the game a real release feel instead of dropping players into a blank test canvas. Players can choose a name, save it, start driving, and see the main control hints before the match begins.
@@ -56,7 +56,7 @@ The first screen gives the game a real release feel instead of dropping players 
 ### Live Arena HUD
 
 <p align="center">
-  <img src="./assets/readme/github/02-arena-hud.jpg" alt="Actual Crash Club gameplay screenshot with HUD, leaderboard, radar, and arena view" width="88%" />
+  <img src="./assets/readme/github/02-arena-hud.png" alt="Actual Crash Club gameplay screenshot with HUD, leaderboard, radar, and arena view" width="88%" />
 </p>
 
 The HUD keeps the match readable while the 3D arena stays visible. It shows room code, player count, speed, boost, score, health, round number, timer, active power, radar, objective text, leaderboard, and connection messages.
@@ -66,7 +66,7 @@ This is also where the game starts to feel like a real multiplayer prototype ins
 ### Powerups And Score Ring
 
 <p align="center">
-  <img src="./assets/readme/github/03-center-ring-powerups.jpg" alt="Actual Crash Club screenshot showing the center scoring ring and glowing powerups" width="88%" />
+  <img src="./assets/readme/github/03-center-ring-powerups.png" alt="Actual Crash Club screenshot showing the center scoring ring and glowing powerups" width="88%" />
 </p>
 
 The gold ring gives everyone a reason to fight for the middle of the map. Staying in the ring scores points, but sitting still makes you an easy target, so players have to keep moving.
@@ -76,7 +76,7 @@ Powerups spawn as glowing pickups around the arena. Current pickup types include
 ### Bots, Radar, And Multiplayer Rooms
 
 <p align="center">
-  <img src="./assets/readme/github/04-bots-and-radar.jpg" alt="Actual Crash Club screenshot showing bot-filled room, radar dots, cones, roads, and arena props" width="88%" />
+  <img src="./assets/readme/github/04-bots-and-radar.png" alt="Actual Crash Club screenshot showing bot-filled room, radar dots, cones, roads, and arena props" width="88%" />
 </p>
 
 Crash Club automatically fills active rooms with bot racers so solo testing still feels alive. When friends join the same room URL, the same systems handle their cars too.
@@ -86,7 +86,7 @@ Rooms are URL-based, which keeps sharing simple. A room like `?room=after-school
 ### Driving Feel
 
 <p align="center">
-  <img src="./assets/readme/github/05-driving-action.jpg" alt="Actual Crash Club driving screenshot showing speed, boost, roads, guardrails, and arena lighting" width="88%" />
+  <img src="./assets/readme/github/05-driving-action.png" alt="Actual Crash Club driving screenshot showing speed, boost, roads, guardrails, and arena lighting" width="88%" />
 </p>
 
 The driving is arcade-style rather than simulator-style. Cars accelerate quickly, boost gives a burst of speed, braking can reverse, and turning at speed can kick into drift-style movement.
