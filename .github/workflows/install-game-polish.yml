@@ -30,6 +30,21 @@ jobs:
       - name: Install Three.js
         run: npm install three@0.164.1 --save
 
+      - name: Unpack bundled app source
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const appPath = 'public/app.js';
+          const loader = fs.readFileSync(appPath, 'utf8');
+          if (loader.startsWith('const chunks = [')) {
+            const match = loader.match(/const chunks = \[([^\]]+)\]/);
+            if (!match) throw new Error('Could not read app bundle chunk list');
+            const ids = match[1].split(',').map((part) => Number(part.trim())).filter(Number.isInteger);
+            const encoded = ids.map((id) => fs.readFileSync(`public/app.bundle.${id}.txt`, 'utf8').trim()).join('');
+            fs.writeFileSync(appPath, Buffer.from(encoded, 'base64').toString('utf8'));
+          }
+          NODE
+
       - name: Apply gameplay polish
         run: node scripts/apply-game-polish.js
 
@@ -44,6 +59,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm -f .github/workflows/install-game-polish.yml
           git rm -f scripts/apply-game-polish.js
+          git rm -f public/app.bundle.*.txt
           git add package.json package-lock.json server.js public/app.js public/index.html public/styles.css public/vendor/three.module.js
           if git diff --cached --quiet; then
             echo "No game polish changes to commit."
