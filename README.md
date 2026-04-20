@@ -10,7 +10,7 @@
 
 <p align="center">
   Pick a name, share a room URL, grab glowing powerups, fight bots while friends connect,
-  and throw tiny low-poly cars around a score-chasing crash arena.
+  throw tiny low-poly cars around a score-chasing crash arena, and earn a second chance in the Gulag when you get wrecked.
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
   <img alt="License" src="https://img.shields.io/badge/License-MIT-FFCF6B?style=for-the-badge">
 </p>
 
-> Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club v1.1. No mockup screenshots, no fake rendered cards.
+> Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club Alpha 1.2. No mockup screenshots, no fake rendered cards.
 
 ## Gameplay Preview
 
@@ -29,9 +29,11 @@
   <img src="./assets/readme/github/driving-loop.gif" alt="Real Crash Club gameplay GIF showing the car driving in the arena" width="88%" />
 </p>
 
-Crash Club is meant to feel instantly playable: open the page, type a driver name, hit Start Driving, and you are in a live arena. The game runs in the browser with a Node.js WebSocket server handling rooms, bots, scoring, pickups, damage, and round flow.
+Crash Club is meant to feel instantly playable: open the page, type a driver name, hit Start Driving, and you are in a live arena. The game runs in the browser with a Node.js WebSocket server handling rooms, bots, scoring, pickups, damage, round flow, Gulag state, and spectator mode.
 
 The core loop is simple on purpose. Drive into the arena, own the gold scoring ring, grab powerups before rivals do, and smash other cars hard enough to climb the leaderboard.
+
+Alpha 1.2 adds the second-chance loop: losing all health no longer just resets you. Human players get pulled into a first-person Gulag duel, and the result decides whether they redeploy or become a free-cam spectator.
 
 ## Feature Tour
 
@@ -52,6 +54,8 @@ The first screen gives the game a real release feel instead of dropping players 
 | Boost | `Shift` | `Boost` |
 | Respawn | `R` | `Reset` |
 | Menu | `Esc` | `Menu` |
+| Shoot in Gulag | `Click`, `Space`, or `F` | Tap/click |
+| Free-cam height | `Q` / `E` | Keyboard only |
 
 ### Live Arena HUD
 
@@ -83,6 +87,22 @@ Crash Club automatically fills active rooms with bot racers so solo testing stil
 
 Rooms are URL-based, which keeps sharing simple. A room like `?room=after-school` lets multiple devices on the same Wi-Fi join the same match when they connect to the host machine.
 
+### Gulag Duels And Redeploys
+
+<p align="center">
+  <img src="./assets/readme/github/gulag-duel.gif" alt="Actual Crash Club Gulag GIF showing the player shooting a humanoid opponent in first-person" width="88%" />
+</p>
+
+The Gulag is Crash Club's second-chance system. When a human player loses all health in the arena, the server switches that player out of normal driving mode and sends them into a first-person duel instead of instantly respawning them.
+
+Inside the Gulag, the car game becomes a compact shooter. The player gets a crosshair, a weapon view, a humanoid rival, health, enemy health, and a timer. Movement uses `WASD`, aiming uses the mouse, and shooting works with click, `Space`, or `F`.
+
+Winning the duel sends the player back into the arena with a redeploy bonus. Losing the duel, dying to the opponent, or timing out sends the player into spectator free cam so they can keep watching the match without interrupting the live round.
+
+<p align="center">
+  <img src="./assets/readme/github/06-gulag-duel.png" alt="Actual Crash Club Gulag screenshot with crosshair, enemy model, and compact duel HUD" width="88%" />
+</p>
+
 ### Driving Feel
 
 <p align="center">
@@ -103,9 +123,12 @@ The map uses roads, cones, guardrails, street lights, buildings, lane stripes, g
 | Pickups | Boost, repair, shield, and slam create tactical moments. |
 | Damage | Faster impacts deal more damage. |
 | Wrecks | Destroying another car gives a larger score bonus. |
+| Gulag | Human players who lose all health enter a first-person second-chance duel. |
+| Redeploy | Winning the Gulag respawns the player back into the arena with a bonus. |
+| Spectator | Losing or timing out in the Gulag moves the player into free cam. |
 | Shield | Reduces incoming damage for a short window. |
 | Slam | Powers up your next big hit. |
-| Respawn | Press `R` to get back into the match quickly. |
+| Respawn | Press `R` to reset while still alive in the arena. |
 
 ## Quick Start
 
@@ -150,8 +173,8 @@ crash-club/
 |-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage
 |-- public/
 |   |-- index.html               # HUD, menu, radar, controls, and page shell
-|   |-- styles.css               # Menus, HUD, meters, mobile layout, and overlays
-|   |-- app.js                   # Client loader, cache busting, bundle safety patches
+|   |-- styles.css               # Menus, HUD, meters, mobile layout, Gulag HUD, and overlays
+|   |-- app.js                   # Three.js client, driving, pickups, Gulag, spectator, and HUD logic
 |   |-- app.bundle.*.txt         # Generated Three.js game client chunks
 |   |-- favicon.svg              # Browser tab icon
 |   |-- manifest.webmanifest     # Install metadata
@@ -162,22 +185,26 @@ crash-club/
 |   |-- crash-club-wordmark.svg
 |   `-- readme/
 |       `-- github/              # Real screenshots and gameplay GIF used in this README
+|-- scripts/
+|   |-- capture-readme-media.js  # Browser capture helper for README arena media
+|   `-- capture-gulag-readme.js  # Browser capture helper for README Gulag media
 |-- package.json
 `-- README.md
 ```
 
 ## Roadmap
 
-Crash Club v1.1 is playable, but there is a lot of room to make it bigger.
+Crash Club Alpha 1.2 is playable, but there is a lot of room to make it bigger.
 
 | Priority | Upgrade | Why It Matters |
 | --- | --- | --- |
 | 1 | Server-authoritative collision checks | Makes multiplayer hits fairer and harder to spoof. |
-| 2 | Derby, king-of-the-ring, and stunt race modes | Gives the same arena multiple ways to play. |
-| 3 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
-| 4 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
-| 5 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
-| 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
+| 2 | Deeper Gulag polish | Adds better cover, sound, hit feedback, and opponent behavior to the second-chance duel. |
+| 3 | Derby, king-of-the-ring, and stunt race modes | Gives the same arena multiple ways to play. |
+| 4 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
+| 5 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
+| 6 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
+| 7 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
 
 ## License
 
