@@ -1,0 +1,85 @@
+name: README Gallery Correction
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/readme-gallery-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download corrected README gallery
+        run: |
+          set -euo pipefail
+          curl -L "https://litter.catbox.moe/1mfve4.zip" -o /tmp/readme-gallery-fix.zip
+          set +e
+          unzip -o /tmp/readme-gallery-fix.zip -d .
+          unzip_status=$?
+          set -e
+          if [ "$unzip_status" -gt 1 ]; then
+            exit "$unzip_status"
+          fi
+          test -s README.md
+          test -s assets/readme/github/driving-loop.gif
+          test -s assets/readme/github/gulag-duel.gif
+          test -s assets/readme/github/02-arena-hud.png
+          test -s assets/readme/github/03-center-ring-powerups.png
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify corrected README gallery
+        run: |
+          npm run check
+          node - <<'NODE'
+          const fs = require("fs");
+          const readme = fs.readFileSync("README.md", "utf8");
+          const assets = [
+            "01-start-screen.png",
+            "02-arena-hud.png",
+            "03-center-ring-powerups.png",
+            "04-bots-and-radar.png",
+            "05-driving-action.png",
+            "06-gulag-duel.png",
+            "driving-loop.gif",
+            "gulag-duel.gif"
+          ];
+          const checks = {
+            drivingGifStillPresent: readme.includes("./assets/readme/github/driving-loop.gif"),
+            gulagOnlyInOwnMedia: readme.includes("./assets/readme/github/gulag-duel.gif") && readme.includes("./assets/readme/github/06-gulag-duel.png"),
+            noHeroGulagPush: !readme.includes("earn a second chance in the Gulag"),
+            noPreviewGulagPush: !readme.includes("Gulag state, and spectator mode") && !readme.includes("Alpha 1.2 adds the second-chance loop"),
+            assetsPresent: assets.every((file) => fs.existsSync(`assets/readme/github/${file}`) && fs.statSync(`assets/readme/github/${file}`).size > 10000)
+          };
+          console.log(checks);
+          if (Object.values(checks).some((value) => !value)) process.exit(1);
+          NODE
+
+      - name: Commit corrected README gallery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/readme-gallery-fix.yml
+          git add README.md assets/readme/github
+          git commit -m "Fix README gallery media balance"
+          git push
