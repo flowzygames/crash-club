@@ -10,7 +10,7 @@
 
 <p align="center">
   Pick a name, share a room URL, grab glowing powerups, fight bots while friends connect,
-  throw tiny low-poly cars around a score-chasing crash arena, and earn a second chance in the Gulag when you get wrecked.
+  and throw tiny low-poly cars around a score-chasing crash arena.
 </p>
 
 <p align="center">
@@ -29,11 +29,9 @@
   <img src="./assets/readme/github/driving-loop.gif" alt="Real Crash Club gameplay GIF showing the car driving in the arena" width="88%" />
 </p>
 
-Crash Club is meant to feel instantly playable: open the page, type a driver name, hit Start Driving, and you are in a live arena. The game runs in the browser with a Node.js WebSocket server handling rooms, bots, scoring, pickups, damage, round flow, Gulag state, and spectator mode.
+Crash Club is meant to feel instantly playable: open the page, type a driver name, hit Start Driving, and you are in a live arena. The game runs in the browser with a Node.js WebSocket server handling rooms, bots, scoring, pickups, damage, and round flow.
 
 The core loop is simple on purpose. Drive into the arena, own the gold scoring ring, grab powerups before rivals do, and smash other cars hard enough to climb the leaderboard.
-
-Alpha 1.2 adds the second-chance loop: losing all health no longer just resets you. Human players get pulled into a first-person Gulag duel, and the result decides whether they redeploy or become a free-cam spectator.
 
 ## Feature Tour
 
@@ -173,8 +171,8 @@ crash-club/
 |-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage
 |-- public/
 |   |-- index.html               # HUD, menu, radar, controls, and page shell
-|   |-- styles.css               # Menus, HUD, meters, mobile layout, Gulag HUD, and overlays
-|   |-- app.js                   # Three.js client, driving, pickups, Gulag, spectator, and HUD logic
+|   |-- styles.css               # Menus, HUD, meters, mobile layout, and overlays
+|   |-- app.js                   # Three.js client, driving, pickups, modes, and HUD logic
 |   |-- app.bundle.*.txt         # Generated Three.js game client chunks
 |   |-- favicon.svg              # Browser tab icon
 |   |-- manifest.webmanifest     # Install metadata
@@ -199,12 +197,11 @@ Crash Club Alpha 1.2 is playable, but there is a lot of room to make it bigger.
 | Priority | Upgrade | Why It Matters |
 | --- | --- | --- |
 | 1 | Server-authoritative collision checks | Makes multiplayer hits fairer and harder to spoof. |
-| 2 | Deeper Gulag polish | Adds better cover, sound, hit feedback, and opponent behavior to the second-chance duel. |
-| 3 | Derby, king-of-the-ring, and stunt race modes | Gives the same arena multiple ways to play. |
-| 4 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
-| 5 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
-| 6 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
-| 7 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
+| 2 | Derby, king-of-the-ring, and stunt race modes | Gives the same arena multiple ways to play. |
+| 3 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
+| 4 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
+| 5 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
+| 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
 
 ## License
 
