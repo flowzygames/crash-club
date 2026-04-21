@@ -233,6 +233,8 @@ async function main() {
       "--no-sandbox",
       "--enable-webgl",
       "--ignore-gpu-blocklist",
+      "--enable-unsafe-swiftshader",
+      "--disable-dev-shm-usage",
       "--use-gl=swiftshader",
       "about:blank"
     ], { stdio: "ignore" });
