@@ -54,21 +54,22 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'NOTES'
-# Crash Club Alpha 1.3
+          # Crash Club Alpha 1.3
 
-Alpha 1.3 turns the end of each round into an actual victory moment instead of a frozen reset.
+          Alpha 1.3 turns the end of each round into an actual victory moment instead of a frozen reset.
 
-## Highlights
-- Added a cinematic top 3 podium ceremony during intermission.
-- Preserved each winner's real car color, driver name, score, and bot/player identity on the podium.
-- Added animated car drop-ins, camera motion, winner banner, and confetti.
-- Server now snapshots final standings so every connected browser sees the same top 3.
-- Bumped the app, server, package, and README to Alpha 1.3 / v1.3.0.
+          ## Highlights
+          - Added a cinematic top 3 podium ceremony during intermission.
+          - Preserved each winner's real car color, driver name, score, and bot/player identity on the podium.
+          - Added animated car drop-ins, camera motion, winner banner, and confetti.
+          - Server now snapshots final standings so every connected browser sees the same top 3.
+          - Bumped the app, server, package, and README to Alpha 1.3 / v1.3.0.
 
-## Validation
-- Ran npm.cmd run check locally before release.
-- Ran a live browser smoke test that forced a round win and confirmed the podium renders.
-NOTES
+          ## Validation
+          - Ran npm.cmd run check locally before release.
+          - Ran a live browser smoke test that forced a round win and confirmed the podium renders.
+          NOTES
+          sed -i 's/^          //' release-notes.md
           if gh release view v1.3.0 >/dev/null 2>&1; then
             gh release edit v1.3.0 --title "Crash Club Alpha 1.3" --notes-file release-notes.md --prerelease --latest=false
           else
