@@ -97,7 +97,14 @@ async function waitForPage(send, expression, label, attempts = 80) {
     if (result.result?.value) return;
     await sleep(250);
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const status = await evalPage(send, `({
+    connection: document.querySelector("#connection-card")?.textContent || "",
+    startText: document.querySelector("#start-button")?.textContent || "",
+    releaseHidden: document.querySelector("#release-screen")?.classList.contains("hidden") || false,
+    hasCanvas: Boolean(document.querySelector("canvas")),
+    bodyClass: document.body.className
+  })`);
+  throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(status.result?.value || {})}`);
 }
 
 async function screenshot(send, file) {
@@ -174,11 +181,33 @@ async function main() {
     await waitForPage(send, `Boolean(document.querySelector("canvas"))`, "3D canvas");
     await evalPage(send, `
       localStorage.setItem("crash-club-name", ${JSON.stringify(playerName)});
-      document.querySelector("#name-input").value = ${JSON.stringify(playerName)};
-      document.querySelector("#start-button").click();
+      const input = document.querySelector("#name-input");
+      const button = document.querySelector("#start-button");
+      if (input) {
+        input.value = ${JSON.stringify(playerName)};
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      button?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true, view: window }));
+      button?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+      button?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+      button?.click();
       true;
     `);
-    await waitForPage(send, `document.body.classList.contains("is-driving")`, "driving mode");
+    await sleep(3200);
+    if (!(await evalPage(send, `document.body.classList.contains("is-driving")`)).result?.value) {
+      await evalPage(send, `
+        const input = document.querySelector("#name-input");
+        const button = document.querySelector("#start-button");
+        if (input) input.value = ${JSON.stringify(playerName)};
+        button?.click();
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true }));
+        true;
+      `);
+      await sleep(2600);
+    }
+    await waitForPage(send, `document.body.classList.contains("is-driving")`, "driving mode", 140);
     await sleep(900);
 
     const joined = await joinSocket("README Wrecker", "#ff4f8b");
