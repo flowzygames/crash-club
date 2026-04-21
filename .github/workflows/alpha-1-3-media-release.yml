@@ -1,0 +1,108 @@
+name: Correct Alpha 1.3 Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/alpha-1-3-media-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          npm install
+          python -m pip install --upgrade pip
+          python -m pip install pillow
+      - name: Find browser
+        shell: bash
+        run: |
+          BROWSER_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$BROWSER_PATH" ]; then
+            echo "No Chrome/Chromium browser found on runner."
+            exit 1
+          fi
+          echo "CHROME_PATH=$BROWSER_PATH" >> "$GITHUB_ENV"
+          echo "Using browser: $BROWSER_PATH"
+      - name: Validate game syntax
+        run: npm run check
+      - name: Capture 1080p arena media
+        run: |
+          node scripts/capture-readme-media.js
+          python scripts/build-readme-gif.py test-results/readme-frames assets/readme/github/driving-loop.gif 55
+      - name: Capture 1080p Gulag media
+        run: |
+          node scripts/capture-gulag-cdp.js
+          python scripts/build-readme-gif.py test-results/gulag-frames assets/readme/github/gulag-duel.gif 55
+      - name: Verify media dimensions
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          required = [
+              'assets/readme/github/driving-loop.gif',
+              'assets/readme/github/gulag-duel.gif',
+              'assets/readme/github/06-gulag-duel.png',
+          ]
+          for name in required:
+              path = Path(name)
+              im = Image.open(path)
+              frames = getattr(im, 'n_frames', 1)
+              print(name, im.size, frames, path.stat().st_size)
+              if im.size != (1920, 1080):
+                  raise SystemExit(f'{name} is not 1920x1080')
+          PY
+      - name: Commit corrected media
+        shell: bash
+        run: |
+          git config user.name "flowzygames-release-bot"
+          git config user.email "actions@github.com"
+          git rm --ignore-unmatch .github/workflows/alpha-1-3-media-release.yml
+          git add assets/readme/github scripts/build-readme-gif.py scripts/capture-gulag-cdp.js
+          git commit -m "Fix Alpha 1.3 release media"
+          git push origin HEAD:main
+      - name: Replace release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git fetch origin main --tags
+          git checkout main
+          git pull --ff-only origin main
+          gh release delete v1.3.0 --yes --cleanup-tag || true
+          git tag -f Alpha-1.3
+          git push origin refs/tags/Alpha-1.3 --force
+          cat > release-notes.md <<'NOTES'
+# Alpha 1.3
+
+Alpha 1.3 adds the cinematic top 3 podium ceremony and refreshes the README media with full 1080p captures from the real running game.
+
+## Highlights
+- Added the end-of-round top 3 podium ceremony with matching car colors, winner animation, and confetti.
+- Rebuilt the driving GIF at 1920x1080 from live browser gameplay.
+- Rebuilt the Gulag duel GIF at 1920x1080 using the improved first-person arena and player model.
+- Removed the mistaken v1.3.0 release/tag and replaced it with the Alpha-1.3 tag.
+
+## Validation
+- Ran npm run check.
+- Verified the driving and Gulag media are 1920x1080 in the release workflow.
+NOTES
+          if gh release view Alpha-1.3 >/dev/null 2>&1; then
+            gh release edit Alpha-1.3 --title "Alpha 1.3" --notes-file release-notes.md --prerelease --latest=false
+          else
+            gh release create Alpha-1.3 --title "Alpha 1.3" --notes-file release-notes.md --prerelease --latest=false
+          fi
