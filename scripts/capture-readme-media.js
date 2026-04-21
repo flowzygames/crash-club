@@ -6,14 +6,26 @@ const WebSocket = require("ws");
 const root = process.cwd();
 const outDir = path.join(root, "assets", "readme", "github");
 const frameDir = path.join(root, "test-results", "readme-frames");
+const gulagFrameDir = path.join(root, "test-results", "gulag-frames");
 const serverPort = Number(process.env.CRASH_CLUB_PORT || 3000);
 const debugPort = Number(process.env.CRASH_CLUB_DEBUG_PORT || 9339);
-const gameUrl = `http://127.0.0.1:${serverPort}/?room=readme-gallery-${Date.now()}`;
+const room = `readme-gallery-${Date.now()}`;
+const gameUrl = `http://127.0.0.1:${serverPort}/?room=${room}`;
 
-fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
+for (const name of [
+  "01-start-screen.png",
+  "02-arena-hud.png",
+  "03-center-ring-powerups.png",
+  "04-bots-and-radar.png",
+  "05-driving-action.png"
+]) {
+  fs.rmSync(path.join(outDir, name), { force: true });
+}
 fs.rmSync(frameDir, { recursive: true, force: true });
 fs.mkdirSync(frameDir, { recursive: true });
+fs.rmSync(gulagFrameDir, { recursive: true, force: true });
+fs.mkdirSync(gulagFrameDir, { recursive: true });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -124,12 +136,37 @@ async function frame(send, index) {
   fs.writeFileSync(file, Buffer.from(result.data, "base64"));
 }
 
+async function gulagFrame(send, index) {
+  const result = await send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+    captureBeyondViewport: false
+  });
+  const file = path.join(gulagFrameDir, `frame-${String(index).padStart(3, "0")}.png`);
+  fs.writeFileSync(file, Buffer.from(result.data, "base64"));
+}
+
 async function evalPage(send, expression) {
   return send("Runtime.evaluate", {
     expression,
     awaitPromise: true,
     returnByValue: true
   });
+}
+
+async function waitForPage(send, expression, label, attempts = 80) {
+  for (let i = 0; i < attempts; i += 1) {
+    const result = await evalPage(send, expression);
+    if (result.result?.value) return;
+    await sleep(250);
+  }
+  const status = await evalPage(send, `({
+    connection: document.querySelector("#connection-card")?.textContent || "",
+    startText: document.querySelector("#start-button")?.textContent || "",
+    hasCanvas: Boolean(document.querySelector("canvas")),
+    bodyClass: document.body.className
+  })`);
+  throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(status.result?.value || {})}`);
 }
 
 async function key(send, type, keyValue, code, windowsVirtualKeyCode) {
@@ -147,15 +184,33 @@ async function hold(send, keys, ms) {
   for (const item of [...keys].reverse()) await key(send, "keyUp", ...item);
 }
 
+function joinSocket(name, color) {
+  return new Promise((resolve, reject) => {
+    const remote = new WebSocket(`ws://127.0.0.1:${serverPort}`);
+    const timer = setTimeout(() => reject(new Error(`Timed out joining ${name}`)), 7000);
+    remote.on("open", () => remote.send(JSON.stringify({ type: "join", room, name, color })));
+    remote.on("message", (raw) => {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === "joined") {
+        clearTimeout(timer);
+        resolve({ ws: remote, msg });
+      }
+    });
+    remote.on("error", reject);
+  });
+}
+
 async function main() {
   let server = null;
   let browser = null;
   let ws = null;
+  let attacker = null;
 
   try {
     if (!(await isServerReady())) {
       server = spawn(process.execPath, ["server.js"], {
         cwd: root,
+        env: { ...process.env, PORT: String(serverPort) },
         stdio: ["ignore", "pipe", "pipe"]
       });
       server.stdout.on("data", (data) => process.stdout.write(data));
@@ -199,7 +254,8 @@ async function main() {
       mobile: false
     });
     await send("Page.navigate", { url: gameUrl });
-    await sleep(3800);
+    await waitForPage(send, `Boolean(document.querySelector("#start-button"))`, "start screen");
+    await waitForPage(send, `Boolean(document.querySelector("canvas"))`, "3D canvas");
     await capture(send, "01-start-screen.png");
 
     await evalPage(send, `
@@ -208,7 +264,8 @@ async function main() {
       document.querySelector("#start-button").click();
       true;
     `);
-    await sleep(3400);
+    await waitForPage(send, `document.body.classList.contains("is-driving")`, "driving mode");
+    await sleep(1400);
     await capture(send, "02-arena-hud.png");
 
     await hold(send, [["w", "KeyW", 87], ["Shift", "ShiftLeft", 16]], 1600);
@@ -236,13 +293,43 @@ async function main() {
     await key(send, "keyUp", "Shift", "ShiftLeft", 16);
     await key(send, "keyUp", "w", "KeyW", 87);
 
+    if (process.env.CRASH_CLUB_CAPTURE_GULAG !== "0") {
+      const joined = await joinSocket("README Wrecker", "#ff4f8b");
+      attacker = joined.ws;
+      const targetPlayer = joined.msg.players.find((player) => player.name === "README Driver");
+      if (!targetPlayer) throw new Error("Could not find README Driver for Gulag capture.");
+      for (let i = 0; i < 8; i += 1) {
+        attacker.send(JSON.stringify({ type: "hit", targetId: targetPlayer.id, impulse: 1.8 }));
+        await sleep(220);
+      }
+
+      await waitForPage(send, `Boolean(document.querySelector(".mode-overlay.combat-hud:not(.hidden)"))`, "Gulag HUD");
+      await sleep(550);
+      await capture(send, "06-gulag-duel.png");
+
+      for (let i = 0; i < 44; i += 1) {
+        if (i % 4 === 0) {
+          await key(send, "rawKeyDown", " ", "Space", 32);
+          await key(send, "keyUp", " ", "Space", 32);
+        }
+        if (i === 8) await key(send, "rawKeyDown", "d", "KeyD", 68);
+        if (i === 18) await key(send, "keyUp", "d", "KeyD", 68);
+        if (i === 24) await key(send, "rawKeyDown", "a", "KeyA", 65);
+        if (i === 34) await key(send, "keyUp", "a", "KeyA", 65);
+        await gulagFrame(send, i);
+        await sleep(60);
+      }
+    }
+
     console.log(JSON.stringify({
       browserPath,
       gameUrl,
       screenshots: fs.readdirSync(outDir).filter((file) => file.endsWith(".png")),
-      frames: fs.readdirSync(frameDir).length
+      frames: fs.readdirSync(frameDir).length,
+      gulagFrames: fs.readdirSync(gulagFrameDir).length
     }, null, 2));
   } finally {
+    if (attacker) attacker.close();
     if (ws) ws.close();
     if (browser) browser.kill();
     if (server) server.kill();
