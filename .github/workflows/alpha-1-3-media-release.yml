@@ -39,6 +39,19 @@ jobs:
           echo "Using browser: $BROWSER_PATH"
       - name: Validate game syntax
         run: npm run check
+      - name: Patch headless WebGL flags
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          for name in ['scripts/capture-readme-media.js']:
+              path = Path(name)
+              text = path.read_text()
+              text = text.replace(
+                  '"--ignore-gpu-blocklist",\n      "--use-gl=swiftshader",',
+                  '"--ignore-gpu-blocklist",\n      "--enable-unsafe-swiftshader",\n      "--disable-dev-shm-usage",\n      "--use-gl=swiftshader",'
+              )
+              path.write_text(text)
+          PY
       - name: Capture 1080p Gulag media
         env:
           CRASH_CLUB_CAPTURE_ONLY: "gulag"
