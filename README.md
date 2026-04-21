@@ -210,6 +210,32 @@ Crash Club Alpha 1.3 is playable, but there is a lot of room to make it bigger.
 | 5 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
 | 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
 
-## License
+## 🚫 License & Usage
 
-MIT. See [`LICENSE`](./LICENSE).
+Copyright © FlowzyGames. All rights reserved.
+
+This project and all associated source code, assets, and content are the intellectual property of Flowzy Games.
+
+✅ Permitted Use
+
+You are permitted to:
+
+View this repository for educational and reference purposes
+Download and run the project for personal, non-commercial use only (e.g., playing the game)
+❌ Prohibited Use
+
+You may NOT:
+
+Copy, modify, or distribute any part of this project
+Use this code, assets, or concepts in your own projects
+Reupload, republish, or claim this project as your own work
+Use this project or any part of it for commercial purposes
+⚖️ No License Granted
+
+No rights or licenses are granted to use, reproduce, or distribute this project beyond what is explicitly stated above.
+
+Unauthorized use of this project may result in takedown requests or further legal action.
+
+📩 Permissions
+
+For permission requests, please contact FlowzyGames.
