@@ -1,6 +1,6 @@
 import("three")
   .then((THREE) => {
-    const VERSION = "1.2.2";
+    const VERSION = "1.3.0";
     const WORLD_SIZE = 180;
     const STATE_SEND_MS = 50;
     const HIT_COOLDOWN_MS = 520;
@@ -10,6 +10,9 @@ import("three")
     const CENTER_MAX = 19;
     const MAX_EFFECTS = 110;
     const GULAG_ENEMY_MAX_HEALTH = 180;
+    const GULAG_BODY_DAMAGE = 20;
+    const GULAG_HEADSHOT_DAMAGE = 42;
+    const GULAG_BOUNDS = { minX: -30, maxX: 30, minZ: 256, maxZ: 328 };
 
     const pickupMeta = {
       boost: { label: "Boost", color: "#ffcf6b", emissive: "#8a5c00" },
@@ -81,6 +84,7 @@ import("three")
         endsAt: Date.now() + 180000,
         nextRoundAt: 0,
         winner: null,
+        standings: [],
         now: Date.now(),
         targetScore: 75
       },
@@ -117,12 +121,17 @@ import("three")
         playerFireAt: 0,
         firing: false,
         hitFlash: 0,
+        muzzleFlash: 0,
+        enemyMuzzleFlash: 0,
+        enemyDodgeUntil: 0,
+        enemyDodgeSide: 1,
         endsAt: 0,
         yaw: Math.PI,
         pitch: 0,
         position: new THREE.Vector3(0, 2.2, 268),
         velocity: new THREE.Vector3(),
-        enemyPosition: new THREE.Vector3(0, 1.7, 310)
+        enemyPosition: new THREE.Vector3(0, 0, 310),
+        enemyVelocity: new THREE.Vector3()
       },
       spectator: {
         yaw: Math.PI,
@@ -130,6 +139,15 @@ import("three")
         speed: 42,
         position: new THREE.Vector3(0, 58, 92),
         velocity: new THREE.Vector3()
+      },
+      podium: {
+        active: false,
+        round: 0,
+        startedAt: 0,
+        lastConfettiAt: 0,
+        entrants: [],
+        cars: [],
+        confetti: []
       }
     };
     let lightweightNoticeTimer = 0;
@@ -141,6 +159,8 @@ import("three")
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#09131f");
     scene.fog = new THREE.FogExp2("#0d1724", 0.009);
+    const arenaBackground = scene.background.clone();
+    const arenaFog = scene.fog;
 
     const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 700);
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -160,6 +180,8 @@ import("three")
     buildWorld();
     const gulagWorld = createGulagWorld();
     scene.add(gulagWorld.group);
+    const podiumShowcase = createPodiumShowcase();
+    scene.add(podiumShowcase.group);
     scene.add(camera);
     const weapon = createWeaponMesh();
     camera.add(weapon);
@@ -172,17 +194,19 @@ import("three")
 
     function loop() {
       const dt = Math.min(clock.getDelta(), 0.05);
-      if (state.mode === "gulag") {
+      if (state.podium.active) {
+        updatePodium(dt);
+      } else if (state.mode === "gulag") {
         updateGulag(dt);
       } else if (state.mode === "spectator") {
         updateSpectator(dt);
       } else {
         updateLocalCar(dt);
       }
-      updateRemoteCars(dt);
-      updatePickups(dt);
+      if (!state.podium.active) updateRemoteCars(dt);
+      if (!state.podium.active) updatePickups(dt);
       updateEffects(dt);
-      if (state.mode === "arena") updateCamera(dt);
+      if (state.mode === "arena" && !state.podium.active) updateCamera(dt);
       updateHud();
       sendLocalState();
       renderer.render(scene, camera);
@@ -463,42 +487,125 @@ import("three")
     function createGulagWorld() {
       const group = new THREE.Group();
       group.visible = false;
+      const coverAreas = [];
       const floor = new THREE.Mesh(
-        new THREE.PlaneGeometry(62, 78),
-        new THREE.MeshStandardMaterial({ color: "#151923", roughness: 0.86, metalness: 0.04 })
+        new THREE.PlaneGeometry(66, 84),
+        new THREE.MeshStandardMaterial({
+          color: "#171c27",
+          roughness: 0.72,
+          metalness: 0.08,
+          map: makeGulagFloorTexture()
+        })
       );
       floor.rotation.x = -Math.PI / 2;
-      floor.position.set(0, 0.02, 292);
+      floor.position.set(0, 0.015, 292);
       floor.receiveShadow = true;
       group.add(floor);
 
-      const wallMat = new THREE.MeshStandardMaterial({ color: "#242c3a", roughness: 0.72, metalness: 0.12 });
-      const accentMat = new THREE.MeshBasicMaterial({ color: "#ff4f8b", transparent: true, opacity: 0.62 });
+      const wallMat = new THREE.MeshStandardMaterial({
+        color: "#151b27",
+        roughness: 0.56,
+        metalness: 0.22,
+        emissive: "#07101b",
+        emissiveIntensity: 0.24
+      });
+      const panelMat = new THREE.MeshStandardMaterial({
+        color: "#202b3a",
+        roughness: 0.44,
+        metalness: 0.34,
+        emissive: "#0d1a2a",
+        emissiveIntensity: 0.34
+      });
+      const darkMat = new THREE.MeshStandardMaterial({ color: "#070a10", roughness: 0.84, metalness: 0.2 });
+      const coverMat = new THREE.MeshStandardMaterial({
+        color: "#3a4659",
+        roughness: 0.5,
+        metalness: 0.34,
+        emissive: "#0c1522",
+        emissiveIntensity: 0.22
+      });
+      const stripeMat = new THREE.MeshBasicMaterial({ color: "#59f0c2", transparent: true, opacity: 0.74, depthWrite: false });
+      const dangerMat = new THREE.MeshBasicMaterial({ color: "#ff4f8b", transparent: true, opacity: 0.52, depthWrite: false });
+      const goldMat = new THREE.MeshBasicMaterial({ color: "#ffcf6b", transparent: true, opacity: 0.68, depthWrite: false });
+
+      function addBox({ x, y, z, sx, sy, sz, mat = wallMat, cover = false }) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+        if (cover) coverAreas.push({ x, z, hx: sx / 2 + 1.15, hz: sz / 2 + 1.15 });
+        return mesh;
+      }
+
       for (const wall of [
-        { x: 0, z: 253, sx: 64, sz: 1.5 },
-        { x: 0, z: 331, sx: 64, sz: 1.5 },
-        { x: -32, z: 292, sx: 1.5, sz: 78 },
-        { x: 32, z: 292, sx: 1.5, sz: 78 }
+        { x: 0, z: 252, sx: 66, sz: 2 },
+        { x: 0, z: 332, sx: 66, sz: 2 },
+        { x: -33, z: 292, sx: 2, sz: 82 },
+        { x: 33, z: 292, sx: 2, sz: 82 }
       ]) {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.sx, 7, wall.sz), wallMat);
-        mesh.position.set(wall.x, 3.5, wall.z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        group.add(mesh);
+        addBox({ ...wall, y: 3.7, sy: 7.4 });
       }
+
+      for (const beam of [
+        { x: -20, z: 292, sx: 0.8, sz: 78 },
+        { x: 20, z: 292, sx: 0.8, sz: 78 },
+        { x: 0, z: 270, sx: 62, sz: 0.8 },
+        { x: 0, z: 314, sx: 62, sz: 0.8 }
+      ]) {
+        addBox({ ...beam, y: 6.95, sy: 0.55, mat: darkMat });
+      }
+
+      for (let i = 0; i < 6; i += 1) {
+        const x = -25 + i * 10;
+        addBox({ x, y: 3.8, z: 331.2, sx: 6.8, sy: 4.6, sz: 0.35, mat: panelMat });
+        addBox({ x, y: 3.8, z: 252.8, sx: 6.8, sy: 4.6, sz: 0.35, mat: panelMat });
+      }
+
+      for (let i = 0; i < 4; i += 1) {
+        const z = 263 + i * 19;
+        addBox({ x: -32.1, y: 3.5, z, sx: 0.32, sy: 4.2, sz: 8.6, mat: panelMat });
+        addBox({ x: 32.1, y: 3.5, z, sx: 0.32, sy: 4.2, sz: 8.6, mat: panelMat });
+      }
+
       for (const cover of [
-        { x: -14, z: 282, sx: 7, sz: 2 },
-        { x: 14, z: 302, sx: 7, sz: 2 },
-        { x: 0, z: 292, sx: 3, sz: 9 }
+        { x: -18, z: 283, sx: 8.5, sz: 2.3 },
+        { x: 18, z: 301, sx: 8.5, sz: 2.3 },
+        { x: -8, z: 307, sx: 3, sz: 8 },
+        { x: 8, z: 287, sx: 3, sz: 8 }
       ]) {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(cover.sx, 3.2, cover.sz), wallMat);
-        mesh.position.set(cover.x, 1.6, cover.z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        group.add(mesh);
+        addBox({ ...cover, y: 0.78, sy: 1.56, mat: coverMat, cover: true });
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(cover.sx + 0.3, 0.12, cover.sz + 0.3), stripeMat);
+        cap.position.set(cover.x, 1.6, cover.z);
+        group.add(cap);
       }
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), accentMat);
-      sign.position.set(0, 6.2, 252.15);
+
+      for (const pad of [
+        { x: 0, z: 268, color: "#59f0c2" },
+        { x: 0, z: 316, color: "#ff4f8b" }
+      ]) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(4.8, 5.35, 48),
+          new THREE.MeshBasicMaterial({ color: pad.color, transparent: true, opacity: 0.72, side: THREE.DoubleSide })
+        );
+        ring.position.set(pad.x, 0.045, pad.z);
+        ring.rotation.x = -Math.PI / 2;
+        group.add(ring);
+      }
+
+      for (let i = 0; i < 9; i += 1) {
+        const x = -24 + i * 6;
+        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.28), i % 2 ? dangerMat : goldMat);
+        stripe.position.set(x, 0.055, 292);
+        stripe.rotation.x = -Math.PI / 2;
+        group.add(stripe);
+      }
+
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(21, 4.2),
+        new THREE.MeshBasicMaterial({ map: makeGulagSignTexture(), transparent: true, depthWrite: false })
+      );
+      sign.position.set(0, 5.05, 331.02);
       sign.rotation.y = Math.PI;
       group.add(sign);
 
@@ -506,54 +613,87 @@ import("three")
       enemy.position.copy(state.gulag.enemyPosition);
       group.add(enemy);
 
-      const light = new THREE.PointLight("#ff4f8b", 2.4, 56);
-      light.position.set(0, 9, 292);
-      group.add(light);
+      for (const light of [
+        { color: "#ff4f8b", x: -22, z: 262, intensity: 2.9 },
+        { color: "#59f0c2", x: 22, z: 322, intensity: 2.6 },
+        { color: "#ffcf6b", x: 0, z: 292, intensity: 1.6 }
+      ]) {
+        const point = new THREE.PointLight(light.color, light.intensity, 64);
+        point.position.set(light.x, 7.8, light.z);
+        group.add(point);
+      }
 
-      return { group, enemy };
+      const fill = new THREE.HemisphereLight("#d6f4ff", "#28111f", 1.25);
+      group.add(fill);
+
+      const overhead = new THREE.SpotLight("#d6f4ff", 4.2, 88, 0.74, 0.48, 1.5);
+      overhead.position.set(0, 16, 292);
+      overhead.target.position.set(0, 0, 292);
+      overhead.castShadow = true;
+      overhead.shadow.mapSize.set(1024, 1024);
+      group.add(overhead, overhead.target);
+
+      return { group, enemy, coverAreas };
     }
 
     function createGulagEnemyModel(name) {
       const enemy = new THREE.Group();
       const suitMat = new THREE.MeshStandardMaterial({
-        color: "#263247",
-        roughness: 0.48,
-        metalness: 0.18,
-        emissive: "#060b13",
-        emissiveIntensity: 0.22
+        color: "#121823",
+        roughness: 0.38,
+        metalness: 0.42,
+        emissive: "#07111f",
+        emissiveIntensity: 0.32
       });
       const armorMat = new THREE.MeshStandardMaterial({
-        color: "#ff4f8b",
-        roughness: 0.38,
-        metalness: 0.24,
+        color: "#46546b",
+        roughness: 0.3,
+        metalness: 0.48,
         emissive: "#5c102b",
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.45
       });
-      const skinMat = new THREE.MeshStandardMaterial({ color: "#d9a37c", roughness: 0.55 });
-      const darkMat = new THREE.MeshStandardMaterial({ color: "#06080d", roughness: 0.7, metalness: 0.2 });
+      const accentMat = new THREE.MeshBasicMaterial({ color: "#ff4f8b" });
+      const darkMat = new THREE.MeshStandardMaterial({ color: "#03050a", roughness: 0.62, metalness: 0.42 });
       const glowMat = new THREE.MeshBasicMaterial({ color: "#d6f4ff" });
+      const warningMat = new THREE.MeshBasicMaterial({ color: "#ffcf6b" });
+      const haloMat = new THREE.MeshBasicMaterial({ color: "#59f0c2", transparent: true, opacity: 0.58, depthWrite: false });
 
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.74, 1.55, 5, 12), suitMat);
-      body.position.y = 1.75;
-      const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.05, 0.34), armorMat);
-      chest.position.set(0, 1.92, -0.45);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.44, 18, 14), skinMat);
-      head.position.y = 3.05;
-      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.49, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), darkMat);
-      helmet.position.y = 3.16;
-      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.14, 0.07), glowMat);
-      visor.position.set(0, 3.08, -0.42);
-      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.28, 10), darkMat);
-      neck.position.y = 2.62;
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(1.18, 1.42, 0.62), suitMat);
+      torso.position.y = 1.85;
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.82, 0.18), armorMat);
+      chest.position.set(0, 2.05, -0.4);
+      const core = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.08), accentMat);
+      core.position.set(0, 2.11, -0.52);
+      const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.56, 0.28, 8), darkMat);
+      waist.position.y = 1.08;
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.62, 0.68), darkMat);
+      head.position.y = 2.93;
+      const helmetCrown = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.28, 0.78), armorMat);
+      helmetCrown.position.y = 3.28;
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.12, 0.08), glowMat);
+      visor.position.set(0, 2.98, -0.39);
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.2), armorMat);
+      jaw.position.set(0, 2.72, -0.35);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.28, 10), darkMat);
+      neck.position.y = 2.52;
+      const leftShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.24, 0.62), armorMat);
+      const rightShoulder = leftShoulder.clone();
+      leftShoulder.position.set(-0.95, 2.38, -0.02);
+      rightShoulder.position.set(0.95, 2.38, -0.02);
+      const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.14, 0.32), darkMat);
+      backpack.position.set(0, 1.92, 0.48);
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.9, 6), warningMat);
+      antenna.position.set(0.34, 2.98, 0.58);
+      antenna.rotation.z = -0.22;
 
       const armGeo = new THREE.CapsuleGeometry(0.16, 0.86, 4, 8);
       const legGeo = new THREE.CapsuleGeometry(0.18, 1.02, 4, 8);
       const leftArm = new THREE.Mesh(armGeo, suitMat);
       const rightArm = new THREE.Mesh(armGeo, suitMat);
-      leftArm.position.set(-0.88, 1.95, -0.12);
-      rightArm.position.set(0.88, 1.95, -0.12);
-      leftArm.rotation.z = 0.26;
-      rightArm.rotation.z = -0.26;
+      leftArm.position.set(-0.94, 1.86, -0.42);
+      rightArm.position.set(0.94, 1.86, -0.42);
+      leftArm.rotation.set(0.82, 0, 0.26);
+      rightArm.rotation.set(0.82, 0, -0.26);
       const leftLeg = new THREE.Mesh(legGeo, darkMat);
       const rightLeg = new THREE.Mesh(legGeo, darkMat);
       leftLeg.position.set(-0.34, 0.72, 0);
@@ -562,20 +702,64 @@ import("three")
       const rightBoot = leftBoot.clone();
       leftBoot.position.set(-0.34, 0.13, -0.1);
       rightBoot.position.set(0.34, 0.13, -0.1);
+      const leftKnee = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.2, 0.16), armorMat);
+      const rightKnee = leftKnee.clone();
+      leftKnee.position.set(-0.34, 0.92, -0.25);
+      rightKnee.position.set(0.34, 0.92, -0.25);
 
       const gun = new THREE.Group();
-      const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.24, 1.08), darkMat);
-      const gunGlow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.34), glowMat);
-      gunBody.position.set(0, 0, -0.28);
-      gunGlow.position.set(0, 0.03, -0.9);
-      gun.add(gunBody, gunGlow);
-      gun.position.set(0.42, 2.08, -0.82);
-      gun.rotation.x = -0.08;
+      const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.24, 1.45), darkMat);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.88, 10), darkMat);
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.18, 0.46), armorMat);
+      const gunGlow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.07, 0.34), glowMat);
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), accentMat);
+      gunBody.position.set(0, 0, -0.3);
+      barrel.position.set(0, 0, -1.12);
+      barrel.rotation.x = Math.PI / 2;
+      stock.position.set(0, 0.02, 0.48);
+      gunGlow.position.set(0, 0.05, -0.82);
+      muzzle.position.set(0, 0, -1.52);
+      muzzle.visible = false;
+      gun.add(gunBody, barrel, stock, gunGlow, muzzle);
+      gun.position.set(0, 2.05, -0.86);
+      gun.rotation.x = -0.06;
+
+      const torsoHalo = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.025, 6, 48), haloMat);
+      torsoHalo.position.y = 2.05;
+      const footGlow = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.18, 40), haloMat);
+      footGlow.rotation.x = -Math.PI / 2;
+      footGlow.position.y = 0.035;
 
       const label = createNameLabel(name, "#ffcf6b");
       label.position.set(0, 3.9, 0);
 
-      enemy.add(body, chest, head, helmet, visor, neck, leftArm, rightArm, leftLeg, rightLeg, leftBoot, rightBoot, gun, label);
+      enemy.add(
+        torso,
+        chest,
+        core,
+        waist,
+        head,
+        helmetCrown,
+        visor,
+        jaw,
+        neck,
+        leftShoulder,
+        rightShoulder,
+        backpack,
+        antenna,
+        leftArm,
+        rightArm,
+        leftLeg,
+        rightLeg,
+        leftBoot,
+        rightBoot,
+        leftKnee,
+        rightKnee,
+        gun,
+        torsoHalo,
+        footGlow,
+        label
+      );
       enemy.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -588,25 +772,108 @@ import("three")
         legs: [leftLeg, rightLeg],
         armorMat,
         suitMat,
-        gun
+        gun,
+        muzzle,
+        torsoHalo
       };
       return enemy;
     }
 
     function createWeaponMesh() {
       const group = new THREE.Group();
-      const mat = new THREE.MeshStandardMaterial({ color: "#151b26", roughness: 0.48, metalness: 0.36 });
+      const mat = new THREE.MeshStandardMaterial({ color: "#111722", roughness: 0.42, metalness: 0.48 });
+      const dark = new THREE.MeshStandardMaterial({ color: "#03050a", roughness: 0.5, metalness: 0.55 });
       const accent = new THREE.MeshBasicMaterial({ color: "#59f0c2" });
-      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.58, 0.42), mat);
-      grip.position.set(0.48, -0.48, -0.92);
+      const flare = new THREE.MeshBasicMaterial({ color: "#ffcf6b", transparent: true, opacity: 0.95 });
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.62, 0.4), dark);
+      grip.position.set(0.46, -0.5, -0.88);
       grip.rotation.x = -0.25;
-      const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 1.05), mat);
-      barrel.position.set(0.42, -0.3, -1.32);
-      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.48), accent);
-      glow.position.set(0.42, -0.12, -1.52);
-      group.add(grip, barrel, glow);
+      const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.34, 0.92), mat);
+      receiver.position.set(0.4, -0.27, -1.24);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 1.12), dark);
+      rail.position.set(0.4, -0.06, -1.28);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.82, 12), dark);
+      barrel.position.set(0.4, -0.25, -1.9);
+      barrel.rotation.x = Math.PI / 2;
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.055, 0.52), accent);
+      glow.position.set(0.4, -0.08, -1.55);
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), flare);
+      muzzle.position.set(0.4, -0.25, -2.34);
+      muzzle.visible = false;
+      const muzzleLight = new THREE.PointLight("#ffcf6b", 0, 10);
+      muzzleLight.position.copy(muzzle.position);
+      group.add(grip, receiver, rail, barrel, glow, muzzle, muzzleLight);
+      group.userData = { muzzle, muzzleLight, baseZ: -1.24 };
+      group.scale.setScalar(0.62);
       group.visible = false;
       return group;
+    }
+
+    function makeGulagFloorTexture() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#171c27";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "rgba(89, 240, 194, 0.16)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i <= 512; i += 64) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 512);
+        ctx.moveTo(0, i);
+        ctx.lineTo(512, i);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(255, 207, 107, 0.26)";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(256, 0);
+      ctx.lineTo(256, 512);
+      ctx.moveTo(0, 256);
+      ctx.lineTo(512, 256);
+      ctx.stroke();
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(3, 4);
+      return texture;
+    }
+
+    function makeGulagSignTexture() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 768;
+      canvas.height = 192;
+      const ctx = canvas.getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 768, 192);
+      gradient.addColorStop(0, "rgba(7, 10, 18, 0.96)");
+      gradient.addColorStop(0.5, "rgba(32, 16, 30, 0.98)");
+      gradient.addColorStop(1, "rgba(7, 10, 18, 0.96)");
+      ctx.fillStyle = gradient;
+      roundRect(ctx, 14, 14, 740, 164, 26);
+      ctx.fill();
+      ctx.strokeStyle = "#ff4f8b";
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(89, 240, 194, 0.7)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(42, 46, 684, 102);
+      ctx.fillStyle = "#ffcf6b";
+      ctx.font = "900 30px Trebuchet MS, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ONE LIFE", 384, 54);
+      ctx.fillStyle = "#f8fbff";
+      ctx.font = "900 62px Trebuchet MS, Arial";
+      ctx.fillText("LAST CHANCE", 384, 105);
+      ctx.fillStyle = "rgba(89, 240, 194, 0.9)";
+      ctx.font = "800 21px Trebuchet MS, Arial";
+      ctx.fillText("WIN THE DUEL TO REDEPLOY", 384, 143);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
     }
 
     function addSkyDetails() {
@@ -729,6 +996,142 @@ import("three")
       sprite.material.map.dispose();
       sprite.material.dispose();
       sprite.material = replacement.material;
+    }
+
+    function createPodiumShowcase() {
+      const group = new THREE.Group();
+      group.visible = false;
+
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: "#111827",
+        roughness: 0.48,
+        metalness: 0.34,
+        emissive: "#06111f",
+        emissiveIntensity: 0.3
+      });
+      const topMat = new THREE.MeshStandardMaterial({
+        color: "#27364a",
+        roughness: 0.38,
+        metalness: 0.45,
+        emissive: "#102238",
+        emissiveIntensity: 0.34
+      });
+      const trimMats = ["#ffcf6b", "#bdefff", "#ff8a4c"].map(
+        (color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.88 })
+      );
+
+      const floor = new THREE.Mesh(
+        new THREE.CylinderGeometry(23, 26, 0.55, 80),
+        new THREE.MeshStandardMaterial({ color: "#0b111a", roughness: 0.64, metalness: 0.22 })
+      );
+      floor.position.y = -0.28;
+      floor.receiveShadow = true;
+      group.add(floor);
+
+      const stages = [
+        { rank: 2, x: -8.5, height: 2.3, width: 7.2, colorIndex: 1 },
+        { rank: 1, x: 0, height: 3.55, width: 8.4, colorIndex: 0 },
+        { rank: 3, x: 8.5, height: 1.65, width: 7.2, colorIndex: 2 }
+      ];
+
+      for (const stage of stages) {
+        const block = new THREE.Mesh(new THREE.BoxGeometry(stage.width, stage.height, 7.4), baseMat);
+        block.position.set(stage.x, stage.height / 2, 0);
+        block.castShadow = true;
+        block.receiveShadow = true;
+
+        const top = new THREE.Mesh(new THREE.BoxGeometry(stage.width + 0.35, 0.22, 7.75), topMat);
+        top.position.set(stage.x, stage.height + 0.11, 0);
+        top.castShadow = true;
+        top.receiveShadow = true;
+
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(stage.width + 0.5, 0.16, 0.22), trimMats[stage.colorIndex]);
+        trim.position.set(stage.x, stage.height + 0.28, -3.98);
+
+        const rank = new THREE.Mesh(
+          new THREE.PlaneGeometry(2.8, 2.1),
+          new THREE.MeshBasicMaterial({ map: makeRankTexture(stage.rank, trimMats[stage.colorIndex].color.getStyle()), transparent: true })
+        );
+        rank.position.set(stage.x, stage.height * 0.48, -3.82);
+
+        group.add(block, top, trim, rank);
+      }
+
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(22, 5),
+        new THREE.MeshBasicMaterial({ map: makePodiumSignTexture(), transparent: true, depthWrite: false })
+      );
+      sign.position.set(0, 8.7, -5.2);
+      group.add(sign);
+
+      const backGlow = new THREE.PointLight("#ffcf6b", 2.2, 42);
+      backGlow.position.set(0, 8, -7);
+      const tealGlow = new THREE.PointLight("#59f0c2", 2.1, 38);
+      tealGlow.position.set(-11, 5.5, 5);
+      const pinkGlow = new THREE.PointLight("#ff4f8b", 2, 38);
+      pinkGlow.position.set(11, 5.5, 5);
+      group.add(backGlow, tealGlow, pinkGlow);
+
+      return {
+        group,
+        slots: [
+          { rank: 1, x: 0, y: 3.82, z: 0.15, angle: Math.PI },
+          { rank: 2, x: -8.5, y: 2.57, z: 0.15, angle: Math.PI * 0.92 },
+          { rank: 3, x: 8.5, y: 1.92, z: 0.15, angle: Math.PI * 1.08 }
+        ]
+      };
+    }
+
+    function makeRankTexture(rank, color) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 192;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "rgba(5, 10, 18, 0.7)";
+      roundRect(ctx, 18, 18, 220, 156, 28);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.fillStyle = "#f8fbff";
+      ctx.font = "900 96px Trebuchet MS, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`#${rank}`, 128, 98);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    function makePodiumSignTexture() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 896;
+      canvas.height = 256;
+      const ctx = canvas.getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 896, 256);
+      gradient.addColorStop(0, "rgba(7, 12, 22, 0.94)");
+      gradient.addColorStop(0.5, "rgba(43, 30, 12, 0.96)");
+      gradient.addColorStop(1, "rgba(7, 12, 22, 0.94)");
+      ctx.fillStyle = gradient;
+      roundRect(ctx, 18, 18, 860, 220, 34);
+      ctx.fill();
+      ctx.strokeStyle = "#ffcf6b";
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.fillStyle = "#59f0c2";
+      ctx.font = "900 34px Trebuchet MS, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ROUND COMPLETE", 448, 64);
+      ctx.fillStyle = "#f8fbff";
+      ctx.font = "900 74px Trebuchet MS, Arial";
+      ctx.fillText("TOP 3 PODIUM", 448, 134);
+      ctx.fillStyle = "rgba(255, 79, 139, 0.95)";
+      ctx.font = "800 25px Trebuchet MS, Arial";
+      ctx.fillText("CONFETTI, BRAGGING RIGHTS, THEN BACK TO CHAOS", 448, 190);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
     }
 
     function setupControls() {
@@ -874,6 +1277,7 @@ import("three")
         applyRoom(msg.roomState);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
+        syncRoundPresentation();
         setMenu(false);
         setStatus(`Online in room ${state.room.code}`, "online");
         playTone(360, 0.08, "triangle", 0.05);
@@ -883,10 +1287,12 @@ import("three")
       if (msg.type === "snapshot") {
         applyRoom(msg.room);
         setPlayers(msg.players || []);
+        syncRoundPresentation();
         return;
       }
 
       if (msg.type === "round-started") {
+        endPodiumShow();
         applyRoom(msg.room);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
@@ -1012,7 +1418,13 @@ import("three")
 
     function updateLocalCar(dt) {
       const car = state.car;
-      const blocked = state.mode !== "arena" || state.menuOpen || !state.joined || car.wreckedUntil > Date.now();
+      const blocked =
+        state.mode !== "arena" ||
+        state.menuOpen ||
+        !state.joined ||
+        state.podium.active ||
+        state.room.phase !== "live" ||
+        car.wreckedUntil > Date.now();
       const throttle = blocked ? 0 : axis("w", "arrowup") - axis("s", "arrowdown");
       const steer = blocked ? 0 : axis("d", "arrowright") - axis("a", "arrowleft");
       const boosting = !blocked && input.has("shift") && car.boost > 3 && throttle > 0;
@@ -1218,7 +1630,12 @@ import("three")
       }
 
       state.car.damageFlash = Math.max(0, (state.car.damageFlash || 0) - dt * 1.7);
-      if (els.damage) els.damage.style.opacity = String(Math.min(0.72, state.car.damageFlash || 0));
+      state.gulag.muzzleFlash = Math.max(0, (state.gulag.muzzleFlash || 0) - dt * 9);
+      state.gulag.enemyMuzzleFlash = Math.max(0, (state.gulag.enemyMuzzleFlash || 0) - dt * 8);
+      if (els.damage) {
+        const maxDamageOpacity = state.mode === "gulag" ? 0.28 : 0.56;
+        els.damage.style.opacity = String(Math.min(maxDamageOpacity, state.car.damageFlash || 0));
+      }
     }
 
     function startGulag(msg) {
@@ -1232,16 +1649,23 @@ import("three")
       state.gulag.playerFireAt = 0;
       state.gulag.firing = false;
       state.gulag.hitFlash = 0;
+      state.gulag.muzzleFlash = 0;
+      state.gulag.enemyMuzzleFlash = 0;
+      state.gulag.enemyDodgeUntil = 0;
       state.gulag.opponentName = msg.opponentName || "Warden";
       state.gulag.endsAt = msg.endsAt || Date.now() + 45000;
-      state.gulag.position.set(0, 2.2, 268);
+      state.gulag.position.set(0, 2.35, 267);
       state.gulag.velocity.set(0, 0, 0);
-      state.gulag.enemyPosition.set(0, 1.7, 310);
+      state.gulag.enemyPosition.set(0, 0, 309);
+      state.gulag.enemyVelocity.set(0, 0, 0);
       state.gulag.yaw = Math.PI;
       state.gulag.pitch = 0;
       clearInput();
       gulagWorld.group.visible = true;
       gulagWorld.enemy.visible = true;
+      setArenaWorldVisible(false);
+      scene.background = new THREE.Color("#110b17");
+      scene.fog = new THREE.FogExp2("#241020", 0.014);
       if (gulagWorld.enemy.userData.label) {
         updateNameLabel(gulagWorld.enemy.userData.label, state.gulag.opponentName, "#ffcf6b");
       }
@@ -1260,8 +1684,196 @@ import("three")
       gulagWorld.group.visible = false;
       weapon.visible = false;
       modeOverlay.root.classList.add("hidden");
+      setArenaWorldVisible(true);
+      scene.background = arenaBackground;
+      scene.fog = arenaFog;
       localCar.group.visible = true;
       document.exitPointerLock?.();
+    }
+
+    function setArenaWorldVisible(visible) {
+      for (const child of scene.children) {
+        if (child === camera || child === gulagWorld.group || child === podiumShowcase.group || child.isLight) continue;
+        child.visible = visible;
+      }
+      for (const entry of players.values()) {
+        if (entry.mesh?.group) entry.mesh.group.visible = visible && entry.mode === "arena";
+      }
+      for (const pickup of pickups.values()) {
+        if (pickup.mesh) pickup.mesh.visible = visible && pickup.active;
+      }
+    }
+
+    function syncRoundPresentation() {
+      if (state.room.phase === "intermission") {
+        startPodiumShow(state.room.standings);
+      } else if (state.podium.active) {
+        endPodiumShow();
+      }
+    }
+
+    function getCurrentStandings() {
+      return [...players.values()]
+        .sort((a, b) => (b.score || 0) - (a.score || 0) || (b.wrecks || 0) - (a.wrecks || 0))
+        .slice(0, 3)
+        .map((player) => ({
+          id: player.id,
+          name: player.name || "Driver",
+          color: player.color || "#7eb8ff",
+          score: player.score || 0,
+          wrecks: player.wrecks || 0,
+          isBot: Boolean(player.isBot)
+        }));
+    }
+
+    function startPodiumShow(standings = []) {
+      const entrants = (Array.isArray(standings) && standings.length ? standings : getCurrentStandings()).slice(0, 3);
+      if (!entrants.length) return;
+      if (state.podium.active && state.podium.round === state.room.round) return;
+
+      endGulag();
+      state.mode = "arena";
+      document.exitPointerLock?.();
+      clearInput();
+      setMenu(false);
+      state.podium.active = true;
+      state.podium.round = state.room.round;
+      state.podium.startedAt = performance.now();
+      state.podium.lastConfettiAt = 0;
+      state.podium.entrants = entrants;
+      state.podium.confetti = [];
+      state.car.velocity.set(0, 0);
+      localCar.group.visible = false;
+      setArenaWorldVisible(false);
+      podiumShowcase.group.visible = true;
+      scene.background = new THREE.Color("#120d18");
+      scene.fog = new THREE.FogExp2("#170d18", 0.018);
+
+      clearPodiumCars();
+      entrants.forEach((entrant, index) => {
+        const slot = podiumShowcase.slots[index];
+        const car = createCarMesh(entrant.color || "#7eb8ff", false, entrant.name || `Driver ${index + 1}`, Boolean(entrant.isBot));
+        car.group.scale.setScalar(index === 0 ? 0.84 : 0.76);
+        car.group.position.set(slot.x, slot.y + 7.5, slot.z);
+        car.group.rotation.y = slot.angle;
+        car.group.userData.slot = slot;
+        car.group.userData.index = index;
+        podiumShowcase.group.add(car.group);
+        state.podium.cars.push(car);
+      });
+
+      spawnPodiumConfetti(180);
+      const winner = entrants[0];
+      showBanner("Podium", `${winner.name || "The winner"} takes round ${state.room.round} with ${Math.round(winner.score || 0)} points.`);
+      setStatus("Podium ceremony. Next round is loading.", "online");
+      playTone(660, 0.12, "triangle", 0.05);
+      setTimeout(() => playTone(880, 0.14, "triangle", 0.05), 120);
+      setTimeout(() => playTone(1100, 0.18, "triangle", 0.04), 260);
+    }
+
+    function endPodiumShow() {
+      if (!state.podium.active && !podiumShowcase.group.visible) return;
+      clearPodiumCars();
+      clearPodiumConfetti();
+      state.podium.active = false;
+      state.podium.entrants = [];
+      podiumShowcase.group.visible = false;
+      setArenaWorldVisible(true);
+      scene.background = arenaBackground;
+      scene.fog = arenaFog;
+      localCar.group.visible = state.mode === "arena";
+    }
+
+    function clearPodiumCars() {
+      for (const car of state.podium.cars) {
+        podiumShowcase.group.remove(car.group);
+      }
+      state.podium.cars = [];
+    }
+
+    function clearPodiumConfetti() {
+      for (const confetti of state.podium.confetti) {
+        podiumShowcase.group.remove(confetti.mesh);
+        confetti.mesh.geometry.dispose();
+        confetti.mesh.material.dispose();
+      }
+      state.podium.confetti = [];
+    }
+
+    function updatePodium(dt) {
+      const elapsed = (performance.now() - state.podium.startedAt) / 1000;
+      const orbit = -0.32 + Math.sin(elapsed * 0.38) * 0.18;
+      const radius = 27 - easeOutCubic(THREE.MathUtils.clamp(elapsed / 2.2, 0, 1)) * 4;
+      camera.position.lerp(
+        scratch3.set(Math.sin(orbit) * 18, 10.5 + Math.sin(elapsed * 0.8) * 0.45, Math.cos(orbit) * radius),
+        1 - Math.pow(0.001, dt)
+      );
+      camera.lookAt(0, 3.7, -0.2);
+      const targetFov = 51;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.pow(0.001, dt));
+        camera.updateProjectionMatrix();
+      }
+
+      state.podium.cars.forEach((car, index) => {
+        const slot = car.group.userData.slot;
+        const intro = easeOutCubic(THREE.MathUtils.clamp((elapsed - index * 0.22) / 1.05, 0, 1));
+        car.group.position.x = slot.x;
+        car.group.position.y = slot.y + (1 - intro) * 7.5 + Math.sin(elapsed * 3.6 + index) * 0.05;
+        car.group.position.z = slot.z;
+        car.group.rotation.y = slot.angle + Math.sin(elapsed * 1.2 + index) * 0.08;
+        car.group.rotation.z = Math.sin(elapsed * 2.4 + index) * 0.035 * intro;
+        for (const wheel of car.wheels) wheel.rotation.x += dt * (8 + index * 2);
+        car.label.quaternion.copy(camera.quaternion);
+        car.underglow.intensity = 1.2 + Math.sin(elapsed * 5 + index) * 0.25;
+      });
+
+      if (elapsed - state.podium.lastConfettiAt > 0.32 && state.podium.confetti.length < 260) {
+        state.podium.lastConfettiAt = elapsed;
+        spawnPodiumConfetti(22);
+      }
+      updatePodiumConfetti(dt);
+    }
+
+    function spawnPodiumConfetti(count) {
+      const colors = ["#ffcf6b", "#59f0c2", "#ff4f8b", "#7eb8ff", "#f8fbff", "#ff8a4c"];
+      for (let i = 0; i < count; i += 1) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.18, 0.035, 0.34),
+          new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true, opacity: 0.95 })
+        );
+        mesh.position.set((Math.random() - 0.5) * 34, 13 + Math.random() * 10, -7 + Math.random() * 13);
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        podiumShowcase.group.add(mesh);
+        state.podium.confetti.push({
+          mesh,
+          velocity: new THREE.Vector3((Math.random() - 0.5) * 4.5, -2.2 - Math.random() * 4.2, (Math.random() - 0.5) * 3.2),
+          spin: new THREE.Vector3((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 9),
+          life: 4.8 + Math.random() * 2.8
+        });
+      }
+    }
+
+    function updatePodiumConfetti(dt) {
+      for (let i = state.podium.confetti.length - 1; i >= 0; i -= 1) {
+        const confetti = state.podium.confetti[i];
+        confetti.life -= dt;
+        confetti.velocity.y -= dt * 1.4;
+        confetti.mesh.position.addScaledVector(confetti.velocity, dt);
+        confetti.mesh.rotation.x += confetti.spin.x * dt;
+        confetti.mesh.rotation.y += confetti.spin.y * dt;
+        confetti.mesh.rotation.z += confetti.spin.z * dt;
+        if (confetti.life <= 0 || confetti.mesh.position.y < -1) {
+          podiumShowcase.group.remove(confetti.mesh);
+          confetti.mesh.geometry.dispose();
+          confetti.mesh.material.dispose();
+          state.podium.confetti.splice(i, 1);
+        }
+      }
+    }
+
+    function easeOutCubic(value) {
+      return 1 - Math.pow(1 - value, 3);
     }
 
     function startSpectator(reason) {
@@ -1287,11 +1899,13 @@ import("three")
       const move = new THREE.Vector3();
       move.addScaledVector(forward, moveZ);
       move.addScaledVector(right, moveX);
-      if (move.lengthSq() > 0) move.normalize().multiplyScalar(input.has("shift") ? 18 : 12);
+      if (move.lengthSq() > 0) move.normalize().multiplyScalar(input.has("shift") ? 17 : 11.5);
       gulag.velocity.lerp(move, 1 - Math.pow(0.001, dt));
+      const previous = gulag.position.clone();
       gulag.position.addScaledVector(gulag.velocity, dt);
-      gulag.position.x = THREE.MathUtils.clamp(gulag.position.x, -28, 28);
-      gulag.position.z = THREE.MathUtils.clamp(gulag.position.z, 257, 327);
+      resolveGulagCover(gulag.position, previous);
+      gulag.position.x = THREE.MathUtils.clamp(gulag.position.x, GULAG_BOUNDS.minX, GULAG_BOUNDS.maxX);
+      gulag.position.z = THREE.MathUtils.clamp(gulag.position.z, GULAG_BOUNDS.minZ, GULAG_BOUNDS.maxZ);
 
       updateGulagEnemy(dt);
       if (gulag.firing) fireGulagShot();
@@ -1300,11 +1914,40 @@ import("three")
       camera.rotation.y = gulag.yaw;
       camera.rotation.x = gulag.pitch;
       camera.rotation.z = 0;
+      if (state.car.cameraShake > 0.001) {
+        const shake = state.car.cameraShake;
+        camera.position.x += (Math.random() - 0.5) * shake;
+        camera.position.y += (Math.random() - 0.5) * shake * 0.35;
+        camera.position.z += (Math.random() - 0.5) * shake;
+        state.car.cameraShake = Math.max(0, state.car.cameraShake - dt * 3.6);
+      }
+      updateGulagWeapon(dt);
+      const targetFov = 62 + THREE.MathUtils.clamp(gulag.velocity.length() / 18, 0, 1) * 2.5;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.pow(0.002, dt));
+        camera.updateProjectionMatrix();
+      }
 
       if (Date.now() >= gulag.endsAt && !gulag.resultSent) {
         finishGulag("timeout");
       }
       updateModeOverlay();
+    }
+
+    function resolveGulagCover(position, previous) {
+      for (const cover of gulagWorld.coverAreas || []) {
+        const insideX = Math.abs(position.x - cover.x) < cover.hx;
+        const insideZ = Math.abs(position.z - cover.z) < cover.hz;
+        if (!insideX || !insideZ) continue;
+        if (Math.abs(previous.x - cover.x) >= cover.hx) position.x = previous.x;
+        if (Math.abs(previous.z - cover.z) >= cover.hz) position.z = previous.z;
+        if (Math.abs(previous.x - cover.x) < cover.hx && Math.abs(previous.z - cover.z) < cover.hz) {
+          const pushX = cover.hx - Math.abs(position.x - cover.x);
+          const pushZ = cover.hz - Math.abs(position.z - cover.z);
+          if (pushX < pushZ) position.x = cover.x + Math.sign(position.x - cover.x || 1) * cover.hx;
+          else position.z = cover.z + Math.sign(position.z - cover.z || 1) * cover.hz;
+        }
+      }
     }
 
     function updateGulagEnemy(dt) {
@@ -1313,39 +1956,73 @@ import("three")
       toPlayer.y = 0;
       const distance = Math.max(0.001, toPlayer.length());
       const desired = toPlayer.normalize();
-      const strafe = new THREE.Vector3(desired.z, 0, -desired.x).multiplyScalar(Math.sin(performance.now() * 0.0024) * 0.85);
-      const enemyMove = desired.multiplyScalar(distance > 14 ? 7.5 : distance < 9 ? -5.5 : 2).add(strafe);
-      gulag.enemyPosition.addScaledVector(enemyMove, dt);
-      gulag.enemyPosition.x = THREE.MathUtils.clamp(gulag.enemyPosition.x, -27, 27);
-      gulag.enemyPosition.z = THREE.MathUtils.clamp(gulag.enemyPosition.z, 258, 326);
+      const now = performance.now();
+      const tangent = new THREE.Vector3(desired.z, 0, -desired.x);
+      const tacticalDistance = distance > 23 ? 7.5 : distance < 13 ? -6 : 1.2;
+      const dodge = now < gulag.enemyDodgeUntil ? gulag.enemyDodgeSide * 9 : Math.sin(now * 0.0021) * 5.6;
+      const enemyMove = desired.clone().multiplyScalar(tacticalDistance).addScaledVector(tangent, dodge);
+      gulag.enemyVelocity.lerp(enemyMove, 1 - Math.pow(0.006, dt));
+      const previous = gulag.enemyPosition.clone();
+      gulag.enemyPosition.addScaledVector(gulag.enemyVelocity, dt);
+      resolveGulagCover(gulag.enemyPosition, previous);
+      gulag.enemyPosition.x = THREE.MathUtils.clamp(gulag.enemyPosition.x, GULAG_BOUNDS.minX + 1, GULAG_BOUNDS.maxX - 1);
+      gulag.enemyPosition.z = THREE.MathUtils.clamp(gulag.enemyPosition.z, GULAG_BOUNDS.minZ + 2, GULAG_BOUNDS.maxZ - 2);
       gulagWorld.enemy.position.copy(gulag.enemyPosition);
       gulagWorld.enemy.lookAt(gulag.position.x, 1.7, gulag.position.z);
       const runCycle = performance.now() * 0.009;
       for (const [index, leg] of gulagWorld.enemy.userData.legs.entries()) {
-        leg.rotation.x = Math.sin(runCycle + index * Math.PI) * THREE.MathUtils.clamp(gulagWorld.enemy.position.distanceTo(gulag.position) / 28, 0.08, 0.36);
+        leg.rotation.x = Math.sin(runCycle + index * Math.PI) * THREE.MathUtils.clamp(gulag.enemyVelocity.length() / 15, 0.08, 0.42);
       }
       for (const [index, arm] of gulagWorld.enemy.userData.arms.entries()) {
-        arm.rotation.x = -0.28 + Math.sin(runCycle + index * Math.PI) * 0.12;
+        arm.rotation.x = 0.82 + Math.sin(runCycle + index * Math.PI) * 0.07;
       }
-      gulagWorld.enemy.userData.gun.rotation.x = -0.08 + Math.sin(performance.now() * 0.012) * 0.015;
+      gulagWorld.enemy.userData.gun.rotation.x = -0.06 + Math.sin(performance.now() * 0.012) * 0.018;
+      if (gulagWorld.enemy.userData.torsoHalo) {
+        gulagWorld.enemy.userData.torsoHalo.scale.setScalar(1 + Math.sin(performance.now() * 0.006) * 0.04);
+      }
       gulag.hitFlash = Math.max(0, gulag.hitFlash - dt * 5);
       const flash = gulag.hitFlash;
       gulagWorld.enemy.userData.armorMat.emissiveIntensity = 0.5 + flash * 1.8;
       gulagWorld.enemy.userData.suitMat.emissiveIntensity = 0.22 + flash * 0.7;
+      gulagWorld.enemy.userData.muzzle.visible = gulag.enemyMuzzleFlash > 0;
+      if (gulagWorld.enemy.userData.muzzle.visible) {
+        gulagWorld.enemy.userData.muzzle.scale.setScalar(1 + gulag.enemyMuzzleFlash * 5);
+      }
 
-      const now = performance.now();
-      if (now > gulag.enemyFireAt && distance < 42) {
-        const aimPressure = THREE.MathUtils.clamp(1 - distance / 50, 0.28, 0.84);
+      if (now > gulag.enemyFireAt && distance < 58) {
+        const aimPressure = THREE.MathUtils.clamp(1 - distance / 62, 0.22, 0.76);
         if (Math.random() < aimPressure) {
-          gulag.health = Math.max(0, gulag.health - (12 + Math.round(Math.random() * 9)));
-          state.car.damageFlash = 0.95;
-          playTone(120, 0.07, "sawtooth", 0.04);
-          spawnImpact(gulag.position.x, gulag.position.y - 0.4, gulag.position.z, "#ff4f8b", 5);
+          const damage = 8 + Math.round(Math.random() * 8);
+          gulag.health = Math.max(0, gulag.health - damage);
+          state.car.damageFlash = 0.72;
+          state.car.cameraShake = Math.max(state.car.cameraShake, 0.55);
+          gulag.enemyMuzzleFlash = 0.16;
+          playTone(132, 0.055, "sawtooth", 0.04);
+          spawnImpact(gulag.position.x, gulag.position.y - 0.45, gulag.position.z, "#ff4f8b", 6);
         }
-        gulag.enemyFireAt = now + 560 + Math.random() * 520;
+        gulag.enemyFireAt = now + 690 + Math.random() * 560;
       }
       if (gulag.health <= 0 && !gulag.resultSent) {
         finishGulag("loss");
+      }
+    }
+
+    function updateGulagWeapon(dt) {
+      const flash = state.gulag.muzzleFlash || 0;
+      const moveSway = THREE.MathUtils.clamp(state.gulag.velocity.length() / 18, 0, 1);
+      const cycle = performance.now() * 0.009;
+      weapon.position.set(
+        0.48 + Math.sin(cycle) * 0.012 * moveSway,
+        -0.48 - Math.abs(Math.cos(cycle)) * 0.014 * moveSway,
+        -0.08 + flash * 0.075
+      );
+      weapon.rotation.x = -flash * 0.08 + Math.sin(cycle * 0.7) * 0.006 * moveSway;
+      weapon.rotation.y = Math.sin(cycle * 0.55) * 0.012 * moveSway;
+      weapon.rotation.z = THREE.MathUtils.lerp(weapon.rotation.z, 0, 1 - Math.pow(0.0005, dt));
+      weapon.userData.muzzle.visible = flash > 0;
+      weapon.userData.muzzleLight.intensity = flash * 8;
+      if (weapon.userData.muzzle.visible) {
+        weapon.userData.muzzle.scale.setScalar(1 + flash * 4);
       }
     }
 
@@ -1354,28 +2031,38 @@ import("three")
       const gulag = state.gulag;
       const now = performance.now();
       if (now < gulag.playerFireAt) return;
-      gulag.playerFireAt = now + 285;
-      playTone(460, 0.045, "square", 0.045);
-      weapon.rotation.z = (Math.random() - 0.5) * 0.04;
-      setTimeout(() => {
-        weapon.rotation.z = 0;
-      }, 90);
+      gulag.playerFireAt = now + 245;
+      gulag.muzzleFlash = 0.18;
+      state.car.cameraShake = Math.max(state.car.cameraShake, 0.25);
+      playTone(520, 0.038, "square", 0.05);
+      weapon.rotation.z = (Math.random() - 0.5) * 0.055;
 
       const aim = new THREE.Vector3(-Math.sin(gulag.yaw) * Math.cos(gulag.pitch), Math.sin(gulag.pitch), -Math.cos(gulag.yaw) * Math.cos(gulag.pitch)).normalize();
-      const enemy = gulag.enemyPosition.clone().setY(2.35);
-      const toEnemy = enemy.sub(gulag.position);
-      const distance = toEnemy.length();
-      const alignment = aim.dot(toEnemy.normalize());
-      if (alignment > 0.975 && distance < 62) {
-        const headshot = alignment > 0.992;
-        const damage = headshot ? 32 : 16;
+      const ray = new THREE.Ray(gulag.position.clone(), aim);
+      const headPoint = gulag.enemyPosition.clone().setY(2.96);
+      const chestPoint = gulag.enemyPosition.clone().setY(2.02);
+      const headClosest = new THREE.Vector3();
+      const chestClosest = new THREE.Vector3();
+      ray.closestPointToPoint(headPoint, headClosest);
+      ray.closestPointToPoint(chestPoint, chestClosest);
+      const headDistance = headClosest.distanceTo(headPoint);
+      const chestDistance = chestClosest.distanceTo(chestPoint);
+      const travel = headClosest.distanceTo(gulag.position);
+      if (travel < 68 && (headDistance < 0.58 || chestDistance < 0.98)) {
+        const headshot = headDistance < 0.58;
+        const damage = headshot ? GULAG_HEADSHOT_DAMAGE : GULAG_BODY_DAMAGE;
         gulag.enemyHealth = Math.max(0, gulag.enemyHealth - damage);
         gulag.hitFlash = 1;
-        spawnImpact(gulag.enemyPosition.x, 2.2, gulag.enemyPosition.z, headshot ? "#ffcf6b" : "#59f0c2", headshot ? 14 : 8);
-        playTone(headshot ? 920 : 680, 0.06, "triangle", 0.05);
+        gulag.enemyDodgeUntil = now + 420;
+        gulag.enemyDodgeSide = Math.random() < 0.5 ? -1 : 1;
+        spawnImpact(gulag.enemyPosition.x, headshot ? 2.95 : 2.15, gulag.enemyPosition.z, headshot ? "#ffcf6b" : "#59f0c2", headshot ? 18 : 11);
+        lightweightNotice(headshot ? "Gulag headshot. Keep pressure." : "Gulag hit. Stay on target.");
+        playTone(headshot ? 980 : 700, 0.055, "triangle", 0.055);
         if (gulag.enemyHealth <= 0 && !gulag.resultSent) {
           finishGulag("win");
         }
+      } else {
+        spawnImpact(gulag.position.x + aim.x * 18, 1.8 + aim.y * 7, gulag.position.z + aim.z * 18, "#d6f4ff", 3);
       }
       updateModeOverlay();
     }
@@ -1480,7 +2167,9 @@ import("three")
         els.leader.textContent = `${leader.name} - ${Math.round(leader.score || 0)}`;
       }
       if (els.objective) {
-        if (state.mode === "gulag") {
+        if (state.podium.active) {
+          els.objective.textContent = "Podium ceremony: top 3 drivers are flexing before the next round.";
+        } else if (state.mode === "gulag") {
           els.objective.textContent = `Gulag: eliminate ${state.gulag.opponentName} to redeploy.`;
         } else if (state.mode === "spectator") {
           els.objective.textContent = "Spectator free cam: WASD to fly, mouse to look, Q/E for height.";
@@ -1495,7 +2184,7 @@ import("three")
     }
 
     function sendLocalState() {
-      if (state.mode !== "arena" || !state.joined || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+      if (state.mode !== "arena" || state.podium.active || !state.joined || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
       const now = performance.now();
       if (now - state.lastStateAt < STATE_SEND_MS) return;
       state.lastStateAt = now;

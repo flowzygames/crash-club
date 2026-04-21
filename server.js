@@ -4,7 +4,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 
 const PORT = process.env.PORT || 3000;
-const GAME_VERSION = "1.2.2";
+const GAME_VERSION = "1.3.0";
 const TICK_RATE = 20;
 const SCORE_TICK_MS = 500;
 const PICKUP_RESPAWN_MS = 10000;
@@ -166,7 +166,8 @@ function createRoundState(now = Date.now(), round = 1) {
     startedAt: now,
     endsAt: now + ROUND_DURATION_MS,
     nextRoundAt: 0,
-    winner: null
+    winner: null,
+    standings: []
   };
 }
 
@@ -198,6 +199,7 @@ function serializeRoom(room, now = Date.now()) {
     endsAt: room.round.endsAt,
     nextRoundAt: room.round.nextRoundAt,
     winner: room.round.winner,
+    standings: room.round.standings || [],
     now,
     version: GAME_VERSION,
     targetScore: ROUND_WIN_SCORE
@@ -445,6 +447,21 @@ function findWinner(room) {
   return [...room.players.values()].sort((a, b) => b.score - a.score || a.wrecks - b.wrecks)[0] || null;
 }
 
+function buildStandings(room) {
+  return [...room.players.values()]
+    .sort((a, b) => b.score - a.score || b.wrecks - a.wrecks || String(a.name).localeCompare(String(b.name)))
+    .slice(0, 3)
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      color: player.color,
+      score: player.score || 0,
+      wrecks: player.wrecks || 0,
+      roundWins: player.roundWins || 0,
+      isBot: Boolean(player.isBot)
+    }));
+}
+
 function finishRound(room, winner, now = Date.now()) {
   if (room.round.phase === "intermission") {
     return;
@@ -452,6 +469,7 @@ function finishRound(room, winner, now = Date.now()) {
   room.round.phase = "intermission";
   room.round.endsAt = now;
   room.round.nextRoundAt = now + INTERMISSION_MS;
+  room.round.standings = buildStandings(room);
   room.round.winner = winner
     ? {
         id: winner.id,

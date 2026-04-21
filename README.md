@@ -21,7 +21,7 @@
   <img alt="License" src="https://img.shields.io/badge/License-MIT-FFCF6B?style=for-the-badge">
 </p>
 
-> Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club Alpha 1.2. No mockup screenshots, no fake rendered cards.
+> Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club Alpha 1.3. No mockup screenshots, no fake rendered cards.
 
 ## Gameplay Preview
 
@@ -111,12 +111,19 @@ The driving is arcade-style rather than simulator-style. Cars accelerate quickly
 
 The map uses roads, cones, guardrails, street lights, buildings, lane stripes, glowing pickups, and a dark arena sky to make the space easier to read while staying lightweight enough for normal laptops.
 
+### Top 3 Podium Ceremony
+
+When a round ends, the game now cuts away from the frozen arena into a dedicated victory ceremony. The server locks in the final top three standings, then every browser renders the same podium with the correct driver names, scores, and matching car colors.
+
+The podium scene gives the round a real finish: cars drop onto first, second, and third place blocks, the camera floats around the winners, confetti falls, and the next round starts after the intermission.
+
 ## Game Rules
 
 | Rule | What It Means |
 | --- | --- |
 | Round timer | Each round lasts 3 minutes unless someone reaches the target score first. |
 | Target score | The first player to the target score wins immediately. |
+| Podium | The final top three get a cinematic podium ceremony before the next round. |
 | Center ring | Staying inside the gold ring gives steady points. |
 | Pickups | Boost, repair, shield, and slam create tactical moments. |
 | Damage | Faster impacts deal more damage. |
@@ -168,7 +175,7 @@ If the browser ever acts weird after an update, press `Ctrl + F5` once to force 
 
 ```text
 crash-club/
-|-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage
+  |-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage, podium standings
 |-- public/
 |   |-- index.html               # HUD, menu, radar, controls, and page shell
 |   |-- styles.css               # Menus, HUD, meters, mobile layout, and overlays
@@ -192,7 +199,7 @@ crash-club/
 
 ## Roadmap
 
-Crash Club Alpha 1.2 is playable, but there is a lot of room to make it bigger.
+Crash Club Alpha 1.3 is playable, but there is a lot of room to make it bigger.
 
 | Priority | Upgrade | Why It Matters |
 | --- | --- | --- |
