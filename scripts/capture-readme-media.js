@@ -11,6 +11,7 @@ const serverPort = Number(process.env.CRASH_CLUB_PORT || 3000);
 const debugPort = Number(process.env.CRASH_CLUB_DEBUG_PORT || 9339);
 const room = `readme-gallery-${Date.now()}`;
 const gameUrl = `http://127.0.0.1:${serverPort}/?room=${room}`;
+const captureOnly = String(process.env.CRASH_CLUB_CAPTURE_ONLY || "");
 
 fs.mkdirSync(outDir, { recursive: true });
 for (const name of [
@@ -265,35 +266,39 @@ async function main() {
       true;
     `);
     await waitForPage(send, `document.body.classList.contains("is-driving")`, "driving mode");
-    await sleep(1400);
-    await capture(send, "02-arena-hud.png");
+    if (captureOnly === "gulag") {
+      await sleep(700);
+    } else {
+      await sleep(1400);
+      await capture(send, "02-arena-hud.png");
 
-    await hold(send, [["w", "KeyW", 87], ["Shift", "ShiftLeft", 16]], 1600);
-    await sleep(700);
-    await capture(send, "03-center-ring-powerups.png");
+      await hold(send, [["w", "KeyW", 87], ["Shift", "ShiftLeft", 16]], 1600);
+      await sleep(700);
+      await capture(send, "03-center-ring-powerups.png");
 
-    await hold(send, [["w", "KeyW", 87], ["d", "KeyD", 68]], 1100);
-    await sleep(550);
-    await capture(send, "04-bots-and-radar.png");
+      await hold(send, [["w", "KeyW", 87], ["d", "KeyD", 68]], 1100);
+      await sleep(550);
+      await capture(send, "04-bots-and-radar.png");
 
-    await hold(send, [["w", "KeyW", 87], ["a", "KeyA", 65], ["Shift", "ShiftLeft", 16]], 900);
-    await sleep(450);
-    await capture(send, "05-driving-action.png");
+      await hold(send, [["w", "KeyW", 87], ["a", "KeyA", 65], ["Shift", "ShiftLeft", 16]], 900);
+      await sleep(450);
+      await capture(send, "05-driving-action.png");
 
-    await key(send, "rawKeyDown", "w", "KeyW", 87);
-    await key(send, "rawKeyDown", "Shift", "ShiftLeft", 16);
-    for (let i = 0; i < 38; i += 1) {
-      if (i === 8) await key(send, "rawKeyDown", "d", "KeyD", 68);
-      if (i === 18) await key(send, "keyUp", "d", "KeyD", 68);
-      if (i === 20) await key(send, "rawKeyDown", "a", "KeyA", 65);
-      if (i === 30) await key(send, "keyUp", "a", "KeyA", 65);
-      await sleep(95);
-      await frame(send, i);
+      await key(send, "rawKeyDown", "w", "KeyW", 87);
+      await key(send, "rawKeyDown", "Shift", "ShiftLeft", 16);
+      for (let i = 0; i < 38; i += 1) {
+        if (i === 8) await key(send, "rawKeyDown", "d", "KeyD", 68);
+        if (i === 18) await key(send, "keyUp", "d", "KeyD", 68);
+        if (i === 20) await key(send, "rawKeyDown", "a", "KeyA", 65);
+        if (i === 30) await key(send, "keyUp", "a", "KeyA", 65);
+        await sleep(95);
+        await frame(send, i);
+      }
+      await key(send, "keyUp", "Shift", "ShiftLeft", 16);
+      await key(send, "keyUp", "w", "KeyW", 87);
     }
-    await key(send, "keyUp", "Shift", "ShiftLeft", 16);
-    await key(send, "keyUp", "w", "KeyW", 87);
 
-    if (process.env.CRASH_CLUB_CAPTURE_GULAG !== "0") {
+    if (process.env.CRASH_CLUB_CAPTURE_GULAG !== "0" && captureOnly !== "arena") {
       const joined = await joinSocket("README Wrecker", "#ff4f8b");
       attacker = joined.ws;
       const targetPlayer = joined.msg.players.find((player) => player.name === "README Driver");
