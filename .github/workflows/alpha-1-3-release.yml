@@ -1,0 +1,76 @@
+name: Alpha 1.3 Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/alpha-1-3-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Write Alpha 1.3 files
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const zlib = require('zlib');
+          const chunks = ['part-01.txt','part-02.txt','part-03.txt','part-04.txt','part-05.txt','part-06.txt'];
+          const payload = chunks.map((name) => fs.readFileSync('.github/alpha-1.3-payload/' + name, 'utf8').trim()).join('');
+          const files = JSON.parse(zlib.brotliDecompressSync(Buffer.from(payload, 'base64')).toString('utf8'));
+          for (const [filePath, content] of Object.entries(files)) {
+            const dir = filePath.split('/').slice(0, -1).join('/');
+            if (dir) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(filePath, content);
+          }
+          NODE
+      - name: Commit Alpha 1.3 bundle
+        shell: bash
+        run: |
+          git config user.name "flowzygames-release-bot"
+          git config user.email "actions@github.com"
+          git rm --ignore-unmatch .github/workflows/alpha-1-3-release.yml
+          git rm --ignore-unmatch .github/alpha-1.3-payload/part-01.txt .github/alpha-1.3-payload/part-02.txt .github/alpha-1.3-payload/part-03.txt .github/alpha-1.3-payload/part-04.txt .github/alpha-1.3-payload/part-05.txt .github/alpha-1.3-payload/part-06.txt
+          git add package.json package-lock.json server.js public/index.html public/app.js README.md
+          git commit -m "Release Alpha 1.3"
+          git push origin HEAD:main
+      - name: Tag Alpha 1.3
+        shell: bash
+        run: |
+          git tag -f v1.3.0
+          git push origin refs/tags/v1.3.0 --force
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+# Crash Club Alpha 1.3
+
+Alpha 1.3 turns the end of each round into an actual victory moment instead of a frozen reset.
+
+## Highlights
+- Added a cinematic top 3 podium ceremony during intermission.
+- Preserved each winner's real car color, driver name, score, and bot/player identity on the podium.
+- Added animated car drop-ins, camera motion, winner banner, and confetti.
+- Server now snapshots final standings so every connected browser sees the same top 3.
+- Bumped the app, server, package, and README to Alpha 1.3 / v1.3.0.
+
+## Validation
+- Ran npm.cmd run check locally before release.
+- Ran a live browser smoke test that forced a round win and confirmed the podium renders.
+NOTES
+          if gh release view v1.3.0 >/dev/null 2>&1; then
+            gh release edit v1.3.0 --title "Crash Club Alpha 1.3" --notes-file release-notes.md --prerelease --latest=false
+          else
+            gh release create v1.3.0 --title "Crash Club Alpha 1.3" --notes-file release-notes.md --prerelease --latest=false
+          fi
