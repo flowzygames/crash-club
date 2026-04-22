@@ -24,7 +24,7 @@
 > Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club Alpha 1.3. No mockup screenshots, no fake rendered cards.
 
 ## Gameplay Preview
-
+this gameplay preview does not represent ingame fps.
 <p align="center">
   <img src="./assets/readme/github/driving-loop.gif" alt="Real Crash Club gameplay GIF showing the car driving in the arena" width="88%" />
 </p>
