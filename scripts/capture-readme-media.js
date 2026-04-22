@@ -185,6 +185,19 @@ async function hold(send, keys, ms) {
   for (const item of [...keys].reverse()) await key(send, "keyUp", ...item);
 }
 
+async function assertArenaShot(send, label) {
+  const status = await evalPage(send, `({
+    objective: document.querySelector("#objective-card")?.textContent || "",
+    combatVisible: Boolean(document.querySelector(".mode-overlay.combat-hud:not(.hidden)")),
+    modeText: document.querySelector("#mode-title")?.textContent || ""
+  })`);
+  const value = status.result?.value || {};
+  const text = `${value.objective} ${value.modeText}`;
+  if (value.combatVisible || /gulag|spectator|free cam/i.test(text)) {
+    throw new Error(`Refusing to save ${label} because the capture is not in the arena: ${JSON.stringify(value)}`);
+  }
+}
+
 function joinSocket(name, color) {
   return new Promise((resolve, reject) => {
     const remote = new WebSocket(`ws://127.0.0.1:${serverPort}`);
@@ -211,7 +224,11 @@ async function main() {
     if (!(await isServerReady())) {
       server = spawn(process.execPath, ["server.js"], {
         cwd: root,
-        env: { ...process.env, PORT: String(serverPort) },
+        env: {
+          ...process.env,
+          PORT: String(serverPort),
+          CRASH_CLUB_README_SAFE_ARENA: captureOnly === "arena" ? "1" : process.env.CRASH_CLUB_README_SAFE_ARENA
+        },
         stdio: ["ignore", "pipe", "pipe"]
       });
       server.stdout.on("data", (data) => process.stdout.write(data));
@@ -272,18 +289,22 @@ async function main() {
       await sleep(700);
     } else {
       await sleep(1400);
+      await assertArenaShot(send, "02-arena-hud.png");
       await capture(send, "02-arena-hud.png");
 
       await hold(send, [["w", "KeyW", 87], ["Shift", "ShiftLeft", 16]], 1600);
       await sleep(700);
+      await assertArenaShot(send, "03-center-ring-powerups.png");
       await capture(send, "03-center-ring-powerups.png");
 
       await hold(send, [["w", "KeyW", 87], ["d", "KeyD", 68]], 1100);
       await sleep(550);
+      await assertArenaShot(send, "04-bots-and-radar.png");
       await capture(send, "04-bots-and-radar.png");
 
       await hold(send, [["w", "KeyW", 87], ["a", "KeyA", 65], ["Shift", "ShiftLeft", 16]], 900);
       await sleep(450);
+      await assertArenaShot(send, "05-driving-action.png");
       await capture(send, "05-driving-action.png");
 
       await key(send, "rawKeyDown", "w", "KeyW", 87);

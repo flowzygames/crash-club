@@ -542,6 +542,9 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now()) {
   if (!source || !target || target.mode === "spectator" || target.mode === "gulag" || target.wreckedUntil > now || room.round.phase !== "live") {
     return;
   }
+  if (process.env.CRASH_CLUB_README_SAFE_ARENA === "1" && !target.isBot) {
+    return;
+  }
 
   const shielded = target.shieldUntil > now;
   const damage = shielded ? Math.ceil(rawDamage * 0.35) : rawDamage;
