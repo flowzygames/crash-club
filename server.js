@@ -505,6 +505,9 @@ function maybeFinishRound(room, now = Date.now()) {
   if (room.round.phase !== "live") {
     return;
   }
+  if (process.env.CRASH_CLUB_README_SAFE_ARENA === "1") {
+    return;
+  }
   const winnerByScore = [...room.players.values()].find((player) => player.score >= ROUND_WIN_SCORE);
   if (winnerByScore) {
     finishRound(room, winnerByScore, now);
