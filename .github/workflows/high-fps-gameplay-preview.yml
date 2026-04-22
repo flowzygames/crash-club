@@ -1,0 +1,96 @@
+name: High FPS Gameplay Preview GIF
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/high-fps-gameplay-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  high-fps-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          npm install
+          python -m pip install --upgrade pip
+          python -m pip install pillow
+      - name: Find browser
+        shell: bash
+        run: |
+          BROWSER_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$BROWSER_PATH" ]; then
+            echo "No Chrome/Chromium browser found on runner."
+            exit 1
+          fi
+          echo "CHROME_PATH=$BROWSER_PATH" >> "$GITHUB_ENV"
+      - name: Patch capture for smoother preview
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('scripts/capture-readme-media.js')
+          text = path.read_text()
+          text = text.replace(
+              '      for (let i = 0; i < 38; i += 1) {\n        if (i === 8) await key(send, "rawKeyDown", "d", "KeyD", 68);\n        if (i === 18) await key(send, "keyUp", "d", "KeyD", 68);\n        if (i === 20) await key(send, "rawKeyDown", "a", "KeyA", 65);\n        if (i === 30) await key(send, "keyUp", "a", "KeyA", 65);\n        await sleep(95);\n        await frame(send, i);\n      }',
+              '      const drivingGifFrames = Number(process.env.CRASH_CLUB_DRIVING_GIF_FRAMES || 72);\n      const drivingFrameSleepMs = Number(process.env.CRASH_CLUB_DRIVING_FRAME_SLEEP_MS || 70);\n      for (let i = 0; i < drivingGifFrames; i += 1) {\n        if (i === 10) await key(send, "rawKeyDown", "d", "KeyD", 68);\n        if (i === 26) await key(send, "keyUp", "d", "KeyD", 68);\n        if (i === 31) await key(send, "rawKeyDown", "a", "KeyA", 65);\n        if (i === 56) await key(send, "keyUp", "a", "KeyA", 65);\n        await sleep(drivingFrameSleepMs);\n        await frame(send, i);\n      }'
+          )
+          path.write_text(text)
+          PY
+      - name: Validate game syntax
+        run: npm run check && node --check scripts/capture-readme-media.js
+      - name: Capture high FPS gameplay frames
+        env:
+          CRASH_CLUB_CAPTURE_ONLY: "arena"
+          CRASH_CLUB_CAPTURE_GULAG: "0"
+          CRASH_CLUB_DRIVING_GIF_FRAMES: "72"
+          CRASH_CLUB_DRIVING_FRAME_SLEEP_MS: "70"
+        run: node scripts/capture-readme-media.js
+      - name: Build high FPS gameplay GIF
+        run: python scripts/build-readme-gif.py test-results/readme-frames assets/readme/github/driving-loop.gif 70
+      - name: Verify GIF FPS and duration
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          path = Path('assets/readme/github/driving-loop.gif')
+          im = Image.open(path)
+          frames = getattr(im, 'n_frames', 1)
+          durations = []
+          for i in range(frames):
+              im.seek(i)
+              durations.append(im.info.get('duration', 0))
+          total_ms = sum(durations)
+          avg_ms = total_ms / max(1, len(durations))
+          print(path, im.size, frames, avg_ms, total_ms / 1000, path.stat().st_size)
+          if im.size != (1920, 1080):
+              raise SystemExit('driving-loop.gif is not 1920x1080')
+          if frames < 65:
+              raise SystemExit('driving-loop.gif does not have enough frames')
+          if not (55 <= avg_ms <= 85):
+              raise SystemExit('driving-loop.gif frame delay is not in the high-FPS target range')
+          if not (4.5 <= total_ms / 1000 <= 5.8):
+              raise SystemExit('driving-loop.gif loop duration is not readable')
+          PY
+      - name: Commit high FPS preview
+        shell: bash
+        run: |
+          git config user.name "flowzygames-readme-bot"
+          git config user.email "actions@github.com"
+          git rm --ignore-unmatch .github/workflows/high-fps-gameplay-preview.yml
+          git add assets/readme/github/driving-loop.gif
+          git commit -m "Make README gameplay preview smoother"
+          git push origin HEAD:main
