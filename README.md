@@ -191,6 +191,8 @@ Output directory: dist
 Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
 ```
 
+The repo also forces the Vercel preset to `Other` in [vercel.json](./vercel.json). If Vercel guesses `Node`, redeploy from the latest commit so it does not try to run the browser `app.js` file as a serverless function.
+
 Backend settings for Render:
 
 ```text

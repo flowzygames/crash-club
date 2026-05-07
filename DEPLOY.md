@@ -21,6 +21,8 @@ Output directory: dist
 Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
 ```
 
+[vercel.json](./vercel.json) sets `framework` to `null`, which tells Vercel to use the `Other` preset even if the dashboard originally guessed `Node`. This is important because Crash Club's `app.js` is browser code, not a Vercel Function.
+
 Example:
 
 ```text

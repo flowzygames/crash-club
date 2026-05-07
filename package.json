@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "start": "node server.js",
+    "build": "node scripts/build-vercel.js",
     "build:vercel": "node scripts/build-vercel.js",
     "check": "node --check server.js && node --check public/app.js"
   },
