@@ -9,29 +9,45 @@
 </p>
 
 <p align="center">
-  Pick a name, share a room URL, grab glowing powerups, fight bots while friends connect,
-  and throw tiny low-poly cars around a score-chasing crash arena.
+  Pick a name, share a room URL, grab glowing powerups, wreck rivals, survive the Gulag,
+  and fight for a top-three podium finish in a low-poly arcade arena.
 </p>
 
 <p align="center">
   <img alt="Node" src="https://img.shields.io/badge/Node.js-20+-43853D?style=for-the-badge&logo=node.js&logoColor=white">
   <img alt="Three.js" src="https://img.shields.io/badge/Three.js-WebGL-111111?style=for-the-badge&logo=three.js&logoColor=white">
   <img alt="WebSockets" src="https://img.shields.io/badge/Realtime-WebSockets-0EA5E9?style=for-the-badge">
-  <img alt="No Build Step" src="https://img.shields.io/badge/Setup-No_Build_Step-5AF0C1?style=for-the-badge">
+  <img alt="Alpha" src="https://img.shields.io/badge/Alpha-1.4-5AF0C1?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-FFCF6B?style=for-the-badge">
 </p>
 
-> Every gameplay screenshot and GIF below was captured from the real browser game running in Crash Club Alpha 1.3. No mockup screenshots, no fake rendered cards.
+> The gameplay screenshots and GIFs below are real browser captures from Crash Club, not mockups. Alpha 1.4 focuses on smoother performance, settings, sound, and driving feel while keeping the same public feature set.
 
 ## Gameplay Preview
-this gameplay preview does not represent ingame fps.
+
 <p align="center">
   <img src="./assets/readme/github/driving-loop.gif" alt="Real Crash Club gameplay GIF showing the car driving in the arena" width="88%" />
 </p>
 
-Crash Club is meant to feel instantly playable: open the page, type a driver name, hit Start Driving, and you are in a live arena. The game runs in the browser with a Node.js WebSocket server handling rooms, bots, scoring, pickups, damage, and round flow.
+Crash Club is designed to be instantly playable: start the Node server, open the browser, choose a driver name, and drive into a live arena. The browser handles rendering and input while the WebSocket server handles rooms, bots, pickups, damage, scoring, the Gulag, and round flow.
 
-The core loop is simple on purpose. Drive into the arena, own the gold scoring ring, grab powerups before rivals do, and smash other cars hard enough to climb the leaderboard.
+The core loop is simple on purpose. Own the gold scoring ring, grab powerups before rivals do, land heavy hits, score style from drifting, and try to finish each round on the podium.
+
+## New In Alpha 1.4
+
+<p align="center">
+  <img src="./assets/readme/github/01-start-screen.png" alt="Crash Club start screen with driver name input and settings" width="88%" />
+</p>
+
+Alpha 1.4 is a performance and feel pass. The goal is not just adding more stuff, but making the game less stuttery and more playable on normal laptops.
+
+| Upgrade | What Changed |
+| --- | --- |
+| Performance mode | Lower render scale, disabled shadows, fewer labels, lighter particles, slower radar redraws, and reduced pickup animation cost. |
+| Settings menu | Graphics, sound, and volume controls are available on the start screen and in-game. |
+| Sound pass | Adds toggleable sound effects and a lightweight engine hum that reacts to speed and boost. |
+| Smoother driving | Lower top speed, smoother boost, better control, and less visual spam during impacts and drifts. |
+| Server load | Default rooms use fewer bots, snapshots are rate-limited, bot pickup checks are throttled, and bot pickup messages are quieter. |
 
 ## Feature Tour
 
@@ -41,7 +57,7 @@ The core loop is simple on purpose. Drive into the arena, own the gold scoring r
   <img src="./assets/readme/github/01-start-screen.png" alt="Actual Crash Club start screen with driver name input and control hints" width="88%" />
 </p>
 
-The first screen gives the game a real release feel instead of dropping players into a blank test canvas. Players can choose a name, save it, start driving, and see the main control hints before the match begins.
+The start screen makes the project feel like a real release instead of a blank WebGL test. Players can choose a name, save it, start driving, adjust performance settings, and see the main controls before entering the arena.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
@@ -61,9 +77,9 @@ The first screen gives the game a real release feel instead of dropping players 
   <img src="./assets/readme/github/02-arena-hud.png" alt="Actual Crash Club gameplay screenshot with HUD, leaderboard, radar, and arena view" width="88%" />
 </p>
 
-The HUD keeps the match readable while the 3D arena stays visible. It shows room code, player count, speed, boost, score, health, round number, timer, active power, radar, objective text, leaderboard, and connection messages.
+The HUD shows the information players actually need during a chaotic round: room code, player count, speed, boost, score, health, round number, timer, active power, radar, objective text, leaderboard, and connection status.
 
-This is also where the game starts to feel like a real multiplayer prototype instead of just a car controller. You can see other racers joining, bots filling the lobby, and the match state updating while you drive.
+Alpha 1.4 redraws the heavier HUD pieces less often in Performance mode, so the interface stays useful without hammering the browser every frame.
 
 ### Powerups And Score Ring
 
@@ -71,9 +87,9 @@ This is also where the game starts to feel like a real multiplayer prototype ins
   <img src="./assets/readme/github/03-center-ring-powerups.png" alt="Actual Crash Club screenshot showing the center scoring ring and glowing powerups" width="88%" />
 </p>
 
-The gold ring gives everyone a reason to fight for the middle of the map. Staying in the ring scores points, but sitting still makes you an easy target, so players have to keep moving.
+The gold ring gives everyone a reason to fight for the middle of the map. Staying in the ring scores points, but sitting still makes you easy to hit, so the best play is usually controlled movement instead of parking.
 
-Powerups spawn as glowing pickups around the arena. Current pickup types include boost, repair, shield, and slam. They are visible in the world and on the radar, so players can chase them intentionally instead of guessing what the server is doing.
+Powerups spawn as visible glowing pickups around the arena and on the radar. Current pickup types include boost, repair, shield, and slam.
 
 ### Bots, Radar, And Multiplayer Rooms
 
@@ -81,9 +97,9 @@ Powerups spawn as glowing pickups around the arena. Current pickup types include
   <img src="./assets/readme/github/04-bots-and-radar.png" alt="Actual Crash Club screenshot showing bot-filled room, radar dots, cones, roads, and arena props" width="88%" />
 </p>
 
-Crash Club automatically fills active rooms with bot racers so solo testing still feels alive. When friends join the same room URL, the same systems handle their cars too.
+Crash Club fills active rooms with bot racers so solo testing still feels alive. Friends can join the same match with the room URL, and the same server systems handle human cars and bot cars together.
 
-Rooms are URL-based, which keeps sharing simple. A room like `?room=after-school` lets multiple devices on the same Wi-Fi join the same match when they connect to the host machine.
+Rooms are URL-based. A room like `?room=after-school` lets multiple devices join the same match when they connect to the host machine on the same Wi-Fi.
 
 ### Gulag Duels And Redeploys
 
@@ -91,31 +107,25 @@ Rooms are URL-based, which keeps sharing simple. A room like `?room=after-school
   <img src="./assets/readme/github/gulag-duel.gif" alt="Actual Crash Club Gulag GIF showing the player shooting a humanoid opponent in first-person" width="88%" />
 </p>
 
-The Gulag is Crash Club's second-chance system. When a human player loses all health in the arena, the server switches that player out of normal driving mode and sends them into a first-person duel instead of instantly respawning them.
+The Gulag is Crash Club's second-chance system. When a human player loses all health in the arena, the server moves them out of car mode and into a first-person duel instead of instantly respawning them.
 
-Inside the Gulag, the car game becomes a compact shooter. The player gets a crosshair, a weapon view, a humanoid rival, health, enemy health, and a timer. Movement uses `WASD`, aiming uses the mouse, and shooting works with click, `Space`, or `F`.
+Inside the Gulag, the car game becomes a compact shooter. The player gets a crosshair, weapon view, humanoid rival, health, enemy health, and timer. Movement uses `WASD`, aiming uses the mouse, and shooting works with click, `Space`, or `F`.
 
-Winning the duel sends the player back into the arena with a redeploy bonus. Losing the duel, dying to the opponent, or timing out sends the player into spectator free cam so they can keep watching the match without interrupting the live round.
+Winning the duel respawns the player back into the arena with a redeploy bonus. Losing, dying to the opponent, or timing out moves the player into spectator free cam.
 
 <p align="center">
   <img src="./assets/readme/github/06-gulag-duel.png" alt="Actual Crash Club Gulag screenshot with crosshair, enemy model, and compact duel HUD" width="88%" />
 </p>
 
-### Driving Feel
+### Driving Feel And Map Readability
 
 <p align="center">
   <img src="./assets/readme/github/05-driving-action.png" alt="Actual Crash Club driving screenshot showing speed, boost, roads, guardrails, and arena lighting" width="88%" />
 </p>
 
-The driving is arcade-style rather than simulator-style. Cars accelerate quickly, boost gives a burst of speed, braking can reverse, and turning at speed can kick into drift-style movement.
+The driving is arcade-style, not simulator-style. Cars accelerate quickly, boost gives a controlled burst, braking can reverse, and turning at speed can kick into drift-style movement.
 
-The map uses roads, cones, guardrails, street lights, buildings, lane stripes, glowing pickups, and a dark arena sky to make the space easier to read while staying lightweight enough for normal laptops.
-
-### Top 3 Podium Ceremony
-
-When a round ends, the game now cuts away from the frozen arena into a dedicated victory ceremony. The server locks in the final top three standings, then every browser renders the same podium with the correct driver names, scores, and matching car colors.
-
-The podium scene gives the round a real finish: cars drop onto first, second, and third place blocks, the camera floats around the winners, confetti falls, and the next round starts after the intermission.
+The map uses roads, cones, guardrails, street lights, buildings, lane stripes, glowing pickups, and a dark arena sky to keep the space readable while staying lightweight enough for normal machines.
 
 ## Game Rules
 
@@ -137,7 +147,7 @@ The podium scene gives the round a real finish: cars drop onto first, second, an
 
 ## Quick Start
 
-Crash Club runs with a tiny setup: install dependencies, start the Node server, and open the browser.
+Crash Club runs with a small local setup: install dependencies, start the Node server, and open the browser.
 
 ```powershell
 npm.cmd install
@@ -153,13 +163,62 @@ http://localhost:3000?room=after-school
 
 To play with other devices on the same Wi-Fi, use your computer's LAN address instead of `localhost`, then keep the same `?room=` code.
 
+```text
+http://YOUR-LAN-IP:3000?room=after-school
+```
+
 Check server status:
 
 ```text
 http://localhost:3000/health
 ```
 
-If the browser ever acts weird after an update, press `Ctrl + F5` once to force fresh game files.
+If the browser acts weird after an update, press `Ctrl + F5` once to force fresh game files.
+
+## Cloud Deploy
+
+Crash Club is ready for a Render web service. The repo includes [render.yaml](./render.yaml), which tells Render to install with `npm ci`, start with `npm start`, and run the same Node/WebSocket server that powers local multiplayer.
+
+Full steps are in [DEPLOY.md](./DEPLOY.md).
+
+```text
+Service type: Web Service
+Runtime: Node
+Build command: npm ci
+Start command: npm start
+Health check: /health
+```
+
+After deploy, use the public Render URL as the game link. Room codes still work the same way:
+
+```text
+https://YOUR-SERVICE.onrender.com?room=after-school
+```
+
+## Performance Settings
+
+<p align="center">
+  <img src="./assets/readme/github/01-start-screen.png" alt="Crash Club Alpha 1.4 performance settings on the start screen" width="88%" />
+</p>
+
+Performance mode is the default in Alpha 1.4 because the game should feel playable first. You can still switch to Balanced or Showcase from the settings menu if your machine handles it.
+
+| Setting | Best For | Tradeoff |
+| --- | --- | --- |
+| Performance | School laptops, older PCs, busy rooms | Lowest stutter, fewer expensive visual extras. |
+| Balanced | Normal desktops and modern laptops | Keeps more polish while staying lighter than Showcase. |
+| Showcase | Screenshots, trailers, powerful GPUs | Best visuals, highest render cost. |
+
+Server-side tuning is also available through environment variables:
+
+```powershell
+$env:CRASH_CLUB_BOT_TARGET="3"
+$env:CRASH_CLUB_TICK_RATE="12"
+$env:CRASH_CLUB_SNAPSHOT_RATE="6"
+npm.cmd start
+```
+
+Use `CRASH_CLUB_BOT_TARGET=0` for a human-only room, or raise it if your machine can handle more traffic.
 
 ## Tech Stack
 
@@ -168,19 +227,19 @@ If the browser ever acts weird after an update, press `Ctrl + F5` once to force 
 | Server | Node.js | Easy to run locally and easy to inspect. |
 | Realtime | WebSockets via `ws` | Simple low-latency room updates. |
 | Rendering | Three.js | Browser-native 3D without a heavy engine install. |
-| UI | HTML/CSS overlay | Keeps HUD and menus separate from the 3D scene. |
-| Assets | SVG, PNG, GIF, generated client chunks | Lightweight files that GitHub can display and serve. |
+| UI | HTML/CSS overlay | Keeps HUD, menus, and settings separate from the 3D scene. |
+| Media | Real PNG/GIF captures | The README shows the actual game instead of fake mockups. |
 
 ## Project Structure
 
 ```text
 crash-club/
-  |-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage, podium standings
+|-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage, Gulag, podium standings
 |-- public/
-|   |-- index.html               # HUD, menu, radar, controls, and page shell
-|   |-- styles.css               # Menus, HUD, meters, mobile layout, and overlays
-|   |-- app.js                   # Three.js client, driving, pickups, modes, and HUD logic
-|   |-- app.bundle.*.txt         # Generated Three.js game client chunks
+|   |-- index.html               # HUD, menu, radar, settings, controls, and page shell
+|   |-- styles.css               # Menus, HUD, meters, mobile layout, settings, and overlays
+|   |-- app.js                   # Three.js client, driving, pickups, modes, audio, performance settings, and HUD logic
+|   |-- vendor/                  # Local Three.js module for offline-friendly loading
 |   |-- favicon.svg              # Browser tab icon
 |   |-- manifest.webmanifest     # Install metadata
 |   `-- og-image.svg             # Social preview image
@@ -189,17 +248,19 @@ crash-club/
 |   |-- crash-club-logo.svg      # Square logo
 |   |-- crash-club-wordmark.svg
 |   `-- readme/
-|       `-- github/              # Real screenshots and gameplay GIF used in this README
+|       `-- github/              # Real screenshots and gameplay GIFs used in this README
 |-- scripts/
 |   |-- capture-readme-media.js  # Browser capture helper for README arena media
-|   `-- capture-gulag-readme.js  # Browser capture helper for README Gulag media
+|   |-- capture-gulag-readme.js  # Playwright Gulag capture helper
+|   |-- capture-gulag-cdp.js     # CDP Gulag capture helper
+|   `-- build-readme-gif.py      # GIF assembly helper
 |-- package.json
 `-- README.md
 ```
 
 ## Roadmap
 
-Crash Club Alpha 1.3 is playable, but there is a lot of room to make it bigger.
+Crash Club Alpha 1.4 is playable, but there is a lot of room to make it bigger.
 
 | Priority | Upgrade | Why It Matters |
 | --- | --- | --- |
@@ -208,34 +269,8 @@ Crash Club Alpha 1.3 is playable, but there is a lot of room to make it bigger.
 | 3 | Larger map districts | Adds landmarks, routes, shortcuts, and chase moments. |
 | 4 | More powerups like oil slick, jump, magnet, and shockwave | Creates more chaos and comeback potential. |
 | 5 | Car cosmetics and nameplates | Makes players easier to recognize and more fun to customize. |
-| 6 | Proper source build pipeline | Makes future gameplay edits safer than patching generated chunks. |
+| 6 | Proper source build pipeline | Makes future gameplay edits safer as the game grows. |
 
-## 🚫 License & Usage
+## License
 
-Copyright © FlowzyGames. All rights reserved.
-
-This project and all associated source code, assets, and content are the intellectual property of Flowzy Games.
-
-✅ Permitted Use
-
-You are permitted to:
-
-View this repository for educational and reference purposes
-Download and run the project for personal, non-commercial use only (e.g., playing the game)
-❌ Prohibited Use
-
-You may NOT:
-
-Copy, modify, or distribute any part of this project
-Use this code, assets, or concepts in your own projects
-Reupload, republish, or claim this project as your own work
-Use this project or any part of it for commercial purposes
-⚖️ No License Granted
-
-No rights or licenses are granted to use, reproduce, or distribute this project beyond what is explicitly stated above.
-
-Unauthorized use of this project may result in takedown requests or further legal action.
-
-📩 Permissions
-
-For permission requests, please contact FlowzyGames.
+Crash Club is released under the MIT License. See [LICENSE](./LICENSE) for the full text.

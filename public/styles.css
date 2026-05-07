@@ -32,6 +32,28 @@ body.is-menu-open canvas {
   filter: saturate(0.82) brightness(0.72);
 }
 
+body.quality-performance canvas {
+  filter: none;
+}
+
+body.quality-performance .panel,
+body.quality-performance .card,
+body.quality-performance .quick-actions,
+body.quality-performance .release-card,
+body.quality-performance .settings-popover,
+body.quality-performance .toast,
+body.quality-performance .round-banner,
+body.quality-performance .touch-controls button,
+body.quality-performance .mode-card {
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+body.quality-performance .toast,
+body.quality-performance .round-banner {
+  animation: none !important;
+}
+
 canvas {
   display: block;
 }
@@ -94,7 +116,8 @@ canvas {
 .panel,
 .card,
 .quick-actions,
-.release-card {
+.release-card,
+.settings-popover {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   backdrop-filter: blur(10px);
@@ -339,6 +362,7 @@ canvas {
 
 .quick-actions button,
 .release-actions button,
+.settings-popover button,
 .touch-controls button {
   border: none;
   border-radius: 12px;
@@ -464,6 +488,100 @@ canvas {
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.85rem;
+}
+
+.settings-card,
+.settings-popover {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-card {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-card label,
+.settings-popover label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.settings-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.settings-card select,
+.settings-popover select {
+  width: 100%;
+  height: 42px;
+  color: var(--text);
+  background: rgba(8, 15, 24, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 0 10px;
+  font-weight: 900;
+}
+
+.settings-card input[type="range"],
+.settings-popover input[type="range"] {
+  width: 100%;
+}
+
+.settings-card input[type="checkbox"],
+.settings-popover input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.settings-popover {
+  position: fixed;
+  right: 16px;
+  top: 84px;
+  z-index: 44;
+  width: min(330px, calc(100vw - 32px));
+  padding: 16px;
+  border-radius: 22px;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 84% 0%, rgba(89, 240, 194, 0.16), transparent 42%),
+    linear-gradient(135deg, rgba(8, 15, 24, 0.95), rgba(15, 31, 47, 0.9));
+  border: 1px solid rgba(89, 240, 194, 0.22);
+  pointer-events: auto;
+}
+
+.settings-popover.hidden {
+  display: none;
+}
+
+.settings-popover button {
+  height: 34px;
+  padding: 0 11px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.settings-popover p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+  font-size: 0.86rem;
 }
 
 .touch-controls {
@@ -691,6 +809,13 @@ code {
 
   .release-actions {
     grid-template-columns: 1fr;
+  }
+
+  .settings-popover {
+    left: 8px;
+    right: 8px;
+    top: 76px;
+    width: auto;
   }
 
   .quick-actions {

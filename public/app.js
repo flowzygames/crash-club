@@ -1,14 +1,14 @@
 import("three")
   .then((THREE) => {
-    const VERSION = "1.3.0";
+    const VERSION = "1.4.0";
     const WORLD_SIZE = 180;
-    const STATE_SEND_MS = 50;
+    const STATE_SEND_MS = 90;
     const HIT_COOLDOWN_MS = 520;
     const STYLE_COOLDOWN_MS = 1350;
     const MAX_BOOST = 100;
     const CENTER_MIN = 8;
     const CENTER_MAX = 19;
-    const MAX_EFFECTS = 110;
+    const MAX_EFFECTS = 72;
     const GULAG_ENEMY_MAX_HEALTH = 180;
     const GULAG_BODY_DAMAGE = 20;
     const GULAG_HEADSHOT_DAMAGE = 42;
@@ -51,9 +51,20 @@ import("three")
       bannerKicker: document.getElementById("round-kicker"),
       bannerMessage: document.getElementById("round-message"),
       damage: document.getElementById("damage-vignette"),
-      speedLines: document.getElementById("speed-lines")
+      speedLines: document.getElementById("speed-lines"),
+      settings: document.getElementById("settings-button"),
+      settingsPanel: document.getElementById("settings-popover"),
+      settingsClose: document.getElementById("settings-close-button"),
+      quality: document.getElementById("quality-select"),
+      qualityMenu: document.getElementById("quality-select-popover"),
+      sound: document.getElementById("sound-toggle"),
+      soundMenu: document.getElementById("sound-toggle-popover"),
+      volume: document.getElementById("volume-slider"),
+      volumeMenu: document.getElementById("volume-slider-popover")
     };
     const modeOverlay = createModeOverlay();
+    const settings = loadSettings();
+    applyQualityClasses();
 
     const url = new URL(location.href);
     const roomCode = sanitizeRoom(url.searchParams.get("room") || "main");
@@ -65,6 +76,7 @@ import("three")
     const scratch2 = new THREE.Vector2();
     const scratch3 = new THREE.Vector3();
     const radarCtx = els.radar?.getContext("2d");
+    let sunLight = null;
 
     const state = {
       id: null,
@@ -76,6 +88,12 @@ import("three")
       lastHitAt: 0,
       lastStyleAt: 0,
       lastWallHitAt: 0,
+      lastHudAt: 0,
+      lastLeaderboardDrawAt: 0,
+      lastRadarDrawAt: 0,
+      lastPickupCheckAt: 0,
+      lastPickupVisualAt: 0,
+      lastNoticeAt: 0,
       mouseLook: false,
       room: {
         code: roomCode,
@@ -163,10 +181,10 @@ import("three")
     const arenaFog = scene.fog;
 
     const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 700);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: settings.quality === "showcase", powerPreference: "high-performance" });
     renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(getRenderPixelRatio());
+    renderer.shadowMap.enabled = settings.quality === "showcase";
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
@@ -187,13 +205,16 @@ import("three")
     camera.add(weapon);
     setupLights();
     setupControls();
+    setupSettingsControls();
+    applyQualitySettings();
     showBanner("Garage Open", "Pick a name and start driving.");
 
     const clock = new THREE.Clock();
     requestAnimationFrame(loop);
 
     function loop() {
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const frameNow = performance.now();
+      const dt = Math.min(clock.getDelta(), settings.quality === "performance" ? 0.042 : 0.05);
       if (state.podium.active) {
         updatePodium(dt);
       } else if (state.mode === "gulag") {
@@ -207,8 +228,12 @@ import("three")
       if (!state.podium.active) updatePickups(dt);
       updateEffects(dt);
       if (state.mode === "arena" && !state.podium.active) updateCamera(dt);
-      updateHud();
+      if (frameNow - state.lastHudAt >= getHudInterval()) {
+        state.lastHudAt = frameNow;
+        updateHud();
+      }
       sendLocalState();
+      updateEngineAudio();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
     }
@@ -219,13 +244,14 @@ import("three")
 
       const sun = new THREE.DirectionalLight("#fff2d0", 4.4);
       sun.position.set(-55, 82, 35);
-      sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048);
+      sun.castShadow = settings.quality === "showcase";
+      sun.shadow.mapSize.set(settings.quality === "showcase" ? 1024 : 256, settings.quality === "showcase" ? 1024 : 256);
       sun.shadow.camera.left = -150;
       sun.shadow.camera.right = 150;
       sun.shadow.camera.top = 150;
       sun.shadow.camera.bottom = -150;
       scene.add(sun);
+      sunLight = sun;
 
       const arenaGlow = new THREE.PointLight("#59f0c2", 2.4, 120);
       arenaGlow.position.set(0, 16, 0);
@@ -1209,6 +1235,102 @@ import("three")
       }
     }
 
+    function setupSettingsControls() {
+      syncSettingsControls();
+      els.settings?.addEventListener("click", () => toggleSettingsPanel());
+      els.settingsClose?.addEventListener("click", () => toggleSettingsPanel(false));
+      els.quality?.addEventListener("change", (event) => updateSetting("quality", event.target.value));
+      els.qualityMenu?.addEventListener("change", (event) => updateSetting("quality", event.target.value));
+      els.sound?.addEventListener("change", (event) => updateSetting("sound", event.target.checked));
+      els.soundMenu?.addEventListener("change", (event) => updateSetting("sound", event.target.checked));
+      els.volume?.addEventListener("input", (event) => updateSetting("volume", Number(event.target.value) / 100));
+      els.volumeMenu?.addEventListener("input", (event) => updateSetting("volume", Number(event.target.value) / 100));
+    }
+
+    function toggleSettingsPanel(forceOpen) {
+      const open = forceOpen ?? els.settingsPanel?.classList.contains("hidden");
+      els.settingsPanel?.classList.toggle("hidden", !open);
+    }
+
+    function updateSetting(key, value) {
+      if (key === "quality") {
+        settings.quality = ["performance", "balanced", "showcase"].includes(value) ? value : "performance";
+        applyQualitySettings();
+      } else if (key === "sound") {
+        settings.sound = Boolean(value);
+      } else if (key === "volume") {
+        settings.volume = THREE.MathUtils.clamp(Number(value) || 0, 0, 1);
+      }
+      saveSettings();
+      syncSettingsControls();
+    }
+
+    function syncSettingsControls() {
+      for (const select of [els.quality, els.qualityMenu]) {
+        if (select) select.value = settings.quality;
+      }
+      for (const toggle of [els.sound, els.soundMenu]) {
+        if (toggle) toggle.checked = settings.sound;
+      }
+      for (const slider of [els.volume, els.volumeMenu]) {
+        if (slider) slider.value = String(Math.round(settings.volume * 100));
+      }
+    }
+
+    function loadSettings() {
+      const defaults = { quality: "performance", sound: true, volume: 0.55 };
+      try {
+        const saved = JSON.parse(localStorage.getItem("crash-club-settings") || "{}");
+        return {
+          quality: ["performance", "balanced", "showcase"].includes(saved.quality) ? saved.quality : defaults.quality,
+          sound: typeof saved.sound === "boolean" ? saved.sound : defaults.sound,
+          volume: Number.isFinite(Number(saved.volume)) ? THREE.MathUtils.clamp(Number(saved.volume), 0, 1) : defaults.volume
+        };
+      } catch {
+        return defaults;
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem("crash-club-settings", JSON.stringify(settings));
+    }
+
+    function applyQualityClasses() {
+      document.body.classList.toggle("quality-performance", settings.quality === "performance");
+      document.body.classList.toggle("quality-balanced", settings.quality === "balanced");
+      document.body.classList.toggle("quality-showcase", settings.quality === "showcase");
+    }
+
+    function applyQualitySettings() {
+      applyQualityClasses();
+      renderer.setPixelRatio(getRenderPixelRatio());
+      renderer.shadowMap.enabled = settings.quality === "showcase";
+      if (sunLight) {
+        sunLight.castShadow = settings.quality === "showcase";
+        sunLight.shadow.mapSize.set(settings.quality === "showcase" ? 1024 : 256, settings.quality === "showcase" ? 1024 : 256);
+      }
+      localCar.label.visible = settings.quality !== "performance";
+      if (settings.quality === "performance") {
+        localCar.underglow.intensity = Math.min(localCar.underglow.intensity, 0.7);
+      }
+    }
+
+    function getRenderPixelRatio() {
+      if (settings.quality === "showcase") return Math.min(devicePixelRatio || 1, 1.25);
+      if (settings.quality === "balanced") return Math.min(devicePixelRatio || 1, 1);
+      return 0.72;
+    }
+
+    function getHudInterval() {
+      return settings.quality === "performance" ? 150 : 90;
+    }
+
+    function getMaxEffects() {
+      if (settings.quality === "showcase") return MAX_EFFECTS;
+      if (settings.quality === "balanced") return 48;
+      return 28;
+    }
+
     function handlePointerLook(event) {
       if (state.mode !== "gulag" && state.mode !== "spectator") return;
       if (document.pointerLockElement !== document.body && event.buttons !== 1) return;
@@ -1340,6 +1462,7 @@ import("three")
         const meta = msg.pickup ? pickupMeta[msg.pickup.type] : null;
         if (meta) {
           lightweightNotice(`Picked up ${meta.label}.`);
+          playTone(msg.pickup.type === "repair" ? 640 : 520, 0.05, "triangle", 0.035);
         }
         return;
       }
@@ -1443,14 +1566,14 @@ import("three")
       car.velocity.copy(forward.multiplyScalar(forwardSpeed)).add(right.multiplyScalar(lateralSpeed));
 
       let engine = 0;
-      if (throttle > 0) engine = 48 + speedRatio * 12;
-      if (throttle < 0) engine = forwardSpeed > 5 ? -72 : -34;
+      if (throttle > 0) engine = 42 + speedRatio * 10;
+      if (throttle < 0) engine = forwardSpeed > 5 ? -66 : -30;
       if (boosting) {
-        engine += 72;
-        car.boost = Math.max(0, car.boost - 34 * dt);
+        engine += 58;
+        car.boost = Math.max(0, car.boost - 30 * dt);
         spawnBoostTrail();
       } else {
-        car.boost = Math.min(MAX_BOOST, car.boost + (absForward < 9 ? 13 : 7) * dt);
+        car.boost = Math.min(MAX_BOOST, car.boost + (absForward < 9 ? 15 : 8) * dt);
       }
 
       const accelForward = new THREE.Vector2(Math.sin(car.angle), Math.cos(car.angle));
@@ -1459,7 +1582,7 @@ import("three")
       const drag = 1 - THREE.MathUtils.clamp((0.34 + car.velocity.length() * 0.018) * dt, 0, 0.12);
       car.velocity.multiplyScalar(drag);
 
-      const maxSpeed = boosting ? 58 : 43;
+      const maxSpeed = boosting ? 50 : 38;
       if (car.velocity.length() > maxSpeed) car.velocity.setLength(maxSpeed);
 
       const direction = forwardSpeed < -2 ? -1 : 1;
@@ -1490,9 +1613,14 @@ import("three")
       car.speed = car.velocity.length();
       localCar.group.position.set(car.x, car.y, car.z);
       localCar.group.rotation.set(0, car.angle, -lateralSpeed * 0.018);
-      for (const wheel of localCar.wheels) wheel.rotation.x += car.speed * dt * 2.8;
-      localCar.label.quaternion.copy(camera.quaternion);
-      localCar.underglow.intensity = boosting ? 2.2 : 1.05;
+      if (settings.quality !== "performance") {
+        for (const wheel of localCar.wheels) wheel.rotation.x += car.speed * dt * 2.8;
+        localCar.label.visible = true;
+        localCar.label.quaternion.copy(camera.quaternion);
+      } else {
+        localCar.label.visible = false;
+      }
+      localCar.underglow.intensity = boosting ? (settings.quality === "performance" ? 0.9 : 2.2) : (settings.quality === "performance" ? 0.35 : 1.05);
       if (els.speedLines) els.speedLines.style.setProperty("--speed-line-opacity", "0");
       car.inZone = isInCenterRing(car.x, car.z);
     }
@@ -1572,6 +1700,10 @@ import("three")
 
     function handlePickupCollections() {
       if (!state.joined || state.room.phase !== "live") return;
+      const now = performance.now();
+      const checkInterval = settings.quality === "performance" ? 80 : 35;
+      if (now - state.lastPickupCheckAt < checkInterval) return;
+      state.lastPickupCheckAt = now;
       const car = state.car;
       for (const pickup of pickups.values()) {
         if (!pickup.active) continue;
@@ -1585,6 +1717,7 @@ import("three")
     }
 
     function updateRemoteCars(dt) {
+      const now = performance.now();
       for (const [id, entry] of players) {
         if (id === state.id) continue;
         if (entry.mode !== "arena") {
@@ -1596,18 +1729,27 @@ import("three")
         mesh.target.set(entry.x, entry.y ?? 0.08, entry.z);
         mesh.group.position.lerp(mesh.target, 1 - Math.pow(0.002, dt));
         mesh.group.rotation.y += angleDelta(mesh.group.rotation.y, entry.angle || 0) * (1 - Math.pow(0.001, dt));
-        mesh.group.rotation.z = Math.sin(performance.now() * 0.008 + stableSeed(id)) * 0.025;
-        for (const wheel of mesh.wheels) wheel.rotation.x += Math.abs(entry.speed || 0) * dt * 2.4;
-        mesh.label.quaternion.copy(camera.quaternion);
-        mesh.underglow.intensity = entry.shieldUntil > Date.now() ? 1.5 : 0.6;
+        mesh.group.rotation.z = settings.quality === "performance" ? 0 : Math.sin(now * 0.008 + stableSeed(id)) * 0.025;
+        if (settings.quality === "performance") {
+          mesh.label.visible = false;
+        } else {
+          mesh.label.visible = true;
+          for (const wheel of mesh.wheels) wheel.rotation.x += Math.abs(entry.speed || 0) * dt * 2.4;
+          mesh.label.quaternion.copy(camera.quaternion);
+        }
+        mesh.underglow.intensity = entry.shieldUntil > Date.now() ? (settings.quality === "performance" ? 0.65 : 1.5) : (settings.quality === "performance" ? 0.22 : 0.6);
       }
     }
 
     function updatePickups(dt) {
-      const now = performance.now() * 0.001;
+      const frameNow = performance.now();
+      const animate = settings.quality !== "performance" || frameNow - state.lastPickupVisualAt >= 90;
+      if (animate) state.lastPickupVisualAt = frameNow;
+      const now = frameNow * 0.001;
       for (const pickup of pickups.values()) {
         pickup.mesh.visible = pickup.active;
         if (!pickup.active) continue;
+        if (!animate) continue;
         pickup.mesh.rotation.y += dt * 2.8;
         pickup.mesh.position.y = 1.4 + Math.sin(now * 3 + pickup.x) * 0.28;
       }
@@ -1886,7 +2028,6 @@ import("three")
       state.spectator.velocity.set(0, 0, 0);
       showModeOverlay("SPECTATOR", "Free cam enabled.", `${reason}. WASD + mouse to fly around the match.`);
       setStatus("Spectating the arena in free cam.", "offline");
-      showBanner("Spectator", "You lost the Gulag. Fly around and watch the chaos.");
       document.body.requestPointerLock?.();
     }
 
@@ -2150,6 +2291,7 @@ import("three")
     }
 
     function updateHud() {
+      const now = performance.now();
       const car = state.car;
       const all = [...players.values()].sort((a, b) => (b.score || 0) - (a.score || 0));
       if (els.count) els.count.textContent = String(players.size || 1);
@@ -2179,8 +2321,14 @@ import("three")
             : "Chase the gold ring, grab glowing pickups, drift for style, and wreck rivals.";
         }
       }
-      drawLeaderboard(all);
-      drawRadar(all);
+      if (now - state.lastLeaderboardDrawAt >= (settings.quality === "performance" ? 900 : 450)) {
+        state.lastLeaderboardDrawAt = now;
+        drawLeaderboard(all);
+      }
+      if (now - state.lastRadarDrawAt >= (settings.quality === "performance" ? 550 : 220)) {
+        state.lastRadarDrawAt = now;
+        drawRadar(all);
+      }
     }
 
     function sendLocalState() {
@@ -2313,8 +2461,10 @@ import("three")
     function createPickupMesh(pickup) {
       const meta = pickupMeta[pickup.type] || pickupMeta.boost;
       const group = new THREE.Group();
+      const detail = settings.quality === "performance" ? 0 : 1;
+      const haloSegments = settings.quality === "performance" ? 20 : 48;
       const core = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(1.45, 1),
+        new THREE.IcosahedronGeometry(1.45, detail),
         new THREE.MeshBasicMaterial({
           color: meta.color,
           transparent: true,
@@ -2322,12 +2472,12 @@ import("three")
         })
       );
       const halo = new THREE.Mesh(
-        new THREE.TorusGeometry(2.25, 0.12, 10, 48),
+        new THREE.TorusGeometry(2.25, 0.12, settings.quality === "performance" ? 6 : 10, haloSegments),
         new THREE.MeshBasicMaterial({ color: meta.color, transparent: true, opacity: 0.75 })
       );
       halo.rotation.x = Math.PI / 2;
       const outerHalo = new THREE.Mesh(
-        new THREE.TorusGeometry(3.1, 0.08, 8, 42),
+        new THREE.TorusGeometry(3.1, 0.08, settings.quality === "performance" ? 5 : 8, settings.quality === "performance" ? 18 : 42),
         new THREE.MeshBasicMaterial({ color: meta.color, transparent: true, opacity: 0.35 })
       );
       outerHalo.rotation.x = Math.PI / 2;
@@ -2428,6 +2578,9 @@ import("three")
 
     function lightweightNotice(text) {
       if (!els.objective || !text) return;
+      const now = performance.now();
+      if (settings.quality === "performance" && now - state.lastNoticeAt < 280) return;
+      state.lastNoticeAt = now;
       els.objective.textContent = text;
       clearTimeout(lightweightNoticeTimer);
       lightweightNoticeTimer = setTimeout(() => {
@@ -2457,9 +2610,10 @@ import("three")
     function spawnBoostTrail() {
       const car = state.car;
       const now = performance.now();
-      if (now - car.lastBoostTrailAt < 42) return;
+      if (now - car.lastBoostTrailAt < (settings.quality === "performance" ? 145 : 42)) return;
       car.lastBoostTrailAt = now;
-      for (const side of [-1, 1]) {
+      const sides = settings.quality === "performance" ? [0] : [-1, 1];
+      for (const side of sides) {
         const x = car.x - Math.sin(car.angle) * 3.5 + Math.cos(car.angle) * side * 1.25;
         const z = car.z - Math.cos(car.angle) * 3.5 - Math.sin(car.angle) * side * 1.25;
         spawnParticle(x, car.y + 0.55, z, "#59f0c2", 0.32, 3.4, new THREE.Vector3(0, 1.1, 0));
@@ -2469,7 +2623,7 @@ import("three")
     function spawnSkidSmoke(amount) {
       const car = state.car;
       const now = performance.now();
-      if (now - car.lastSkidSmokeAt < 55) return;
+      if (now - car.lastSkidSmokeAt < (settings.quality === "performance" ? 180 : 55)) return;
       car.lastSkidSmokeAt = now;
       const x = car.x - Math.sin(car.angle) * 3.2;
       const z = car.z - Math.cos(car.angle) * 3.2;
@@ -2486,14 +2640,17 @@ import("three")
     }
 
     function spawnImpact(x, y, z, color, count = 10) {
-      for (let i = 0; i < count; i += 1) {
+      const impactCount = settings.quality === "performance" ? Math.min(count, 4) : settings.quality === "balanced" ? Math.min(count, 8) : count;
+      for (let i = 0; i < impactCount; i += 1) {
         const velocity = new THREE.Vector3((Math.random() - 0.5) * 13, Math.random() * 7 + 1, (Math.random() - 0.5) * 13);
         spawnParticle(x, y, z, color, 0.46, 2.6, velocity, 0.68);
       }
     }
 
     function spawnParticle(x, y, z, color, life, grow, velocity, opacity = 0.5) {
-      while (effects.length >= MAX_EFFECTS) {
+      const maxEffects = getMaxEffects();
+      if (settings.quality === "performance" && effects.length >= maxEffects) return;
+      while (effects.length >= maxEffects) {
         const oldest = effects.shift();
         if (!oldest) break;
         scene.remove(oldest.mesh);
@@ -2594,7 +2751,7 @@ import("three")
     }
 
     function playTone(frequency, duration, type = "sine", volume = 0.04) {
-      if (!playTone.enabled) return;
+      if (!playTone.enabled || !settings.sound || settings.volume <= 0) return;
       if (!playTone.ctx) {
         const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
         if (!AudioCtx) return;
@@ -2607,7 +2764,7 @@ import("three")
         const gain = ctx.createGain();
         osc.type = type;
         osc.frequency.value = frequency;
-        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.setValueAtTime(volume * settings.volume, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
         osc.connect(gain).connect(ctx.destination);
         osc.start();
@@ -2615,6 +2772,33 @@ import("three")
       } catch {
         playTone.enabled = false;
       }
+    }
+
+    function updateEngineAudio() {
+      if (!playTone.enabled || !settings.sound || settings.volume <= 0 || state.mode !== "arena" || state.menuOpen) {
+        if (updateEngineAudio.gain && playTone.ctx) {
+          updateEngineAudio.gain.gain.setTargetAtTime(0.0001, playTone.ctx.currentTime, 0.08);
+        }
+        return;
+      }
+      warmAudio();
+      const ctx = playTone.ctx;
+      if (!ctx) return;
+      if (!updateEngineAudio.osc) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        gain.gain.value = 0.0001;
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        updateEngineAudio.osc = osc;
+        updateEngineAudio.gain = gain;
+      }
+      const speed = THREE.MathUtils.clamp(state.car.speed / 52, 0, 1);
+      const targetFreq = 48 + speed * 96 + (state.car.boosting ? 28 : 0);
+      const targetGain = (0.008 + speed * 0.022 + (state.car.boosting ? 0.008 : 0)) * settings.volume;
+      updateEngineAudio.osc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.05);
+      updateEngineAudio.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.08);
     }
 
     function warmAudio() {
@@ -2633,7 +2817,7 @@ import("three")
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+      renderer.setPixelRatio(getRenderPixelRatio());
     }
 
     function roundRect(ctx, x, y, w, h, r) {

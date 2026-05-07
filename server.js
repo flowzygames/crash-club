@@ -4,8 +4,9 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 
 const PORT = process.env.PORT || 3000;
-const GAME_VERSION = "1.3.0";
-const TICK_RATE = 20;
+const GAME_VERSION = "1.4.0";
+const TICK_RATE = Number(process.env.CRASH_CLUB_TICK_RATE || 12);
+const SNAPSHOT_RATE = Number(process.env.CRASH_CLUB_SNAPSHOT_RATE || 6);
 const SCORE_TICK_MS = 500;
 const PICKUP_RESPAWN_MS = 10000;
 const WORLD_SIZE = 180;
@@ -18,7 +19,7 @@ const SHIELD_DURATION_MS = 8000;
 const SLAM_DURATION_MS = 9000;
 const WRECK_RESPAWN_MS = 1800;
 const GULAG_DURATION_MS = 45000;
-const BOT_TARGET_PLAYERS = 5;
+const BOT_TARGET_PLAYERS = Number(process.env.CRASH_CLUB_BOT_TARGET || 3);
 const BOT_DECISION_MIN_MS = 520;
 const BOT_DECISION_MAX_MS = 1150;
 const BOT_HIT_COOLDOWN_MS = 650;
@@ -178,7 +179,8 @@ function createRoom(code) {
     pickups: createPickups(),
     round: createRoundState(),
     createdAt: Date.now(),
-    lastActiveAt: Date.now()
+    lastActiveAt: Date.now(),
+    lastSnapshotAt: 0
   };
 }
 
@@ -280,6 +282,7 @@ function createBot(room) {
     botTarget: { x: 0, z: 0 },
     botNextDecisionAt: 0,
     botNextHitAt: 0,
+    botNextPickupCheckAt: 0,
     ...createSpawnState(id, name, randomColor())
   };
 }
@@ -538,7 +541,9 @@ function applyPickup(player, pickup, room, now = Date.now()) {
     player: serializePlayer(player),
     expiresAt: pickup.type === "shield" ? player.shieldUntil : player.slamUntil
   });
-  broadcastEvent(room, `${player.name} grabbed ${meta.label}.`, pickup.type);
+  if (!player.isBot) {
+    broadcastEvent(room, `${player.name} grabbed ${meta.label}.`, pickup.type);
+  }
 }
 
 function damagePlayer(room, source, target, rawDamage, now = Date.now()) {
@@ -615,6 +620,8 @@ function updateBots(room, now, deltaSeconds) {
     return;
   }
 
+  const botDelta = deltaSeconds * 0.72;
+
   for (const bot of room.players.values()) {
     if (!bot.isBot) {
       continue;
@@ -633,11 +640,11 @@ function updateBots(room, now, deltaSeconds) {
     const dz = bot.botTarget.z - bot.z;
     const targetDistance = Math.hypot(dx, dz);
     const desiredAngle = Math.atan2(dx, dz);
-    const turn = clamp(angleDelta(bot.angle, desiredAngle), -2.6 * deltaSeconds, 2.6 * deltaSeconds);
+    const turn = clamp(angleDelta(bot.angle, desiredAngle), -2.2 * botDelta, 2.2 * botDelta);
     bot.angle += turn;
-    bot.speed = clamp(bot.speed + (targetDistance > 6 ? 36 : -44) * deltaSeconds, 11, 39);
-    bot.x += Math.sin(bot.angle) * bot.speed * deltaSeconds;
-    bot.z += Math.cos(bot.angle) * bot.speed * deltaSeconds;
+    bot.speed = clamp(bot.speed + (targetDistance > 6 ? 28 : -34) * botDelta, 8, 31);
+    bot.x += Math.sin(bot.angle) * bot.speed * botDelta;
+    bot.z += Math.cos(bot.angle) * bot.speed * botDelta;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
     bot.y = 0.08;
@@ -647,10 +654,13 @@ function updateBots(room, now, deltaSeconds) {
       bot.botNextDecisionAt = 0;
     }
 
-    for (const pickup of room.pickups) {
-      if (pickup.active && Math.hypot(bot.x - pickup.x, bot.z - pickup.z) < 4.6) {
-        collectPickupFor(bot, pickup, room, now);
-        break;
+    if (now >= (bot.botNextPickupCheckAt || 0)) {
+      bot.botNextPickupCheckAt = now + 520;
+      for (const pickup of room.pickups) {
+        if (pickup.active && Math.hypot(bot.x - pickup.x, bot.z - pickup.z) < 4.6) {
+          collectPickupFor(bot, pickup, room, now);
+          break;
+        }
       }
     }
 
@@ -665,7 +675,7 @@ function updateBots(room, now, deltaSeconds) {
 
       const distance = Math.hypot(bot.x - target.x, bot.z - target.z);
       if (distance < 5.1 && bot.speed > 13) {
-        const damage = Math.round(clamp(bot.speed / 31, 0.35, 1.35) * 24);
+        const damage = Math.round(clamp(bot.speed / 31, 0.32, 1.05) * 22);
         damagePlayer(room, bot, target, damage, now);
         broadcastRoom(room, {
           type: "impact",
@@ -732,6 +742,11 @@ const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   let player = null;
+  ws.isAlive = true;
+
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
 
   send(ws, {
     type: "hello",
@@ -949,6 +964,36 @@ wss.on("connection", (ws) => {
   });
 });
 
+const heartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, 30000);
+
+function shutdown(signal) {
+  console.log(`Crash Club received ${signal}. Closing server...`);
+  clearInterval(heartbeat);
+  for (const ws of wss.clients) {
+    try {
+      ws.close(1001, "Server restarting");
+    } catch {
+      ws.terminate();
+    }
+  }
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 setInterval(() => {
   cleanupRooms();
   const now = Date.now();
@@ -995,7 +1040,10 @@ setInterval(() => {
     }
 
     maybeFinishRound(room, now);
-    broadcastSnapshot(room, now);
+    if (now - (room.lastSnapshotAt || 0) >= 1000 / SNAPSHOT_RATE) {
+      room.lastSnapshotAt = now;
+      broadcastSnapshot(room, now);
+    }
   }
 }, 1000 / TICK_RATE);
 
@@ -1015,7 +1063,10 @@ setInterval(() => {
 
     if (scored) {
       maybeFinishRound(room, now);
-      broadcastSnapshot(room, now);
+      if (now - (room.lastSnapshotAt || 0) >= 1000 / SNAPSHOT_RATE) {
+        room.lastSnapshotAt = now;
+        broadcastSnapshot(room, now);
+      }
     }
   }
 }, SCORE_TICK_MS);
