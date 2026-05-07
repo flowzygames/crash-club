@@ -46,6 +46,27 @@ https://YOUR-VERCEL-SITE.vercel.app?room=crew&server=https://YOUR-BACKEND-HOST
 
 That URL parameter is optional. In production, the Vercel environment variable is cleaner.
 
+## Vercel Troubleshooting
+
+If the site loads but Start Driving does not enter the game, the frontend probably cannot reach the multiplayer server. Vercel may show no server logs because the page itself did not crash.
+
+Open this URL:
+
+```text
+https://YOUR-VERCEL-SITE.vercel.app/config.js
+```
+
+Expected:
+
+```js
+window.CRASH_CLUB_SERVER_URL = "https://YOUR-BACKEND-HOST";
+window.CRASH_CLUB_STATIC_FRONTEND = true;
+```
+
+If `CRASH_CLUB_SERVER_URL` is blank, add the environment variable in Vercel, select both Production and Preview, then redeploy from the latest GitHub commit.
+
+If the URL is correct but the first click still disconnects, wait through the in-game retries. Free backend hosts can sleep, so Crash Club pings `/health` and retries the WebSocket while the server wakes up.
+
 ## Recommended Host: Render
 
 This repo includes `render.yaml`, so Render can create a web service from the GitHub repository.

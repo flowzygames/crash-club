@@ -1,1 +1,2 @@
 window.CRASH_CLUB_SERVER_URL = "";
+window.CRASH_CLUB_STATIC_FRONTEND = false;

@@ -11,7 +11,10 @@ fs.cpSync(publicDir, outDir, { recursive: true });
 
 fs.writeFileSync(
   path.join(outDir, "config.js"),
-  `window.CRASH_CLUB_SERVER_URL = ${JSON.stringify(serverUrl)};\n`
+  [
+    `window.CRASH_CLUB_SERVER_URL = ${JSON.stringify(serverUrl)};`,
+    "window.CRASH_CLUB_STATIC_FRONTEND = true;"
+  ].join("\n") + "\n"
 );
 
 if (serverUrl) {

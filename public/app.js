@@ -98,6 +98,9 @@ import("three")
       lastPickupCheckAt: 0,
       lastPickupVisualAt: 0,
       lastNoticeAt: 0,
+      connectWanted: false,
+      connectionAttempt: 0,
+      reconnectTimer: null,
       mouseLook: false,
       room: {
         code: roomCode,
@@ -1419,8 +1422,20 @@ import("three")
         return;
       }
       saveName({ silent: true });
+      if (isStaticFrontendMissingBackend()) {
+        showMissingBackendMessage();
+        return;
+      }
+      state.connectWanted = true;
+      if (state.socket?.readyState === WebSocket.CONNECTING) {
+        setStatus("Still connecting to the multiplayer server...", "offline");
+        toast("Still connecting. If the backend is sleeping, give it a few seconds.", "info");
+        return;
+      }
       setStatus("Connecting to Crash Club...", "offline");
+      wakeBackend();
       if (!state.socket || state.socket.readyState > WebSocket.OPEN) {
+        state.connectionAttempt = 0;
         connectSocket();
       } else if (state.socket.readyState === WebSocket.OPEN && !state.joined) {
         joinRoom();
@@ -1437,16 +1452,42 @@ import("three")
       if (!options.silent) toast(`Name saved: ${state.car.name}`, "info");
     }
 
+    function getConfiguredServerEndpoint() {
+      return String(serverOverride || globalThis.CRASH_CLUB_SERVER_URL || "").trim();
+    }
+
+    function isStaticFrontendMissingBackend() {
+      return Boolean(globalThis.CRASH_CLUB_STATIC_FRONTEND) && !getConfiguredServerEndpoint();
+    }
+
+    function showMissingBackendMessage() {
+      const message = "Vercel site is live, but CRASH_CLUB_SERVER_URL is missing. Add your backend URL in Vercel env vars, then redeploy.";
+      setStatus(message, "offline");
+      toast("Missing backend URL. Add CRASH_CLUB_SERVER_URL in Vercel.", "danger");
+      if (els.objective) {
+        els.objective.textContent = "Cloud setup needed: Vercel hosts the game page, but multiplayer needs a live Node/WebSocket backend URL.";
+      }
+    }
+
+    function normalizeServerUrl(rawEndpoint, targetProtocol) {
+      const withProtocol = /^[a-z]+:\/\//i.test(rawEndpoint) ? rawEndpoint : `https://${rawEndpoint}`;
+      const endpoint = new URL(withProtocol);
+      if (targetProtocol === "ws") {
+        if (endpoint.protocol === "https:") endpoint.protocol = "wss:";
+        if (endpoint.protocol === "http:") endpoint.protocol = "ws:";
+      } else {
+        if (endpoint.protocol === "wss:") endpoint.protocol = "https:";
+        if (endpoint.protocol === "ws:") endpoint.protocol = "http:";
+      }
+      return endpoint.toString().replace(/\/$/, "");
+    }
+
     function getServerWebSocketUrl() {
       const configured = String(globalThis.CRASH_CLUB_SERVER_URL || "").trim();
       const rawEndpoint = String(serverOverride || configured).trim();
       if (rawEndpoint) {
         try {
-          const withProtocol = /^[a-z]+:\/\//i.test(rawEndpoint) ? rawEndpoint : `https://${rawEndpoint}`;
-          const endpoint = new URL(withProtocol);
-          if (endpoint.protocol === "https:") endpoint.protocol = "wss:";
-          if (endpoint.protocol === "http:") endpoint.protocol = "ws:";
-          return endpoint.toString().replace(/\/$/, "");
+          return normalizeServerUrl(rawEndpoint, "ws");
         } catch (error) {
           console.warn("Invalid Crash Club server URL", rawEndpoint, error);
         }
@@ -1455,10 +1496,32 @@ import("three")
       return `${protocol}//${location.host}`;
     }
 
+    function getServerHealthUrl() {
+      const rawEndpoint = getConfiguredServerEndpoint();
+      try {
+        const base = rawEndpoint ? normalizeServerUrl(rawEndpoint, "http") : location.origin;
+        return `${base}/health`;
+      } catch (error) {
+        console.warn("Invalid Crash Club health URL", rawEndpoint, error);
+        return null;
+      }
+    }
+
+    function wakeBackend() {
+      const healthUrl = getServerHealthUrl();
+      if (!healthUrl || isStaticFrontendMissingBackend()) return;
+      fetch(healthUrl, { cache: "no-store", mode: "no-cors" }).catch(() => {});
+    }
+
     function connectSocket() {
+      clearTimeout(state.reconnectTimer);
       const socket = new WebSocket(getServerWebSocketUrl());
       state.socket = socket;
-      socket.addEventListener("open", joinRoom);
+      socket.addEventListener("open", () => {
+        state.connectionAttempt = 0;
+        setStatus("Connected. Joining room...", "offline");
+        joinRoom();
+      });
       socket.addEventListener("message", (event) => {
         try {
           handleMessage(JSON.parse(event.data));
@@ -1468,9 +1531,33 @@ import("three")
       });
       socket.addEventListener("close", () => {
         state.joined = false;
-        setStatus("Disconnected. Start again to reconnect.", "offline");
+        if (socket !== state.socket) return;
+        scheduleReconnect();
       });
-      socket.addEventListener("error", () => setStatus("Connection error. Is the server running?", "offline"));
+      socket.addEventListener("error", () => {
+        if (socket !== state.socket) return;
+        setStatus("Connection interrupted. Retrying if the backend is waking up...", "offline");
+      });
+    }
+
+    function scheduleReconnect() {
+      if (!state.connectWanted || isStaticFrontendMissingBackend()) {
+        setStatus("Disconnected. Start again to reconnect.", "offline");
+        return;
+      }
+      state.connectionAttempt += 1;
+      const maxAttempts = 8;
+      if (state.connectionAttempt > maxAttempts) {
+        setStatus("Could not reach the multiplayer backend. Check CRASH_CLUB_SERVER_URL and make sure the backend is awake.", "offline");
+        toast("Backend unreachable. Check the Vercel env var and backend URL.", "danger");
+        return;
+      }
+      const delay = Math.min(9000, 700 + state.connectionAttempt * state.connectionAttempt * 450);
+      setStatus(`Multiplayer backend is not responding. Retrying in ${Math.ceil(delay / 1000)}s...`, "offline");
+      state.reconnectTimer = setTimeout(() => {
+        wakeBackend();
+        connectSocket();
+      }, delay);
     }
 
     function joinRoom() {

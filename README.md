@@ -211,6 +211,14 @@ https://YOUR-VERCEL-SITE.vercel.app?room=crew
 
 Important: the current backend is stateful and WebSocket-based, so the whole game should not be shoved into Vercel Functions. Keep `server.js` on a proper live Node host unless the networking layer gets rewritten later.
 
+If the Vercel page loads but Start Driving only says disconnected, check:
+
+```text
+https://YOUR-VERCEL-SITE.vercel.app/config.js
+```
+
+That file should include your `CRASH_CLUB_SERVER_URL`. If it is blank, add the environment variable in Vercel for Production and Preview, then redeploy. If the backend is on a free host, the first connection can take a few retries while the server wakes up.
+
 ## Performance Settings
 
 <p align="center">
