@@ -70,6 +70,7 @@ import("three")
     applyQualityClasses();
 
     const url = new URL(location.href);
+    const serverOverride = url.searchParams.get("server");
     let roomCode = sanitizeRoom(url.searchParams.get("room") || localStorage.getItem("crash-club-room") || "main");
     const input = new Set();
     const players = new Map();
@@ -1436,9 +1437,26 @@ import("three")
       if (!options.silent) toast(`Name saved: ${state.car.name}`, "info");
     }
 
-    function connectSocket() {
+    function getServerWebSocketUrl() {
+      const configured = String(globalThis.CRASH_CLUB_SERVER_URL || "").trim();
+      const rawEndpoint = String(serverOverride || configured).trim();
+      if (rawEndpoint) {
+        try {
+          const withProtocol = /^[a-z]+:\/\//i.test(rawEndpoint) ? rawEndpoint : `https://${rawEndpoint}`;
+          const endpoint = new URL(withProtocol);
+          if (endpoint.protocol === "https:") endpoint.protocol = "wss:";
+          if (endpoint.protocol === "http:") endpoint.protocol = "ws:";
+          return endpoint.toString().replace(/\/$/, "");
+        } catch (error) {
+          console.warn("Invalid Crash Club server URL", rawEndpoint, error);
+        }
+      }
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-      const socket = new WebSocket(`${protocol}//${location.host}`);
+      return `${protocol}//${location.host}`;
+    }
+
+    function connectSocket() {
+      const socket = new WebSocket(getServerWebSocketUrl());
       state.socket = socket;
       socket.addEventListener("open", joinRoom);
       socket.addEventListener("message", (event) => {

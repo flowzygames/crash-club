@@ -1,0 +1,1 @@
+window.CRASH_CLUB_SERVER_URL = "";

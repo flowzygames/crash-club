@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A multiplayer 3D browser driving arena built for quick Wi-Fi chaos.</strong>
+  <strong>A multiplayer 3D browser driving arena built for quick browser chaos.</strong>
 </p>
 
 <p align="center">
@@ -177,11 +177,21 @@ If the browser acts weird after an update, press `Ctrl + F5` once to force fresh
 
 ## Cloud Deploy
 
-Crash Club is ready for a Render web service. The repo includes [render.yaml](./render.yaml), which tells Render to install with `npm ci`, start with `npm start`, and run the same Node/WebSocket server that powers local multiplayer.
+Crash Club is ready for a Vercel frontend plus a live Node/WebSocket backend. Vercel serves the polished browser game from `dist/`, while the multiplayer server can run on Render or another host that supports long-lived WebSocket upgrades.
 
 Full steps are in [DEPLOY.md](./DEPLOY.md).
 
-Vercel note: the current live multiplayer backend uses a long-running WebSocket server. Vercel can host the static frontend, but Vercel Functions do not act as a WebSocket server, so the multiplayer backend still needs a Node web service unless the networking layer is rewritten.
+Vercel project settings:
+
+```text
+Framework preset: Other
+Install command: npm ci
+Build command: npm run build:vercel
+Output directory: dist
+Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
+```
+
+Backend settings for Render:
 
 ```text
 Service type: Web Service
@@ -191,11 +201,13 @@ Start command: npm start
 Health check: /health
 ```
 
-After deploy, use the public Render URL as the game link. Room codes still work the same way:
+After both deploys are connected, use the public Vercel URL as the game link. Room codes still work the same way:
 
 ```text
-https://YOUR-SERVICE.onrender.com?room=crew
+https://YOUR-VERCEL-SITE.vercel.app?room=crew
 ```
+
+Important: the current backend is stateful and WebSocket-based, so the whole game should not be shoved into Vercel Functions. Keep `server.js` on a proper live Node host unless the networking layer gets rewritten later.
 
 ## Performance Settings
 
@@ -239,6 +251,7 @@ crash-club/
 |-- server.js                    # Static hosting, rooms, bots, pickups, scoring, damage, Gulag, podium standings
 |-- public/
 |   |-- index.html               # HUD, menu, radar, settings, controls, and page shell
+|   |-- config.js                # Runtime backend URL for Vercel/static hosting
 |   |-- styles.css               # Menus, HUD, meters, mobile layout, settings, and overlays
 |   |-- app.js                   # Three.js client, driving, pickups, modes, audio, performance settings, and HUD logic
 |   |-- vendor/                  # Local Three.js module for offline-friendly loading
@@ -252,10 +265,12 @@ crash-club/
 |   `-- readme/
 |       `-- github/              # Real screenshots and gameplay GIFs used in this README
 |-- scripts/
+|   |-- build-vercel.js          # Static Vercel build that injects CRASH_CLUB_SERVER_URL
 |   |-- capture-readme-media.js  # Browser capture helper for README arena media
 |   |-- capture-gulag-readme.js  # Playwright Gulag capture helper
 |   |-- capture-gulag-cdp.js     # CDP Gulag capture helper
 |   `-- build-readme-gif.py      # GIF assembly helper
+|-- vercel.json                  # Vercel static frontend build config
 |-- package.json
 `-- README.md
 ```

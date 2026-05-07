@@ -1,6 +1,48 @@
 # Deploy Crash Club
 
-Crash Club needs a cloud host that can run a long-lived Node.js web service with WebSocket upgrades. A static-only host is not enough because multiplayer rooms, bots, scoring, and the Gulag all run through `server.js`.
+Crash Club can now use a two-part cloud setup:
+
+1. Vercel hosts the fast public website.
+2. A Node web service hosts the live multiplayer WebSocket server.
+
+The split matters because multiplayer rooms, bots, scoring, pickups, damage, the Gulag, and podium flow all run through `server.js`. Vercel is excellent for the frontend, but the current backend still needs a long-lived WebSocket-capable host.
+
+## Vercel Website + Live Backend
+
+Deploy the backend first, then point Vercel at it with `CRASH_CLUB_SERVER_URL`.
+
+Vercel settings:
+
+```text
+Framework preset: Other
+Install command: npm ci
+Build command: npm run build:vercel
+Output directory: dist
+Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
+```
+
+Example:
+
+```text
+CRASH_CLUB_SERVER_URL=https://crash-club-server.onrender.com
+```
+
+When Vercel builds the site, `scripts/build-vercel.js` copies `public/` to `dist/` and writes `dist/config.js` with your backend URL. The browser converts `https://` to `wss://` for multiplayer automatically.
+
+Local Vercel-style build test:
+
+```powershell
+$env:CRASH_CLUB_SERVER_URL="http://localhost:3000"
+npm.cmd run build:vercel
+```
+
+You can also test a deployed Vercel page against a one-off backend by adding `?server=`:
+
+```text
+https://YOUR-VERCEL-SITE.vercel.app?room=crew&server=https://YOUR-BACKEND-HOST
+```
+
+That URL parameter is optional. In production, the Vercel environment variable is cleaner.
 
 ## Recommended Host: Render
 
@@ -46,10 +88,4 @@ The browser client automatically chooses `wss://` when the page is served over `
 
 ## Notes
 
-Free Render web services can sleep after inactivity, so the first load after a break might take a little while. For a smoother always-online game, upgrade the instance later.
-
-## Vercel Note
-
-Vercel is great for frontend hosting, but this version of Crash Club cannot run its multiplayer backend fully on Vercel because the server is stateful and WebSocket-based. Vercel Functions do not act as WebSocket servers.
-
-If you want to use Vercel anyway, use it for a static frontend later and keep the multiplayer Node server on a WebSocket-capable host such as Render. Running the whole current game on Vercel would require a bigger networking rewrite.
+Free Render web services can sleep after inactivity, so the first multiplayer connection after a break might take a little while. For a smoother always-online game, upgrade the backend instance later.
