@@ -30,6 +30,10 @@
             Driver Name
             <input id="name-input" maxlength="18" placeholder="Pick a name" />
           </label>
+          <label>
+            Room Code
+            <input id="room-input" maxlength="16" placeholder="main" />
+          </label>
           <button id="start-button" class="primary-action">Start Driving</button>
           <button id="rename-button" class="secondary-action">Save Name</button>
         </div>
@@ -175,6 +179,11 @@
         Volume
         <input id="volume-slider-popover" type="range" min="0" max="100" value="55" />
       </label>
+      <label>
+        Room Code
+        <input id="room-input-popover" maxlength="16" placeholder="main" />
+      </label>
+      <button id="room-join-button">Join Room</button>
       <p>Performance mode lowers render scale, shadows, labels, pickups, particles, radar redraws, and bot/network pressure.</p>
     </div>
 

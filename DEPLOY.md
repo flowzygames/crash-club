@@ -27,9 +27,9 @@ Useful environment variables:
 
 ```text
 NODE_ENV=production
-CRASH_CLUB_BOT_TARGET=3
-CRASH_CLUB_TICK_RATE=12
-CRASH_CLUB_SNAPSHOT_RATE=6
+CRASH_CLUB_BOT_TARGET=6
+CRASH_CLUB_TICK_RATE=20
+CRASH_CLUB_SNAPSHOT_RATE=12
 ```
 
 ## After Deploy
@@ -38,7 +38,7 @@ When Render gives you a public URL, open:
 
 ```text
 https://YOUR-SERVICE.onrender.com
-https://YOUR-SERVICE.onrender.com?room=after-school
+https://YOUR-SERVICE.onrender.com?room=crew
 https://YOUR-SERVICE.onrender.com/health
 ```
 
@@ -48,4 +48,8 @@ The browser client automatically chooses `wss://` when the page is served over `
 
 Free Render web services can sleep after inactivity, so the first load after a break might take a little while. For a smoother always-online game, upgrade the instance later.
 
-Vercel and Netlify are great for static sites, but Crash Club's multiplayer server is stateful and WebSocket-based, so a normal Node web service is the better fit.
+## Vercel Note
+
+Vercel is great for frontend hosting, but this version of Crash Club cannot run its multiplayer backend fully on Vercel because the server is stateful and WebSocket-based. Vercel Functions do not act as WebSocket servers.
+
+If you want to use Vercel anyway, use it for a static frontend later and keep the multiplayer Node server on a WebSocket-capable host such as Render. Running the whole current game on Vercel would require a bigger networking rewrite.

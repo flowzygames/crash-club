@@ -5,8 +5,8 @@ const { WebSocketServer } = require("ws");
 
 const PORT = process.env.PORT || 3000;
 const GAME_VERSION = "1.4.0";
-const TICK_RATE = Number(process.env.CRASH_CLUB_TICK_RATE || 12);
-const SNAPSHOT_RATE = Number(process.env.CRASH_CLUB_SNAPSHOT_RATE || 6);
+const TICK_RATE = Number(process.env.CRASH_CLUB_TICK_RATE || 20);
+const SNAPSHOT_RATE = Number(process.env.CRASH_CLUB_SNAPSHOT_RATE || 12);
 const SCORE_TICK_MS = 500;
 const PICKUP_RESPAWN_MS = 10000;
 const WORLD_SIZE = 180;
@@ -19,9 +19,9 @@ const SHIELD_DURATION_MS = 8000;
 const SLAM_DURATION_MS = 9000;
 const WRECK_RESPAWN_MS = 1800;
 const GULAG_DURATION_MS = 45000;
-const BOT_TARGET_PLAYERS = Number(process.env.CRASH_CLUB_BOT_TARGET || 3);
-const BOT_DECISION_MIN_MS = 520;
-const BOT_DECISION_MAX_MS = 1150;
+const BOT_TARGET_BOTS = Number(process.env.CRASH_CLUB_BOT_TARGET || 6);
+const BOT_DECISION_MIN_MS = 360;
+const BOT_DECISION_MAX_MS = 820;
 const BOT_HIT_COOLDOWN_MS = 650;
 const STYLE_SCORE_COOLDOWN_MS = 1250;
 
@@ -297,7 +297,7 @@ function botCount(room) {
 
 function ensureBots(room) {
   const humans = humanCount(room);
-  const desiredBots = humans > 0 ? Math.max(0, BOT_TARGET_PLAYERS - humans) : 0;
+  const desiredBots = humans > 0 ? Math.max(0, BOT_TARGET_BOTS) : 0;
 
   while (botCount(room) < desiredBots) {
     const bot = createBot(room);
@@ -620,8 +620,6 @@ function updateBots(room, now, deltaSeconds) {
     return;
   }
 
-  const botDelta = deltaSeconds * 0.72;
-
   for (const bot of room.players.values()) {
     if (!bot.isBot) {
       continue;
@@ -639,12 +637,18 @@ function updateBots(room, now, deltaSeconds) {
     const dx = bot.botTarget.x - bot.x;
     const dz = bot.botTarget.z - bot.z;
     const targetDistance = Math.hypot(dx, dz);
-    const desiredAngle = Math.atan2(dx, dz);
-    const turn = clamp(angleDelta(bot.angle, desiredAngle), -2.2 * botDelta, 2.2 * botDelta);
+    const botSeed = numberFromId(bot.id);
+    const personality = 0.9 + (botSeed % 7) * 0.035;
+    const weave = Math.sin(now * 0.0017 + botSeed) * 0.085;
+    const desiredAngle = Math.atan2(dx, dz) + weave;
+    const turnSpeed = (2.7 + personality * 0.55) * deltaSeconds;
+    const turn = clamp(angleDelta(bot.angle, desiredAngle), -turnSpeed, turnSpeed);
     bot.angle += turn;
-    bot.speed = clamp(bot.speed + (targetDistance > 6 ? 28 : -34) * botDelta, 8, 31);
-    bot.x += Math.sin(bot.angle) * bot.speed * botDelta;
-    bot.z += Math.cos(bot.angle) * bot.speed * botDelta;
+    const speedLimit = 35 + (botSeed % 6) * 1.8 + Math.sin(now * 0.0012 + botSeed) * 3;
+    const acceleration = targetDistance > 7 ? 48 * personality : -56;
+    bot.speed = clamp(bot.speed + acceleration * deltaSeconds, targetDistance > 7 ? 11 : 0, speedLimit);
+    bot.x += Math.sin(bot.angle) * bot.speed * deltaSeconds;
+    bot.z += Math.cos(bot.angle) * bot.speed * deltaSeconds;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
     bot.y = 0.08;
@@ -675,13 +679,13 @@ function updateBots(room, now, deltaSeconds) {
 
       const distance = Math.hypot(bot.x - target.x, bot.z - target.z);
       if (distance < 5.1 && bot.speed > 13) {
-        const damage = Math.round(clamp(bot.speed / 31, 0.32, 1.05) * 22);
+        const damage = Math.round(clamp(bot.speed / 38, 0.32, 1.08) * 23);
         damagePlayer(room, bot, target, damage, now);
         broadcastRoom(room, {
           type: "impact",
           sourceId: bot.id,
           targetId: target.id,
-          impulse: clamp(bot.speed / 28, 0.25, 1.15),
+          impulse: clamp(bot.speed / 34, 0.25, 1.18),
           slam: false
         });
         bot.botNextHitAt = now + BOT_HIT_COOLDOWN_MS;

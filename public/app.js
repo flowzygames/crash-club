@@ -25,6 +25,7 @@ import("three")
       app: document.getElementById("app"),
       release: document.getElementById("release-screen"),
       name: document.getElementById("name-input"),
+      roomInput: document.getElementById("room-input"),
       start: document.getElementById("start-button"),
       rename: document.getElementById("rename-button"),
       menu: document.getElementById("menu-button"),
@@ -60,14 +61,16 @@ import("three")
       sound: document.getElementById("sound-toggle"),
       soundMenu: document.getElementById("sound-toggle-popover"),
       volume: document.getElementById("volume-slider"),
-      volumeMenu: document.getElementById("volume-slider-popover")
+      volumeMenu: document.getElementById("volume-slider-popover"),
+      roomInputMenu: document.getElementById("room-input-popover"),
+      roomJoin: document.getElementById("room-join-button")
     };
     const modeOverlay = createModeOverlay();
     const settings = loadSettings();
     applyQualityClasses();
 
     const url = new URL(location.href);
-    const roomCode = sanitizeRoom(url.searchParams.get("room") || "main");
+    let roomCode = sanitizeRoom(url.searchParams.get("room") || localStorage.getItem("crash-club-room") || "main");
     const input = new Set();
     const players = new Map();
     const pickups = new Map();
@@ -173,6 +176,7 @@ import("three")
     if (els.room) els.room.textContent = roomCode;
     if (els.version) els.version.textContent = VERSION;
     if (els.name) els.name.value = state.car.name;
+    syncRoomInputs();
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#09131f");
@@ -1170,6 +1174,16 @@ import("three")
       els.name?.addEventListener("keydown", (event) => {
         if (event.key === "Enter") startDriving();
       });
+      els.roomInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") startDriving();
+      });
+      els.roomInputMenu?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          joinTypedRoom();
+        }
+      });
+      els.roomJoin?.addEventListener("click", joinTypedRoom);
       addEventListener("pointermove", handlePointerLook);
       addEventListener("pointerdown", (event) => {
         if (state.mode === "gulag") {
@@ -1233,6 +1247,57 @@ import("three")
         button.addEventListener("pointercancel", release);
         button.addEventListener("pointerleave", release);
       }
+    }
+
+    function syncRoomInputs() {
+      for (const input of [els.roomInput, els.roomInputMenu]) {
+        if (input) input.value = roomCode;
+      }
+      if (els.room) els.room.textContent = roomCode;
+    }
+
+    function setRoomCode(value, options = {}) {
+      const nextRoom = sanitizeRoom(value);
+      const changed = nextRoom !== roomCode;
+      roomCode = nextRoom;
+      state.room.code = roomCode;
+      localStorage.setItem("crash-club-room", roomCode);
+      syncRoomInputs();
+      if (options.updateUrl !== false) {
+        const nextUrl = new URL(location.href);
+        if (roomCode === "main") nextUrl.searchParams.delete("room");
+        else nextUrl.searchParams.set("room", roomCode);
+        history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      }
+      return changed;
+    }
+
+    function getTypedRoomCode() {
+      return els.roomInputMenu?.value || els.roomInput?.value || roomCode;
+    }
+
+    function roomShareUrl(code = roomCode) {
+      const nextRoom = sanitizeRoom(code);
+      const invite = new URL(location.href);
+      if (nextRoom === "main") invite.searchParams.delete("room");
+      else invite.searchParams.set("room", nextRoom);
+      return invite.toString();
+    }
+
+    function joinTypedRoom() {
+      const changed = setRoomCode(getTypedRoomCode());
+      if (state.joined && changed) {
+        toast(`Switching to room ${roomCode}...`, "info");
+        location.assign(roomShareUrl(roomCode));
+        return;
+      }
+      if (!state.joined) {
+        startDriving();
+        return;
+      }
+      toggleSettingsPanel(false);
+      setMenu(false);
+      toast(`Already in room ${roomCode}.`, "info");
     }
 
     function setupSettingsControls() {
@@ -1346,6 +1411,12 @@ import("three")
     }
 
     function startDriving() {
+      const changedRoom = setRoomCode(els.roomInput?.value || roomCode);
+      if (state.joined && changedRoom) {
+        toast(`Switching to room ${roomCode}...`, "info");
+        location.assign(roomShareUrl(roomCode));
+        return;
+      }
       saveName({ silent: true });
       setStatus("Connecting to Crash Club...", "offline");
       if (!state.socket || state.socket.readyState > WebSocket.OPEN) {
@@ -1395,7 +1466,7 @@ import("three")
         state.id = String(msg.id);
         state.joined = true;
         state.mode = "arena";
-        state.room.code = msg.room || roomCode;
+        setRoomCode(msg.room || roomCode);
         applyRoom(msg.roomState);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
@@ -2553,7 +2624,7 @@ import("three")
     }
 
     function copyInvite() {
-      const invite = `${location.origin}${location.pathname}?room=${state.room.code || roomCode}`;
+      const invite = roomShareUrl(state.room.code || roomCode);
       navigator.clipboard?.writeText(invite).then(
         () => toast("Invite copied.", "info"),
         () => toast(invite, "info")

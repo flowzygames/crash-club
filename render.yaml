@@ -10,8 +10,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: CRASH_CLUB_BOT_TARGET
-        value: "3"
-      - key: CRASH_CLUB_TICK_RATE
-        value: "12"
-      - key: CRASH_CLUB_SNAPSHOT_RATE
         value: "6"
+      - key: CRASH_CLUB_TICK_RATE
+        value: "20"
+      - key: CRASH_CLUB_SNAPSHOT_RATE
+        value: "12"

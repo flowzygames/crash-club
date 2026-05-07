@@ -433,7 +433,7 @@ canvas {
 
 .release-actions {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) auto auto;
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) auto auto;
   gap: 10px;
   align-items: end;
   margin-top: 24px;
@@ -447,7 +447,9 @@ canvas {
   font-size: 0.85rem;
 }
 
-.release-actions input {
+.release-actions input,
+.settings-card input[type="text"],
+.settings-popover input[type="text"] {
   width: 100%;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);

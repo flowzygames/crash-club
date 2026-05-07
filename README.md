@@ -47,7 +47,7 @@ Alpha 1.4 is a performance and feel pass. The goal is not just adding more stuff
 | Settings menu | Graphics, sound, and volume controls are available on the start screen and in-game. |
 | Sound pass | Adds toggleable sound effects and a lightweight engine hum that reacts to speed and boost. |
 | Smoother driving | Lower top speed, smoother boost, better control, and less visual spam during impacts and drifts. |
-| Server load | Default rooms use fewer bots, snapshots are rate-limited, bot pickup checks are throttled, and bot pickup messages are quieter. |
+| Server load | Active rooms now default to 6 bots, smoother 20 Hz bot simulation, 12 Hz snapshots, and quieter bot pickup messages. |
 
 ## Feature Tour
 
@@ -57,7 +57,7 @@ Alpha 1.4 is a performance and feel pass. The goal is not just adding more stuff
   <img src="./assets/readme/github/01-start-screen.png" alt="Actual Crash Club start screen with driver name input and control hints" width="88%" />
 </p>
 
-The start screen makes the project feel like a real release instead of a blank WebGL test. Players can choose a name, save it, start driving, adjust performance settings, and see the main controls before entering the arena.
+The start screen makes the project feel like a real release instead of a blank WebGL test. Players can choose a name, type a room code, save it, start driving, adjust performance settings, and see the main controls before entering the arena.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
@@ -99,7 +99,7 @@ Powerups spawn as visible glowing pickups around the arena and on the radar. Cur
 
 Crash Club fills active rooms with bot racers so solo testing still feels alive. Friends can join the same match with the room URL, and the same server systems handle human cars and bot cars together.
 
-Rooms are URL-based. A room like `?room=after-school` lets multiple devices join the same match when they connect to the host machine on the same Wi-Fi.
+Rooms can be joined from the room input on the start screen, from the in-game Settings panel, or directly from a URL. A room like `?room=crew` lets multiple devices join the same match when they connect to the host machine on the same Wi-Fi.
 
 ### Gulag Duels And Redeploys
 
@@ -158,13 +158,13 @@ Open the game:
 
 ```text
 http://localhost:3000
-http://localhost:3000?room=after-school
+http://localhost:3000?room=crew
 ```
 
 To play with other devices on the same Wi-Fi, use your computer's LAN address instead of `localhost`, then keep the same `?room=` code.
 
 ```text
-http://YOUR-LAN-IP:3000?room=after-school
+http://YOUR-LAN-IP:3000?room=crew
 ```
 
 Check server status:
@@ -181,6 +181,8 @@ Crash Club is ready for a Render web service. The repo includes [render.yaml](./
 
 Full steps are in [DEPLOY.md](./DEPLOY.md).
 
+Vercel note: the current live multiplayer backend uses a long-running WebSocket server. Vercel can host the static frontend, but Vercel Functions do not act as a WebSocket server, so the multiplayer backend still needs a Node web service unless the networking layer is rewritten.
+
 ```text
 Service type: Web Service
 Runtime: Node
@@ -192,7 +194,7 @@ Health check: /health
 After deploy, use the public Render URL as the game link. Room codes still work the same way:
 
 ```text
-https://YOUR-SERVICE.onrender.com?room=after-school
+https://YOUR-SERVICE.onrender.com?room=crew
 ```
 
 ## Performance Settings
@@ -212,13 +214,13 @@ Performance mode is the default in Alpha 1.4 because the game should feel playab
 Server-side tuning is also available through environment variables:
 
 ```powershell
-$env:CRASH_CLUB_BOT_TARGET="3"
-$env:CRASH_CLUB_TICK_RATE="12"
-$env:CRASH_CLUB_SNAPSHOT_RATE="6"
+$env:CRASH_CLUB_BOT_TARGET="6"
+$env:CRASH_CLUB_TICK_RATE="20"
+$env:CRASH_CLUB_SNAPSHOT_RATE="12"
 npm.cmd start
 ```
 
-Use `CRASH_CLUB_BOT_TARGET=0` for a human-only room, or raise it if your machine can handle more traffic.
+Use `CRASH_CLUB_BOT_TARGET=0` for a human-only room. The default is 6 bots per active room.
 
 ## Tech Stack
 
