@@ -18,7 +18,7 @@
   <img alt="Three.js" src="https://img.shields.io/badge/Three.js-WebGL-111111?style=for-the-badge&logo=three.js&logoColor=white">
   <img alt="WebSockets" src="https://img.shields.io/badge/Realtime-WebSockets-0EA5E9?style=for-the-badge">
   <img alt="Alpha" src="https://img.shields.io/badge/Alpha-1.4-5AF0C1?style=for-the-badge">
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-FFCF6B?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/License-Play%20Only-DC2626?style=for-the-badge">
 </p>
 
 > The gameplay screenshots and GIFs below are real browser captures from Crash Club, not mockups. Alpha 1.4 focuses on smoother performance, settings, sound, and driving feel while keeping the same public feature set.
@@ -309,4 +309,6 @@ Crash Club Alpha 1.4 is playable, but there is a lot of room to make it bigger.
 
 ## License
 
-Crash Club is released under the MIT License. See [LICENSE](./LICENSE) for the full text.
+Crash Club is not open source. The project is made available for public play only: you may play the official game and share official links to it, but you may not copy, modify, redistribute, rehost, reuse, or create derivative works from the source code, assets, branding, or other project materials without prior written permission from flowzygames.
+
+See [LICENSE](./LICENSE) for the full play-only license terms.
