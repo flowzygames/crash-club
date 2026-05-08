@@ -98,6 +98,9 @@ import("three")
       lastPickupCheckAt: 0,
       lastPickupVisualAt: 0,
       lastNoticeAt: 0,
+      lastToastText: "",
+      lastToastAt: 0,
+      lastMissingBackendAt: 0,
       connectWanted: false,
       connectionAttempt: 0,
       reconnectTimer: null,
@@ -1461,9 +1464,13 @@ import("three")
     }
 
     function showMissingBackendMessage() {
+      const now = performance.now();
       const message = "Vercel site is live, but CRASH_CLUB_SERVER_URL is missing. Add your backend URL in Vercel env vars, then redeploy.";
       setStatus(message, "offline");
-      toast("Missing backend URL. Add CRASH_CLUB_SERVER_URL in Vercel.", "danger");
+      if (now - state.lastMissingBackendAt > 4500) {
+        state.lastMissingBackendAt = now;
+        toast("Missing backend URL. Add CRASH_CLUB_SERVER_URL in Vercel.", "danger");
+      }
       if (els.objective) {
         els.objective.textContent = "Cloud setup needed: Vercel hosts the game page, but multiplayer needs a live Node/WebSocket backend URL.";
       }
@@ -2745,6 +2752,11 @@ import("three")
 
     function toast(text, tone = "info") {
       if (!els.toast || !text) return;
+      const now = performance.now();
+      const key = `${tone}:${text}`;
+      if (state.lastToastText === key && now - state.lastToastAt < 2500) return;
+      state.lastToastText = key;
+      state.lastToastAt = now;
       const node = document.createElement("div");
       node.className = `toast ${tone}`;
       node.textContent = text;
