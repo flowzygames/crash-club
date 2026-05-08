@@ -9,7 +9,7 @@ The split matters because multiplayer rooms, bots, scoring, pickups, damage, the
 
 ## Vercel Website + Live Backend
 
-Deploy the backend first, then point Vercel at it with `CRASH_CLUB_SERVER_URL`.
+Deploy the backend first. This repo's Vercel build defaults to `https://crash-club.onrender.com`, and `CRASH_CLUB_SERVER_URL` can override it later if the backend URL changes.
 
 Vercel settings:
 
@@ -18,18 +18,18 @@ Framework preset: Other
 Install command: npm ci
 Build command: npm run build:vercel
 Output directory: dist
-Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
+Optional environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
 ```
 
 [vercel.json](./vercel.json) sets `framework` to `null`, which tells Vercel to use the `Other` preset even if the dashboard originally guessed `Node`. This is important because Crash Club's `app.js` is browser code, not a Vercel Function.
 
-Example:
+Default:
 
 ```text
-CRASH_CLUB_SERVER_URL=https://crash-club-server.onrender.com
+CRASH_CLUB_SERVER_URL=https://crash-club.onrender.com
 ```
 
-When Vercel builds the site, `scripts/build-vercel.js` copies `public/` to `dist/` and writes `dist/config.js` with your backend URL. The browser converts `https://` to `wss://` for multiplayer automatically.
+When Vercel builds the site, `scripts/build-vercel.js` copies `public/` to `dist/` and writes `dist/config.js` with the Render backend URL. The browser converts `https://` to `wss://` for multiplayer automatically.
 
 Local Vercel-style build test:
 
@@ -59,11 +59,11 @@ https://YOUR-VERCEL-SITE.vercel.app/config.js
 Expected:
 
 ```js
-window.CRASH_CLUB_SERVER_URL = "https://YOUR-BACKEND-HOST";
+window.CRASH_CLUB_SERVER_URL = "https://crash-club.onrender.com";
 window.CRASH_CLUB_STATIC_FRONTEND = true;
 ```
 
-If `CRASH_CLUB_SERVER_URL` is blank, add the environment variable in Vercel, select both Production and Preview, then redeploy from the latest GitHub commit.
+If `CRASH_CLUB_SERVER_URL` is blank, redeploy from the latest GitHub commit. The current build script falls back to `https://crash-club.onrender.com` even when no Vercel environment variable is set.
 
 If the URL is correct but the first click still disconnects, wait through the in-game retries. Free backend hosts can sleep, so Crash Club pings `/health` and retries the WebSocket while the server wakes up.
 
@@ -128,7 +128,7 @@ The browser client automatically chooses `wss://` when the page is served over `
 
 ## Connect Render To Vercel
 
-After Render is live, go back to Vercel and add this environment variable:
+After Render is live, the current Vercel build already uses `https://crash-club.onrender.com`. If you create a different Render service later, go back to Vercel and add this environment variable:
 
 ```text
 Key: CRASH_CLUB_SERVER_URL
@@ -138,16 +138,16 @@ Environments: Production and Preview
 
 Do not use `localhost:3000`. Do not use `https://crash-club.vercel.app`. Do not add `/health` at the end.
 
-After adding the env var, redeploy Vercel. Then check:
+After adding the env var, redeploy Vercel. If you are using the default `https://crash-club.onrender.com` backend, just redeploy Vercel from the latest commit. Then check:
 
 ```text
 https://crash-club.vercel.app/config.js
 ```
 
-It should show:
+It should show the default backend, or your custom override:
 
 ```js
-window.CRASH_CLUB_SERVER_URL = "https://YOUR-ACTUAL-RENDER-SERVICE.onrender.com";
+window.CRASH_CLUB_SERVER_URL = "https://crash-club.onrender.com";
 window.CRASH_CLUB_STATIC_FRONTEND = true;
 ```
 

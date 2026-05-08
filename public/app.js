@@ -104,6 +104,7 @@ import("three")
       connectWanted: false,
       connectionAttempt: 0,
       reconnectTimer: null,
+      preconnected: false,
       mouseLook: false,
       room: {
         code: roomCode,
@@ -218,6 +219,7 @@ import("three")
     setupControls();
     setupSettingsControls();
     applyQualitySettings();
+    setTimeout(prewarmBackendConnection, 800);
     showBanner("Garage Open", "Pick a name and start driving.");
 
     const clock = new THREE.Clock();
@@ -1109,8 +1111,15 @@ import("three")
       pinkGlow.position.set(11, 5.5, 5);
       group.add(backGlow, tealGlow, pinkGlow);
 
+      const confettiGeometry = new THREE.BoxGeometry(0.18, 0.035, 0.34);
+      const confettiMaterials = ["#ffcf6b", "#59f0c2", "#ff4f8b", "#7eb8ff", "#f8fbff", "#ff8a4c"].map(
+        (color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 })
+      );
+
       return {
         group,
+        confettiGeometry,
+        confettiMaterials,
         slots: [
           { rank: 1, x: 0, y: 3.82, z: 0.15, angle: Math.PI },
           { rank: 2, x: -8.5, y: 2.57, z: 0.15, angle: Math.PI * 0.92 },
@@ -1327,6 +1336,7 @@ import("three")
     function updateSetting(key, value) {
       if (key === "quality") {
         settings.quality = ["performance", "balanced", "showcase"].includes(value) ? value : "performance";
+        settings.qualityManual = true;
         applyQualitySettings();
       } else if (key === "sound") {
         settings.sound = Boolean(value);
@@ -1350,13 +1360,15 @@ import("three")
     }
 
     function loadSettings() {
-      const defaults = { quality: "performance", sound: true, volume: 0.55 };
+      const defaults = { quality: "showcase", sound: true, volume: 0.55, qualityManual: false };
       try {
         const saved = JSON.parse(localStorage.getItem("crash-club-settings") || "{}");
+        const qualityManual = saved.qualityManual === true;
         return {
-          quality: ["performance", "balanced", "showcase"].includes(saved.quality) ? saved.quality : defaults.quality,
+          quality: qualityManual && ["performance", "balanced", "showcase"].includes(saved.quality) ? saved.quality : defaults.quality,
           sound: typeof saved.sound === "boolean" ? saved.sound : defaults.sound,
-          volume: Number.isFinite(Number(saved.volume)) ? THREE.MathUtils.clamp(Number(saved.volume), 0, 1) : defaults.volume
+          volume: Number.isFinite(Number(saved.volume)) ? THREE.MathUtils.clamp(Number(saved.volume), 0, 1) : defaults.volume,
+          qualityManual
         };
       } catch {
         return defaults;
@@ -1431,7 +1443,7 @@ import("three")
       }
       state.connectWanted = true;
       if (state.socket?.readyState === WebSocket.CONNECTING) {
-        setStatus("Still connecting to the multiplayer server...", "offline");
+        setStatus("Waking the multiplayer backend. Starting as soon as it connects...", "offline");
         toast("Still connecting. If the backend is sleeping, give it a few seconds.", "info");
         return;
       }
@@ -1439,7 +1451,7 @@ import("three")
       wakeBackend();
       if (!state.socket || state.socket.readyState > WebSocket.OPEN) {
         state.connectionAttempt = 0;
-        connectSocket();
+        connectSocket({ joinOnOpen: true });
       } else if (state.socket.readyState === WebSocket.OPEN && !state.joined) {
         joinRoom();
       } else if (state.joined) {
@@ -1465,11 +1477,11 @@ import("three")
 
     function showMissingBackendMessage() {
       const now = performance.now();
-      const message = "Vercel site is live, but CRASH_CLUB_SERVER_URL is missing. Add your backend URL in Vercel env vars, then redeploy.";
+      const message = "Vercel site is live, but no backend URL was injected. Redeploy the latest build or set CRASH_CLUB_SERVER_URL in Vercel.";
       setStatus(message, "offline");
       if (now - state.lastMissingBackendAt > 4500) {
         state.lastMissingBackendAt = now;
-        toast("Missing backend URL. Add CRASH_CLUB_SERVER_URL in Vercel.", "danger");
+        toast("Missing backend URL. Redeploy latest or set CRASH_CLUB_SERVER_URL.", "danger");
       }
       if (els.objective) {
         els.objective.textContent = "Cloud setup needed: Vercel hosts the game page, but multiplayer needs a live Node/WebSocket backend URL.";
@@ -1520,14 +1532,26 @@ import("three")
       fetch(healthUrl, { cache: "no-store", mode: "no-cors" }).catch(() => {});
     }
 
-    function connectSocket() {
+    function prewarmBackendConnection() {
+      if (state.joined || state.socket || isStaticFrontendMissingBackend() || !getConfiguredServerEndpoint()) return;
+      wakeBackend();
+      connectSocket({ joinOnOpen: false, retryOnClose: false, quiet: true });
+    }
+
+    function connectSocket(options = {}) {
+      const { joinOnOpen = state.connectWanted, retryOnClose = true, quiet = false } = options;
       clearTimeout(state.reconnectTimer);
       const socket = new WebSocket(getServerWebSocketUrl());
       state.socket = socket;
       socket.addEventListener("open", () => {
         state.connectionAttempt = 0;
-        setStatus("Connected. Joining room...", "offline");
-        joinRoom();
+        state.preconnected = !joinOnOpen && !state.connectWanted;
+        if (joinOnOpen || state.connectWanted) {
+          setStatus("Connected. Joining room...", "offline");
+          joinRoom();
+        } else if (!quiet) {
+          setStatus("Multiplayer backend ready. Pick a name and start driving.", "online");
+        }
       });
       socket.addEventListener("message", (event) => {
         try {
@@ -1538,12 +1562,14 @@ import("three")
       });
       socket.addEventListener("close", () => {
         state.joined = false;
+        state.preconnected = false;
         if (socket !== state.socket) return;
-        scheduleReconnect();
+        if (retryOnClose) scheduleReconnect();
+        else state.socket = null;
       });
       socket.addEventListener("error", () => {
         if (socket !== state.socket) return;
-        setStatus("Connection interrupted. Retrying if the backend is waking up...", "offline");
+        if (!quiet) setStatus("Connection interrupted. Retrying if the backend is waking up...", "offline");
       });
     }
 
@@ -1563,11 +1589,12 @@ import("three")
       setStatus(`Multiplayer backend is not responding. Retrying in ${Math.ceil(delay / 1000)}s...`, "offline");
       state.reconnectTimer = setTimeout(() => {
         wakeBackend();
-        connectSocket();
+        connectSocket({ joinOnOpen: true });
       }, delay);
     }
 
     function joinRoom() {
+      state.connectWanted = true;
       sendMessage({ type: "join", room: roomCode, name: state.car.name, color: state.car.color });
     }
 
@@ -1577,6 +1604,7 @@ import("three")
       if (msg.type === "joined") {
         state.id = String(msg.id);
         state.joined = true;
+        state.preconnected = false;
         state.mode = "arena";
         setRoomCode(msg.room || roomCode);
         applyRoom(msg.roomState);
@@ -2087,7 +2115,7 @@ import("three")
         state.podium.cars.push(car);
       });
 
-      spawnPodiumConfetti(180);
+      spawnPodiumConfetti(72);
       const winner = entrants[0];
       showBanner("Podium", `${winner.name || "The winner"} takes round ${state.room.round} with ${Math.round(winner.score || 0)} points.`);
       setStatus("Podium ceremony. Next round is loading.", "online");
@@ -2119,8 +2147,6 @@ import("three")
     function clearPodiumConfetti() {
       for (const confetti of state.podium.confetti) {
         podiumShowcase.group.remove(confetti.mesh);
-        confetti.mesh.geometry.dispose();
-        confetti.mesh.material.dispose();
       }
       state.podium.confetti = [];
     }
@@ -2153,20 +2179,17 @@ import("three")
         car.underglow.intensity = 1.2 + Math.sin(elapsed * 5 + index) * 0.25;
       });
 
-      if (elapsed - state.podium.lastConfettiAt > 0.32 && state.podium.confetti.length < 260) {
+      if (elapsed - state.podium.lastConfettiAt > 0.24 && state.podium.confetti.length < 160) {
         state.podium.lastConfettiAt = elapsed;
-        spawnPodiumConfetti(22);
+        spawnPodiumConfetti(12);
       }
       updatePodiumConfetti(dt);
     }
 
     function spawnPodiumConfetti(count) {
-      const colors = ["#ffcf6b", "#59f0c2", "#ff4f8b", "#7eb8ff", "#f8fbff", "#ff8a4c"];
+      const { confettiGeometry, confettiMaterials } = podiumShowcase;
       for (let i = 0; i < count; i += 1) {
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(0.18, 0.035, 0.34),
-          new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true, opacity: 0.95 })
-        );
+        const mesh = new THREE.Mesh(confettiGeometry, confettiMaterials[Math.floor(Math.random() * confettiMaterials.length)]);
         mesh.position.set((Math.random() - 0.5) * 34, 13 + Math.random() * 10, -7 + Math.random() * 13);
         mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         podiumShowcase.group.add(mesh);
@@ -2190,8 +2213,6 @@ import("three")
         confetti.mesh.rotation.z += confetti.spin.z * dt;
         if (confetti.life <= 0 || confetti.mesh.position.y < -1) {
           podiumShowcase.group.remove(confetti.mesh);
-          confetti.mesh.geometry.dispose();
-          confetti.mesh.material.dispose();
           state.podium.confetti.splice(i, 1);
         }
       }

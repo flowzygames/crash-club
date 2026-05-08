@@ -43,10 +43,11 @@ Alpha 1.4 is a performance and feel pass. The goal is not just adding more stuff
 
 | Upgrade | What Changed |
 | --- | --- |
-| Performance mode | Lower render scale, disabled shadows, fewer labels, lighter particles, slower radar redraws, and reduced pickup animation cost. |
+| Showcase default | Fresh visitors now start in Showcase graphics so the first impression looks polished instead of stripped down. |
 | Settings menu | Graphics, sound, and volume controls are available on the start screen and in-game. |
 | Sound pass | Adds toggleable sound effects and a lightweight engine hum that reacts to speed and boost. |
 | Smoother driving | Lower top speed, smoother boost, better control, and less visual spam during impacts and drifts. |
+| Faster cloud starts | The Vercel build defaults to the live Render backend and prewarms the connection before Start Driving is clicked. |
 | Server load | Active rooms now default to 6 bots, smoother 20 Hz bot simulation, 12 Hz snapshots, and quieter bot pickup messages. |
 
 ## Feature Tour
@@ -187,7 +188,7 @@ Render backend shortcut:
 https://dashboard.render.com/blueprint/new?repo=https://github.com/flowzygames/crash-club
 ```
 
-Create the Render service first, copy the actual `https://...onrender.com` URL Render gives you, then paste that URL into Vercel as `CRASH_CLUB_SERVER_URL`.
+The default Vercel build already points to `https://crash-club.onrender.com`. You only need `CRASH_CLUB_SERVER_URL` if you create a different backend and want to override the default.
 
 Vercel project settings:
 
@@ -196,7 +197,7 @@ Framework preset: Other
 Install command: npm ci
 Build command: npm run build:vercel
 Output directory: dist
-Environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
+Optional environment variable: CRASH_CLUB_SERVER_URL=https://YOUR-BACKEND-HOST
 ```
 
 The repo also forces the Vercel preset to `Other` in [vercel.json](./vercel.json). If Vercel guesses `Node`, redeploy from the latest commit so it does not try to run the browser `app.js` file as a serverless function.
@@ -225,7 +226,7 @@ If the Vercel page loads but Start Driving only says disconnected, check:
 https://YOUR-VERCEL-SITE.vercel.app/config.js
 ```
 
-That file should include your `CRASH_CLUB_SERVER_URL`. If it is blank, add the environment variable in Vercel for Production and Preview, then redeploy. If the backend is on a free host, the first connection can take a few retries while the server wakes up.
+That file should include `https://crash-club.onrender.com` or your custom `CRASH_CLUB_SERVER_URL`. If it is blank, redeploy from the latest GitHub commit. If the backend is on a free host, the first connection can take a few retries while the server wakes up.
 
 ## Performance Settings
 
@@ -233,7 +234,7 @@ That file should include your `CRASH_CLUB_SERVER_URL`. If it is blank, add the e
   <img src="./assets/readme/github/01-start-screen.png" alt="Crash Club Alpha 1.4 performance settings on the start screen" width="88%" />
 </p>
 
-Performance mode is the default in Alpha 1.4 because the game should feel playable first. You can still switch to Balanced or Showcase from the settings menu if your machine handles it.
+Showcase mode is the default first impression in Alpha 1.4 because the public site should look good right away. You can still switch to Balanced or Performance from the settings menu if your machine needs fewer effects.
 
 | Setting | Best For | Tradeoff |
 | --- | --- | --- |

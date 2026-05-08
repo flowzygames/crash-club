@@ -46,15 +46,15 @@
         </div>
         <div class="settings-card">
           <div class="settings-header">
-            <span class="eyebrow">Performance Refresh</span>
-            <strong>Lower stutter by default</strong>
+            <span class="eyebrow">Graphics Refresh</span>
+            <strong>Showcase visuals by default</strong>
           </div>
           <label>
             Graphics
             <select id="quality-select">
               <option value="performance">Performance</option>
               <option value="balanced">Balanced</option>
-              <option value="showcase">Showcase</option>
+              <option value="showcase" selected>Showcase</option>
             </select>
           </label>
           <label class="settings-row">
@@ -168,7 +168,7 @@
         <select id="quality-select-popover">
           <option value="performance">Performance</option>
           <option value="balanced">Balanced</option>
-          <option value="showcase">Showcase</option>
+          <option value="showcase" selected>Showcase</option>
         </select>
       </label>
       <label class="settings-row">
@@ -184,7 +184,7 @@
         <input id="room-input-popover" maxlength="16" placeholder="main" />
       </label>
       <button id="room-join-button">Join Room</button>
-      <p>Performance mode lowers render scale, shadows, labels, pickups, particles, radar redraws, and bot/network pressure.</p>
+      <p>Showcase mode is the default first impression. Drop to Balanced or Performance if your laptop needs fewer effects.</p>
     </div>
 
     <div class="touch-controls" aria-label="Touch driving controls">
