@@ -181,6 +181,14 @@ Crash Club is ready for a Vercel frontend plus a live Node/WebSocket backend. Ve
 
 Full steps are in [DEPLOY.md](./DEPLOY.md).
 
+Render backend shortcut:
+
+```text
+https://dashboard.render.com/blueprint/new?repo=https://github.com/flowzygames/crash-club
+```
+
+Create the Render service first, copy the actual `https://...onrender.com` URL Render gives you, then paste that URL into Vercel as `CRASH_CLUB_SERVER_URL`.
+
 Vercel project settings:
 
 ```text

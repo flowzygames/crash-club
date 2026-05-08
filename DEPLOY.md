@@ -71,12 +71,29 @@ If the URL is correct but the first click still disconnects, wait through the in
 
 This repo includes `render.yaml`, so Render can create a web service from the GitHub repository.
 
-1. Push the latest code to GitHub.
-2. Open the Render Dashboard.
-3. Choose **New +** then **Blueprint**.
-4. Connect `flowzygames/crash-club`.
-5. Confirm the service settings from `render.yaml`.
-6. Deploy.
+Use this Render Blueprint link:
+
+```text
+https://dashboard.render.com/blueprint/new?repo=https://github.com/flowzygames/crash-club
+```
+
+Steps:
+
+1. Open the Render Blueprint link above.
+2. Sign in or create a Render account.
+3. Connect GitHub if Render asks.
+4. Confirm the `crash-club` web service from `render.yaml`.
+5. Click **Apply** or **Create Blueprint**.
+6. Wait until the service deploy says **Live**.
+7. Open the Render service and copy its public URL.
+
+The Render URL should look like this:
+
+```text
+https://SOMETHING.onrender.com
+```
+
+Copy the URL Render actually gives you. Do not guess it, because Render may change the service URL if the name is already taken.
 
 Render settings:
 
@@ -108,6 +125,31 @@ https://YOUR-SERVICE.onrender.com/health
 ```
 
 The browser client automatically chooses `wss://` when the page is served over `https://`, so multiplayer should connect through the same public cloud URL.
+
+## Connect Render To Vercel
+
+After Render is live, go back to Vercel and add this environment variable:
+
+```text
+Key: CRASH_CLUB_SERVER_URL
+Value: https://YOUR-ACTUAL-RENDER-SERVICE.onrender.com
+Environments: Production and Preview
+```
+
+Do not use `localhost:3000`. Do not use `https://crash-club.vercel.app`. Do not add `/health` at the end.
+
+After adding the env var, redeploy Vercel. Then check:
+
+```text
+https://crash-club.vercel.app/config.js
+```
+
+It should show:
+
+```js
+window.CRASH_CLUB_SERVER_URL = "https://YOUR-ACTUAL-RENDER-SERVICE.onrender.com";
+window.CRASH_CLUB_STATIC_FRONTEND = true;
+```
 
 ## Notes
 
