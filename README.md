@@ -26,7 +26,7 @@
   <img alt="License" src="https://img.shields.io/badge/License-Play%20Only-DC2626?style=for-the-badge">
 </p>
 
-> Crash Club is public so people can see and play the project. It is not public as an open-source codebase.
+> Crash-Club is a work in progress and in Open-Beta.
 
 ## Play Now
 
