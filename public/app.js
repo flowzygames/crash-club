@@ -13,6 +13,10 @@ import("three")
     const GULAG_BODY_DAMAGE = 20;
     const GULAG_HEADSHOT_DAMAGE = 42;
     const GULAG_BOUNDS = { minX: -30, maxX: 30, minZ: 256, maxZ: 328 };
+    const CAR_COLLISION_RADIUS = 2.35;
+    const CAR_COLLISION_AXIS_HALF = 2.65;
+    const CAR_COLLISION_RANGE = CAR_COLLISION_RADIUS * 2;
+    const CAR_SWEEP_MARGIN = 0.45;
 
     const pickupMeta = {
       boost: { label: "Boost", color: "#ffcf6b", emissive: "#8a5c00" },
@@ -121,6 +125,9 @@ import("three")
         x: 0,
         y: 0.08,
         z: 34,
+        prevX: 0,
+        prevZ: 34,
+        prevAngle: Math.PI,
         angle: Math.PI,
         speed: 0,
         velocity: new THREE.Vector2(0, 0),
@@ -1800,6 +1807,9 @@ import("three")
       const turnRate = (1.15 + speedRatio * 1.85) * (1 - speedRatio * 0.28);
       car.angle -= steer * turnRate * direction * dt;
 
+      car.prevX = car.x;
+      car.prevZ = car.z;
+      car.prevAngle = car.angle;
       car.x += car.velocity.x * dt;
       car.z += car.velocity.y * dt;
       handleWorldBounds();
@@ -1883,30 +1893,176 @@ import("three")
       for (const [id, entry] of players) {
         if (id === state.id) continue;
         if (entry.mode !== "arena") continue;
-        const dx = car.x - entry.x;
-        const dz = car.z - entry.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist > 0.001 && dist < 4.4) {
-          const nx = dx / dist;
-          const nz = dz / dist;
-          const normal = scratch2.set(nx, nz);
-          car.x = entry.x + nx * 4.4;
-          car.z = entry.z + nz * 4.4;
-          car.velocity.addScaledVector(normal, 12);
-          car.velocity.multiplyScalar(0.82);
-          car.cameraShake = Math.max(car.cameraShake, state.car.slamUntil > Date.now() ? 0.72 : 0.46);
-          spawnImpact(entry.x, 1.4, entry.z, state.car.slamUntil > Date.now() ? "#ff4f8b" : "#ffcf6b", 12);
+        const other = getRemoteCollisionBody(entry);
+        const collision = getCarCapsuleCollision(car, other) || getSweptCarCollision(car, other);
+        if (!collision) continue;
 
-          if (now - state.lastHitAt > HIT_COOLDOWN_MS && car.speed > 8.5) {
-            state.lastHitAt = now;
-            sendMessage({
-              type: "hit",
-              targetId: id,
-              impulse: THREE.MathUtils.clamp(car.speed / 36, 0.2, 1.55)
-            });
-          }
+        const remoteVelocity = getRemoteVelocity(entry);
+        const relativeX = car.velocity.x - remoteVelocity.x;
+        const relativeZ = car.velocity.y - remoteVelocity.z;
+        const closingSpeed = -(relativeX * collision.nx + relativeZ * collision.nz);
+        const impactSpeed = Math.max(0, closingSpeed, car.speed * (collision.swept ? 0.42 : 0.25));
+        const push = Math.min(collision.swept ? 1.35 : 2.25, collision.penetration * 0.72 + (collision.swept ? 0.28 : 0.08));
+        car.x += collision.nx * push;
+        car.z += collision.nz * push;
+
+        if (closingSpeed > 0.1) {
+          const bounce = Math.min(24, closingSpeed * (state.car.slamUntil > Date.now() ? 0.82 : 0.62) + 4);
+          car.velocity.x += collision.nx * bounce;
+          car.velocity.y += collision.nz * bounce;
+        } else {
+          car.velocity.x += collision.nx * Math.min(6, collision.penetration * 2.4);
+          car.velocity.y += collision.nz * Math.min(6, collision.penetration * 2.4);
+        }
+        car.velocity.multiplyScalar(collision.swept ? 0.88 : 0.82);
+        car.cameraShake = Math.max(
+          car.cameraShake,
+          THREE.MathUtils.clamp(impactSpeed / 36, 0.18, state.car.slamUntil > Date.now() ? 0.78 : 0.52)
+        );
+
+        if (now - (entry.lastContactFxAt || 0) > 150) {
+          entry.lastContactFxAt = now;
+          spawnImpact(collision.contactX, 1.4, collision.contactZ, state.car.slamUntil > Date.now() ? "#ff4f8b" : "#ffcf6b", 9);
+        }
+
+        if (now - state.lastHitAt > HIT_COOLDOWN_MS && impactSpeed > 7.5) {
+          state.lastHitAt = now;
+          sendMessage({
+            type: "hit",
+            targetId: id,
+            impulse: THREE.MathUtils.clamp(impactSpeed / 34, 0.22, 1.65),
+            contactX: collision.contactX,
+            contactZ: collision.contactZ
+          });
         }
       }
+    }
+
+    function getRemoteCollisionBody(entry) {
+      const group = entry.mesh?.group;
+      return {
+        x: group ? group.position.x : entry.x,
+        z: group ? group.position.z : entry.z,
+        angle: group ? group.rotation.y : entry.angle || 0
+      };
+    }
+
+    function getRemoteVelocity(entry) {
+      if (Number.isFinite(entry.vx) && Number.isFinite(entry.vz)) {
+        return scratch2.set(entry.vx, entry.vz);
+      }
+      return scratch2.set(Math.sin(entry.angle || 0) * (entry.speed || 0), Math.cos(entry.angle || 0) * (entry.speed || 0));
+    }
+
+    function getCarAxis(x, z, angle) {
+      const fx = Math.sin(angle || 0) * CAR_COLLISION_AXIS_HALF;
+      const fz = Math.cos(angle || 0) * CAR_COLLISION_AXIS_HALF;
+      return { ax: x - fx, az: z - fz, bx: x + fx, bz: z + fz };
+    }
+
+    function getCarCapsuleCollision(car, other) {
+      const localAxis = getCarAxis(car.x, car.z, car.angle);
+      const otherAxis = getCarAxis(other.x, other.z, other.angle);
+      const closest = closestSegments2D(localAxis.ax, localAxis.az, localAxis.bx, localAxis.bz, otherAxis.ax, otherAxis.az, otherAxis.bx, otherAxis.bz);
+      return buildCapsuleCollision(car.x, car.z, other.x, other.z, closest, CAR_COLLISION_RANGE, false);
+    }
+
+    function getSweptCarCollision(car, other) {
+      if (!Number.isFinite(car.prevX) || !Number.isFinite(car.prevZ)) return null;
+      const moveDistance = Math.hypot(car.x - car.prevX, car.z - car.prevZ);
+      if (moveDistance < 0.45) return null;
+
+      const previousAxis = getCarAxis(car.prevX, car.prevZ, car.prevAngle ?? car.angle);
+      const currentAxis = getCarAxis(car.x, car.z, car.angle);
+      const otherAxis = getCarAxis(other.x, other.z, other.angle);
+      const tracks = [
+        [car.prevX, car.prevZ, car.x, car.z],
+        [previousAxis.ax, previousAxis.az, currentAxis.ax, currentAxis.az],
+        [previousAxis.bx, previousAxis.bz, currentAxis.bx, currentAxis.bz]
+      ];
+      let best = null;
+      for (const track of tracks) {
+        const closest = closestSegments2D(track[0], track[1], track[2], track[3], otherAxis.ax, otherAxis.az, otherAxis.bx, otherAxis.bz);
+        if (!best || closest.distanceSq < best.distanceSq) best = closest;
+      }
+      return buildCapsuleCollision(car.x, car.z, other.x, other.z, best, CAR_COLLISION_RANGE + CAR_SWEEP_MARGIN, true);
+    }
+
+    function buildCapsuleCollision(localX, localZ, otherX, otherZ, closest, range, swept) {
+      const distance = Math.sqrt(closest.distanceSq);
+      if (distance >= range) return null;
+      let nx = distance > 0.0001 ? (closest.ax - closest.bx) / distance : localX - otherX;
+      let nz = distance > 0.0001 ? (closest.az - closest.bz) / distance : localZ - otherZ;
+      const centerDistance = Math.hypot(nx, nz);
+      if (centerDistance < 0.0001 || !Number.isFinite(centerDistance)) {
+        nx = 1;
+        nz = 0;
+      } else if (distance <= 0.0001) {
+        nx /= centerDistance;
+        nz /= centerDistance;
+      }
+      return {
+        nx,
+        nz,
+        penetration: range - distance,
+        contactX: (closest.ax + closest.bx) * 0.5,
+        contactZ: (closest.az + closest.bz) * 0.5,
+        swept
+      };
+    }
+
+    function closestPointOnSegment2D(px, pz, ax, az, bx, bz) {
+      const sx = bx - ax;
+      const sz = bz - az;
+      const lengthSq = sx * sx + sz * sz;
+      if (lengthSq <= 0.000001) return { x: ax, z: az };
+      const t = THREE.MathUtils.clamp(((px - ax) * sx + (pz - az) * sz) / lengthSq, 0, 1);
+      return { x: ax + sx * t, z: az + sz * t };
+    }
+
+    function closestSegments2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z) {
+      if (segmentsIntersect2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z)) {
+        const ix = (Math.max(Math.min(a1x, a2x), Math.min(b1x, b2x)) + Math.min(Math.max(a1x, a2x), Math.max(b1x, b2x))) * 0.5;
+        const iz = (Math.max(Math.min(a1z, a2z), Math.min(b1z, b2z)) + Math.min(Math.max(a1z, a2z), Math.max(b1z, b2z))) * 0.5;
+        return { ax: ix, az: iz, bx: ix, bz: iz, distanceSq: 0 };
+      }
+
+      const candidates = [];
+      let point = closestPointOnSegment2D(a1x, a1z, b1x, b1z, b2x, b2z);
+      candidates.push({ ax: a1x, az: a1z, bx: point.x, bz: point.z });
+      point = closestPointOnSegment2D(a2x, a2z, b1x, b1z, b2x, b2z);
+      candidates.push({ ax: a2x, az: a2z, bx: point.x, bz: point.z });
+      point = closestPointOnSegment2D(b1x, b1z, a1x, a1z, a2x, a2z);
+      candidates.push({ ax: point.x, az: point.z, bx: b1x, bz: b1z });
+      point = closestPointOnSegment2D(b2x, b2z, a1x, a1z, a2x, a2z);
+      candidates.push({ ax: point.x, az: point.z, bx: b2x, bz: b2z });
+
+      let best = candidates[0];
+      best.distanceSq = distanceSq2D(best.ax, best.az, best.bx, best.bz);
+      for (let i = 1; i < candidates.length; i += 1) {
+        const candidate = candidates[i];
+        candidate.distanceSq = distanceSq2D(candidate.ax, candidate.az, candidate.bx, candidate.bz);
+        if (candidate.distanceSq < best.distanceSq) best = candidate;
+      }
+      return best;
+    }
+
+    function segmentsIntersect2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z) {
+      const d1 = cross2D(a2x - a1x, a2z - a1z, b1x - a1x, b1z - a1z);
+      const d2 = cross2D(a2x - a1x, a2z - a1z, b2x - a1x, b2z - a1z);
+      const d3 = cross2D(b2x - b1x, b2z - b1z, a1x - b1x, a1z - b1z);
+      const d4 = cross2D(b2x - b1x, b2z - b1z, a2x - b1x, a2z - b1z);
+      return d1 * d2 < 0 && d3 * d4 < 0;
+    }
+
+    function cross2D(ax, az, bx, bz) {
+      return ax * bz - az * bx;
+    }
+
+    function distanceSq2D(ax, az, bx, bz) {
+      const dx = ax - bx;
+      const dz = az - bz;
+      return dx * dx + dz * dz;
     }
 
     function handlePickupCollections() {
@@ -2547,6 +2703,8 @@ import("three")
         z: state.car.z,
         angle: state.car.angle,
         speed: state.car.speed,
+        vx: state.car.velocity.x,
+        vz: state.car.velocity.y,
         inZone: state.car.inZone
       });
     }
@@ -2595,7 +2753,9 @@ import("three")
           y: player.y ?? 0.08,
           z: player.z || 0,
           angle: player.angle || 0,
-          speed: player.speed || 0
+          speed: player.speed || 0,
+          vx: player.vx || 0,
+          vz: player.vz || 0
           };
           entry.mesh.group.position.set(entry.x, entry.y, entry.z);
           entry.mesh.group.rotation.y = entry.angle;
@@ -2611,6 +2771,8 @@ import("three")
         z: player.z ?? entry.z,
         angle: player.angle ?? entry.angle,
         speed: player.speed ?? entry.speed,
+        vx: player.vx ?? entry.vx ?? 0,
+        vz: player.vz ?? entry.vz ?? 0,
         mode: player.mode || "arena",
         score: player.score || 0,
         health: player.health ?? 100,

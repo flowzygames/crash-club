@@ -24,6 +24,10 @@ const BOT_DECISION_MIN_MS = 360;
 const BOT_DECISION_MAX_MS = 820;
 const BOT_HIT_COOLDOWN_MS = 650;
 const STYLE_SCORE_COOLDOWN_MS = 1250;
+const CAR_COLLISION_RADIUS = 2.35;
+const CAR_COLLISION_AXIS_HALF = 2.65;
+const CAR_COLLISION_RANGE = CAR_COLLISION_RADIUS * 2;
+const HIT_LAG_ALLOWANCE = 2.8;
 
 const PICKUP_TYPES = {
   boost: {
@@ -152,6 +156,115 @@ function angleDelta(from, to) {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
+function distanceSq2D(ax, az, bx, bz) {
+  const dx = ax - bx;
+  const dz = az - bz;
+  return dx * dx + dz * dz;
+}
+
+function cross2D(ax, az, bx, bz) {
+  return ax * bz - az * bx;
+}
+
+function segmentsIntersect2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z) {
+  const d1 = cross2D(a2x - a1x, a2z - a1z, b1x - a1x, b1z - a1z);
+  const d2 = cross2D(a2x - a1x, a2z - a1z, b2x - a1x, b2z - a1z);
+  const d3 = cross2D(b2x - b1x, b2z - b1z, a1x - b1x, a1z - b1z);
+  const d4 = cross2D(b2x - b1x, b2z - b1z, a2x - b1x, a2z - b1z);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+function closestPointOnSegment2D(px, pz, ax, az, bx, bz) {
+  const sx = bx - ax;
+  const sz = bz - az;
+  const lengthSq = sx * sx + sz * sz;
+  if (lengthSq <= 0.000001) {
+    return { x: ax, z: az };
+  }
+  const t = clamp(((px - ax) * sx + (pz - az) * sz) / lengthSq, 0, 1);
+  return { x: ax + sx * t, z: az + sz * t };
+}
+
+function closestSegments2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z) {
+  if (segmentsIntersect2D(a1x, a1z, a2x, a2z, b1x, b1z, b2x, b2z)) {
+    const ix = (Math.max(Math.min(a1x, a2x), Math.min(b1x, b2x)) + Math.min(Math.max(a1x, a2x), Math.max(b1x, b2x))) * 0.5;
+    const iz = (Math.max(Math.min(a1z, a2z), Math.min(b1z, b2z)) + Math.min(Math.max(a1z, a2z), Math.max(b1z, b2z))) * 0.5;
+    return { ax: ix, az: iz, bx: ix, bz: iz, distanceSq: 0 };
+  }
+
+  const candidates = [];
+  let point = closestPointOnSegment2D(a1x, a1z, b1x, b1z, b2x, b2z);
+  candidates.push({ ax: a1x, az: a1z, bx: point.x, bz: point.z });
+  point = closestPointOnSegment2D(a2x, a2z, b1x, b1z, b2x, b2z);
+  candidates.push({ ax: a2x, az: a2z, bx: point.x, bz: point.z });
+  point = closestPointOnSegment2D(b1x, b1z, a1x, a1z, a2x, a2z);
+  candidates.push({ ax: point.x, az: point.z, bx: b1x, bz: b1z });
+  point = closestPointOnSegment2D(b2x, b2z, a1x, a1z, a2x, a2z);
+  candidates.push({ ax: point.x, az: point.z, bx: b2x, bz: b2z });
+
+  let best = candidates[0];
+  best.distanceSq = distanceSq2D(best.ax, best.az, best.bx, best.bz);
+  for (let i = 1; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    candidate.distanceSq = distanceSq2D(candidate.ax, candidate.az, candidate.bx, candidate.bz);
+    if (candidate.distanceSq < best.distanceSq) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+function getCarAxis(player) {
+  const fx = Math.sin(player.angle || 0) * CAR_COLLISION_AXIS_HALF;
+  const fz = Math.cos(player.angle || 0) * CAR_COLLISION_AXIS_HALF;
+  return {
+    ax: player.x - fx,
+    az: player.z - fz,
+    bx: player.x + fx,
+    bz: player.z + fz
+  };
+}
+
+function getPlayerCollision(source, target, allowance = 0) {
+  if (!source || !target) return null;
+  const sourceAxis = getCarAxis(source);
+  const targetAxis = getCarAxis(target);
+  const closest = closestSegments2D(sourceAxis.ax, sourceAxis.az, sourceAxis.bx, sourceAxis.bz, targetAxis.ax, targetAxis.az, targetAxis.bx, targetAxis.bz);
+  const distance = Math.sqrt(closest.distanceSq);
+  const range = CAR_COLLISION_RANGE + allowance;
+  if (distance >= range) return null;
+
+  let nx = distance > 0.0001 ? (closest.ax - closest.bx) / distance : source.x - target.x;
+  let nz = distance > 0.0001 ? (closest.az - closest.bz) / distance : source.z - target.z;
+  const normalLength = Math.hypot(nx, nz);
+  if (normalLength < 0.0001 || !Number.isFinite(normalLength)) {
+    nx = 1;
+    nz = 0;
+  } else if (distance <= 0.0001) {
+    nx /= normalLength;
+    nz /= normalLength;
+  }
+
+  return {
+    nx,
+    nz,
+    penetration: range - distance,
+    contactX: (closest.ax + closest.bx) * 0.5,
+    contactZ: (closest.az + closest.bz) * 0.5,
+    distance
+  };
+}
+
+function getRelativeClosingSpeed(source, target, collision) {
+  const sourceVx = Number.isFinite(source.vx) ? source.vx : Math.sin(source.angle || 0) * (source.speed || 0);
+  const sourceVz = Number.isFinite(source.vz) ? source.vz : Math.cos(source.angle || 0) * (source.speed || 0);
+  const targetVx = Number.isFinite(target.vx) ? target.vx : Math.sin(target.angle || 0) * (target.speed || 0);
+  const targetVz = Number.isFinite(target.vz) ? target.vz : Math.cos(target.angle || 0) * (target.speed || 0);
+  const rvx = sourceVx - targetVx;
+  const rvz = sourceVz - targetVz;
+  return Math.max(0, -(rvx * collision.nx + rvz * collision.nz));
+}
+
 function createPickups() {
   return PICKUP_TEMPLATES.map((pickup) => ({
     ...pickup,
@@ -219,6 +332,8 @@ function serializePlayer(player) {
     z: player.z,
     angle: player.angle,
     speed: player.speed,
+    vx: player.vx || 0,
+    vz: player.vz || 0,
     isBot: Boolean(player.isBot),
     score: player.score || 0,
     roundWins: player.roundWins || 0,
@@ -257,6 +372,8 @@ function createSpawnState(id, name, color) {
     z: Math.sin(spawnAngle) * spawnRadius,
     angle: spawnAngle + Math.PI,
     speed: 0,
+    vx: 0,
+    vz: 0,
     inZone: false
   };
 }
@@ -615,6 +732,24 @@ function collectPickupFor(player, pickup, room, now) {
   maybeFinishRound(room, now);
 }
 
+function resolveBotBodyCollisions(room, bot, now) {
+  for (const target of room.players.values()) {
+    if (target.id === bot.id || target.mode !== "arena" || target.wreckedUntil > now || target.health <= 0) {
+      continue;
+    }
+    const collision = getPlayerCollision(bot, target);
+    if (!collision) {
+      continue;
+    }
+    const push = Math.min(2.4, collision.penetration * 0.62 + 0.12);
+    bot.x += collision.nx * push;
+    bot.z += collision.nz * push;
+    bot.speed *= 0.74;
+    bot.vx = Math.sin(bot.angle) * bot.speed;
+    bot.vz = Math.cos(bot.angle) * bot.speed;
+  }
+}
+
 function updateBots(room, now, deltaSeconds) {
   if (room.round.phase !== "live") {
     return;
@@ -627,6 +762,8 @@ function updateBots(room, now, deltaSeconds) {
 
     if (bot.wreckedUntil > now || bot.health <= 0) {
       bot.speed = 0;
+      bot.vx = 0;
+      bot.vz = 0;
       continue;
     }
 
@@ -647,12 +784,15 @@ function updateBots(room, now, deltaSeconds) {
     const speedLimit = 35 + (botSeed % 6) * 1.8 + Math.sin(now * 0.0012 + botSeed) * 3;
     const acceleration = targetDistance > 7 ? 48 * personality : -56;
     bot.speed = clamp(bot.speed + acceleration * deltaSeconds, targetDistance > 7 ? 11 : 0, speedLimit);
-    bot.x += Math.sin(bot.angle) * bot.speed * deltaSeconds;
-    bot.z += Math.cos(bot.angle) * bot.speed * deltaSeconds;
+    bot.vx = Math.sin(bot.angle) * bot.speed;
+    bot.vz = Math.cos(bot.angle) * bot.speed;
+    bot.x += bot.vx * deltaSeconds;
+    bot.z += bot.vz * deltaSeconds;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
     bot.y = 0.08;
     bot.inZone = Math.hypot(bot.x, bot.z) >= 8 && Math.hypot(bot.x, bot.z) <= 18;
+    resolveBotBodyCollisions(room, bot, now);
 
     if (targetDistance < 5) {
       bot.botNextDecisionAt = 0;
@@ -677,9 +817,10 @@ function updateBots(room, now, deltaSeconds) {
         continue;
       }
 
-      const distance = Math.hypot(bot.x - target.x, bot.z - target.z);
-      if (distance < 5.1 && bot.speed > 13) {
-        const damage = Math.round(clamp(bot.speed / 38, 0.32, 1.08) * 23);
+      const collision = getPlayerCollision(bot, target, 0.35);
+      if (collision && bot.speed > 13) {
+        const closingSpeed = Math.max(bot.speed, getRelativeClosingSpeed(bot, target, collision));
+        const damage = Math.round(clamp(closingSpeed / 38, 0.32, 1.08) * 23);
         damagePlayer(room, bot, target, damage, now);
         broadcastRoom(room, {
           type: "impact",
@@ -829,6 +970,8 @@ wss.on("connection", (ws) => {
       player.z = clamp(Number(msg.z) || 0, -WORLD_SIZE, WORLD_SIZE);
       player.angle = Number(msg.angle) || 0;
       player.speed = clamp(Number(msg.speed) || 0, -25, 70);
+      player.vx = clamp(Number(msg.vx) || 0, -90, 90);
+      player.vz = clamp(Number(msg.vz) || 0, -90, 90);
       player.inZone = Boolean(msg.inZone);
       return;
     }
@@ -890,20 +1033,25 @@ wss.on("connection", (ws) => {
       const impulse = clamp(Number(msg.impulse) || 0, 0, 1.8);
       const target = room.players.get(String(msg.targetId || ""));
       const slamReady = player.slamUntil > now;
-      const damage = Math.round(impulse * (slamReady ? 38 : 24));
-      if (slamReady) {
+      const collision = target && target.id !== player.id && target.mode === "arena" ? getPlayerCollision(player, target, HIT_LAG_ALLOWANCE) : null;
+      const closingSpeed = collision ? getRelativeClosingSpeed(player, target, collision) : 0;
+      const validatedImpulse = collision ? clamp(Math.max(impulse, closingSpeed / 38), 0, slamReady ? 1.9 : 1.55) : 0;
+      const damage = Math.round(validatedImpulse * (slamReady ? 38 : 24));
+      if (slamReady && collision) {
         player.slamUntil = 0;
       }
-      if (target && target.id !== player.id && damage > 4) {
+      if (target && collision && damage > 4) {
         damagePlayer(room, player, target, damage, now);
       }
-      broadcastRoom(room, {
-        type: "impact",
-        sourceId: player.id,
-        targetId: String(msg.targetId || ""),
-        impulse,
-        slam: slamReady
-      });
+      if (target && collision) {
+        broadcastRoom(room, {
+          type: "impact",
+          sourceId: player.id,
+          targetId: target.id,
+          impulse: validatedImpulse || impulse,
+          slam: slamReady
+        });
+      }
       maybeFinishRound(room, now);
       return;
     }
