@@ -1,0 +1,12 @@
+{
+  "name": "crash-club-render-backend",
+  "version": "1.4.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node backend/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

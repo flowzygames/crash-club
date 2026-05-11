@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: crash-club
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CRASH_CLUB_BOT_TARGET
+        value: "6"
+      - key: CRASH_CLUB_TICK_RATE
+        value: "20"
+      - key: CRASH_CLUB_SNAPSHOT_RATE
+        value: "12"
