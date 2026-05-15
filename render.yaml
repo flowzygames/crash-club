@@ -12,6 +12,6 @@ services:
       - key: CRASH_CLUB_BOT_TARGET
         value: "6"
       - key: CRASH_CLUB_TICK_RATE
-        value: "20"
+        value: "24"
       - key: CRASH_CLUB_SNAPSHOT_RATE
-        value: "12"
+        value: "15"
