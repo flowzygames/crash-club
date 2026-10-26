@@ -35,8 +35,8 @@ import("three")
     };
 
     const weaponMeta = {
-      rocket: { label: "Homing Rockets", color: "#ff8a4c", glyph: "\u{1F680}", hint: "Locks onto whoever is in front of you." },
-      mine: { label: "Prox Mines", color: "#ffcf6b", glyph: "\u{1F4A3}", hint: "Drops behind you. Arms after a beat." },
+      rocket: { label: "Homing Rockets", color: "#ff8a4c", glyph: "\u{1F680}", hint: "Locks onto whoever is in front of you.", cooldownMs: 420 },
+      mine: { label: "Prox Mines", color: "#ffcf6b", glyph: "\u{1F4A3}", hint: "Drops behind you. Arms after a beat.", cooldownMs: 360 },
       shockwave: { label: "Shockwave", color: "#7eb8ff", glyph: "\u{1F300}", hint: "Blasts everyone near you into orbit." },
       blackhole: { label: "Black Hole", color: "#c084fc", glyph: "\u{1F573}\u{FE0F}", hint: "Lobbed forward. Sucks cars in, then pops." }
     };
@@ -154,8 +154,9 @@ import("three")
 
     const url = new URL(location.href);
     const serverOverride = url.searchParams.get("server");
-    let roomCode = sanitizeRoom(url.searchParams.get("room") || localStorage.getItem("crash-club-room") || "main");
+    let roomCode = sanitizeRoom(url.searchParams.get("room") || readStorage("crash-club-room") || "main");
     const input = new Set();
+    const touchLook = new Map();
     const players = new Map();
     const pickups = new Map();
     const projectiles = new Map();
@@ -365,19 +366,21 @@ import("three")
       } else if (state.mode === "spectator") {
         updateSpectator(rawDt);
       } else {
-        updateLocalCar(dt);
+        // Slow-mo is only cosmetic: the server, bots and other players never slow down, so neither may the local car.
+        updateLocalCar(rawDt);
       }
       if (!state.podium.active) {
-        updateRing(dt);
-        updateRemoteCars(dt);
-        updatePickups(dt);
-        updateStuntVisuals(dt);
-        updateProjectiles(dt);
-        updateHazards(dt);
+        updateRing(rawDt);
+        updateRemoteCars(rawDt);
+        updatePickups(rawDt);
+        updateStuntVisuals(rawDt);
+        updateProjectiles(rawDt);
+        updateHazards(rawDt);
       }
       updateEffects(dt);
       updateBlasts(dt);
       updateCombo();
+      if (els.speedLines && (state.mode !== "arena" || state.podium.active)) els.speedLines.style.setProperty("--speed-line-opacity", "0");
       if (state.mode === "arena" && !state.podium.active) updateCamera(dt, rawDt);
       if (frameNow - state.lastHudAt >= getHudInterval()) {
         state.lastHudAt = frameNow;
@@ -391,7 +394,7 @@ import("three")
     }
 
     function renderFrame(dt) {
-      if (composer && settings.quality !== "performance") {
+      if (composer && settings.quality === "showcase") {
         composer.render(dt);
       } else {
         renderer.render(scene, camera);
@@ -406,7 +409,9 @@ import("three")
           import("three/addons/postprocessing/UnrealBloomPass.js"),
           import("three/addons/postprocessing/OutputPass.js")
         ]);
-        const nextComposer = new EffectComposer(renderer);
+        const pixelRatio = renderer.getPixelRatio();
+        const target = new THREE.WebGLRenderTarget(innerWidth * pixelRatio, innerHeight * pixelRatio, { type: THREE.HalfFloatType, samples: 4 });
+        const nextComposer = new EffectComposer(renderer, target);
         nextComposer.addPass(new RenderPass(scene, camera));
         bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.65, 0.42, 0.8);
         nextComposer.addPass(bloomPass);
@@ -436,10 +441,9 @@ import("three")
       els.flash.style.setProperty("--flash-color", color);
       els.flash.style.transition = "none";
       els.flash.style.opacity = String(strength);
-      requestAnimationFrame(() => {
-        els.flash.style.transition = "opacity 380ms ease-out";
-        els.flash.style.opacity = "0";
-      });
+      void els.flash.offsetWidth;
+      els.flash.style.transition = "opacity 380ms ease-out";
+      els.flash.style.opacity = "0";
     }
 
     function getServerNow() {
@@ -1793,6 +1797,9 @@ import("three")
       els.roomJoin?.addEventListener("click", joinTypedRoom);
       addEventListener("pointermove", handlePointerLook);
       addEventListener("pointerdown", (event) => {
+        const onCanvas = event.target === renderer.domElement || document.pointerLockElement === document.body;
+        if (state.podium.active || !onCanvas) return;
+        if (event.pointerType === "touch") touchLook.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (state.mode === "gulag") {
           event.preventDefault();
           state.gulag.firing = true;
@@ -1805,13 +1812,31 @@ import("three")
           fireWeapon();
         }
       });
-      addEventListener("pointerup", () => {
+      addEventListener("pointerup", (event) => {
         state.mouseLook = false;
         state.gulag.firing = false;
+        touchLook.delete(event.pointerId);
+      });
+      addEventListener("pointercancel", (event) => touchLook.delete(event.pointerId));
+      // Keys released while another window has focus never send keyup: drop everything held.
+      addEventListener("blur", clearInput);
+      renderer.domElement.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        clearInput();
+      });
+      document.addEventListener("visibilitychange", () => {
+        clearInput();
+        if (!playTone.ctx) return;
+        if (document.hidden) playTone.ctx.suspend?.();
+        else if (playTone.enabled) playTone.ctx.resume?.();
       });
 
       addEventListener("keydown", (event) => {
-        const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName);
+        const active = document.activeElement;
+        const typing =
+          active?.tagName === "TEXTAREA" ||
+          active?.isContentEditable ||
+          (active?.tagName === "INPUT" && /^(text|search|email|url|tel|password|number)$/i.test(active.type || "text"));
         if (typing && event.key !== "Escape") return;
         const key = normalizeKey(event.key);
         if (key === "escape") {
@@ -1823,10 +1848,10 @@ import("three")
           return;
         }
         if (key === "r") {
-          sendMessage({ type: "respawn" });
+          if (!event.repeat) requestRespawn();
           return;
         }
-        if ((key === " " || key === "f") && state.mode === "gulag") {
+        if ((key === " " || key === "f") && state.mode === "gulag" && !state.podium.active) {
           event.preventDefault();
           fireGulagShot();
           return;
@@ -1851,7 +1876,7 @@ import("three")
         button.addEventListener("pointerdown", (event) => {
           event.preventDefault();
           if (key === "r") {
-            sendMessage({ type: "respawn" });
+            requestRespawn();
             return;
           }
           if (key === " ") {
@@ -1876,6 +1901,17 @@ import("three")
       }
     }
 
+    function requestRespawn() {
+      if (state.podium.active || state.room.phase !== "live" || !state.joined) return;
+      const now = performance.now();
+      if (state.mode === "arena" && now < (state.nextRespawnAt || 0)) {
+        lightweightNotice("Reset is cooling down.");
+        return;
+      }
+      if (state.mode === "arena") state.nextRespawnAt = now + 4000;
+      sendMessage({ type: "respawn" });
+    }
+
     function syncRoomInputs() {
       for (const input of [els.roomInput, els.roomInputMenu]) {
         if (input) input.value = roomCode;
@@ -1888,7 +1924,7 @@ import("three")
       const changed = nextRoom !== roomCode;
       roomCode = nextRoom;
       state.room.code = roomCode;
-      localStorage.setItem("crash-club-room", roomCode);
+      writeStorage("crash-club-room", roomCode);
       syncRoomInputs();
       if (options.updateUrl !== false) {
         const nextUrl = new URL(location.href);
@@ -1988,7 +2024,7 @@ import("three")
     function loadSettings() {
       const defaults = { quality: "showcase", sound: true, music: true, announcer: true, volume: 0.55, qualityManual: false };
       try {
-        const saved = JSON.parse(localStorage.getItem("crash-club-settings") || "{}");
+        const saved = JSON.parse(readStorage("crash-club-settings") || "{}");
         const qualityManual = saved.qualityManual === true;
         return {
           quality: qualityManual && ["performance", "balanced", "showcase"].includes(saved.quality) ? saved.quality : defaults.quality,
@@ -2004,7 +2040,7 @@ import("three")
     }
 
     function saveSettings() {
-      localStorage.setItem("crash-club-settings", JSON.stringify(settings));
+      writeStorage("crash-club-settings", JSON.stringify(settings));
     }
 
     function applyQualityClasses() {
@@ -2053,10 +2089,22 @@ import("three")
 
     function handlePointerLook(event) {
       if (state.mode !== "gulag" && state.mode !== "spectator") return;
-      if (document.pointerLockElement !== document.body && event.buttons !== 1) return;
+      if (state.podium.active) return;
+      let dx = event.movementX;
+      let dy = event.movementY;
+      if (event.pointerType === "touch") {
+        // Touch has no pointer lock: drag on the canvas to look around.
+        const last = touchLook.get(event.pointerId);
+        if (!last) return;
+        touchLook.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        dx = (event.clientX - last.x) * 1.6;
+        dy = (event.clientY - last.y) * 1.6;
+      } else if (document.pointerLockElement !== document.body && event.buttons !== 1) {
+        return;
+      }
       const target = state.mode === "gulag" ? state.gulag : state.spectator;
-      target.yaw -= event.movementX * 0.0024;
-      target.pitch = THREE.MathUtils.clamp(target.pitch - event.movementY * 0.002, -1.1, 1.05);
+      target.yaw -= dx * 0.0024;
+      target.pitch = THREE.MathUtils.clamp(target.pitch - dy * 0.002, -1.1, 1.05);
     }
 
     function unlockAudio(event) {
@@ -2097,7 +2145,7 @@ import("three")
 
     function saveName(options = {}) {
       state.car.name = String(els.name?.value || "Driver").trim().slice(0, 18) || "Driver";
-      localStorage.setItem("crash-club-name", state.car.name);
+      writeStorage("crash-club-name", state.car.name);
       updateNameLabel(localCar.label, state.car.name, "#59f0c2");
       sendMessage({ type: "rename", name: state.car.name });
       if (!options.silent) toast(`Name saved: ${state.car.name}`, "info");
@@ -2197,11 +2245,16 @@ import("three")
         }
       });
       socket.addEventListener("close", () => {
+        const wasJoined = state.joined;
         state.joined = false;
         state.preconnected = false;
         if (socket !== state.socket) return;
-        if (retryOnClose) scheduleReconnect();
-        else state.socket = null;
+        if (retryOnClose || state.connectWanted) {
+          if (wasJoined) toast("Connection lost. Reconnecting...", "danger");
+          scheduleReconnect();
+        } else {
+          state.socket = null;
+        }
       });
       socket.addEventListener("error", () => {
         if (socket !== state.socket) return;
@@ -2238,7 +2291,9 @@ import("three")
       if (msg.type === "hello") return;
 
       if (msg.type === "joined") {
-        state.id = String(msg.id);
+        const joinedId = String(msg.id);
+        if (state.id && state.id !== joinedId) resetForRejoin();
+        state.id = joinedId;
         state.joined = true;
         state.preconnected = false;
         state.mode = "arena";
@@ -2269,12 +2324,15 @@ import("three")
 
       if (msg.type === "round-started") {
         endPodiumShow();
+        if (state.gulag.active || !modeOverlay.root.classList.contains("hidden")) endGulag();
         clearArenaChaos();
         applyRoom(msg.room);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
         const self = (msg.players || []).find((player) => String(player.id) === state.id);
-        if (self && state.mode === "arena") {
+        if (self) {
+          state.mode = "arena";
+          localCar.group.visible = true;
           syncLocalTransform(self);
           state.car.velocity.set(0, 0);
         }
@@ -2312,7 +2370,7 @@ import("three")
         const pickup = pickups.get(msg.pickupId);
         if (pickup) {
           pickup.active = Boolean(msg.active);
-          pickup.mesh.visible = pickup.active;
+          pickup.mesh.visible = pickup.active && state.arenaWorldVisible !== false;
         }
         return;
       }
@@ -2525,12 +2583,18 @@ import("three")
       }
     }
 
+    function cancelWeaponRoll() {
+      clearTimeout(state.weaponRollTimer);
+      state.weaponRollUntil = 0;
+    }
+
     function startWeaponRoll(weapon) {
+      cancelWeaponRoll();
       state.weaponRollUntil = performance.now() + 750;
       playSweep(300, 900, 0.7, "square", 0.018);
-      setTimeout(() => {
+      state.weaponRollTimer = setTimeout(() => {
         const meta = weaponMeta[weapon];
-        if (!meta) return;
+        if (!meta || state.mode !== "arena" || state.podium.active || state.room.phase !== "live" || state.car.weapon !== weapon) return;
         callout(meta.label.toUpperCase(), meta.hint, meta.color, { minor: true, duration: 1100 });
         playTone(880, 0.1, "triangle", 0.05);
         updateWeaponHud();
@@ -2576,7 +2640,8 @@ import("three")
         lightweightNotice("No weapon. Grab a purple Mystery Crate.");
         return;
       }
-      state.nextFireAt = now + 300;
+      // Match the server's per-weapon cooldown so presses are never silently dropped.
+      state.nextFireAt = now + (weaponMeta[car.weapon]?.cooldownMs || 300) + 40;
       sendMessage({ type: "fire", x: car.x, y: car.y, z: car.z, angle: car.angle, vx: car.velocity.x, vz: car.velocity.y });
     }
 
@@ -2616,8 +2681,16 @@ import("three")
 
     function updateCombo() {
       const combo = state.combo;
-      if (combo.count && performance.now() > combo.expiresAt) cashOutCombo();
-      if (combo.count && els.comboTimer) {
+      if (!combo.count) return;
+      if (!state.joined || state.mode !== "arena" || state.room.phase !== "live" || state.podium.active) {
+        resetCombo();
+        return;
+      }
+      if (performance.now() > combo.expiresAt || state.room.endsAt - getServerNow() < 700) {
+        cashOutCombo();
+        return;
+      }
+      if (els.comboTimer) {
         els.comboTimer.style.transform = `scaleX(${THREE.MathUtils.clamp((combo.expiresAt - performance.now()) / COMBO_WINDOW_MS, 0, 1).toFixed(3)})`;
       }
     }
@@ -2786,7 +2859,7 @@ import("three")
         callout("YOU HAVE THE BOMB", "Ram someone. Fast.", "#ff2d55", { voice: "you have the bomb", duration: 1600 });
         flashScreen("#ff2d55", 0.4);
         playTone(220, 0.2, "square", 0.06);
-      } else if (previous === state.id) {
+      } else if (previous === state.id && String(msg.passerId) === state.id) {
         callout("PASSED IT!", `${msg.holderName} has the bomb now`, "#59f0c2", { minor: true });
         addCombo("BOMB PASS", 6);
       }
@@ -3092,7 +3165,7 @@ import("three")
         hazard.fill.scale.setScalar(Math.max(0.01, t * 11));
         hazard.ring.scale.setScalar(11 + Math.sin(now * 0.02) * 0.4);
         const fall = 1 - t * t;
-        hazard.rock.position.set(hazard.x + 46 * fall, 0.8 + 150 * fall, hazard.z - 34 * fall);
+        hazard.rock.position.set(hazard.x + 46 * fall, (hazard.y || 0) + 0.8 + 150 * fall, hazard.z - 34 * fall);
         hazard.rock.rotation.x += dt * 3;
         hazard.rock.rotation.y += dt * 2;
         if (settings.quality !== "performance" && now - hazard.lastTrailAt > 45) {
@@ -3123,6 +3196,12 @@ import("three")
     }
 
     function spawnExplosionFx(x, y, z, radius = 9, kind = "rocket", options = {}) {
+      if (document.hidden) return;
+      while (blasts.length > 40) {
+        const oldest = blasts.shift();
+        fxRoot.remove(oldest.mesh);
+        oldest.mesh.material.dispose();
+      }
       const style = explosionStyles[kind] || explosionStyles.rocket;
       const quality = settings.quality;
       const base = Math.max(0.2, y);
@@ -3173,7 +3252,7 @@ import("three")
 
     function spawnCarExplosion(x, y, z, color) {
       spawnExplosionFx(x, y, z, 10, "wreck");
-      if (settings.quality === "performance") return;
+      if (settings.quality === "performance" || document.hidden) return;
       const count = settings.quality === "showcase" ? 12 : 7;
       for (let i = 0; i < count; i += 1) {
         const mesh = new THREE.Mesh(fx.debrisGeometry, getDebrisMaterial(i % 3 === 0 ? "#1a1f29" : color));
@@ -3495,9 +3574,7 @@ import("three")
 
       car.speed = car.velocity.length();
       if (!car.airborne) {
-        const ahead = ARENA.groundHeightAt(car.x + Math.sin(car.angle) * 1.8, car.z + Math.cos(car.angle) * 1.8);
-        const behind = ARENA.groundHeightAt(car.x - Math.sin(car.angle) * 1.8, car.z - Math.cos(car.angle) * 1.8);
-        const slopePitch = -Math.atan2(ahead - behind, 3.6);
+        const slopePitch = -Math.atan(ARENA.groundSlopeAt(car.x, car.z, Math.sin(car.angle), Math.cos(car.angle)));
         car.groundPitch += (slopePitch - car.groundPitch) * Math.min(1, dt * 14);
       }
       localCar.group.position.set(car.x, car.y + 0.08, car.z);
@@ -3562,15 +3639,39 @@ import("three")
     function updateVerticalMotion(dt, gravity) {
       const car = state.car;
       const ground = ARENA.groundHeightAt(car.x, car.z);
+      const prevGround = ARENA.groundHeightAt(car.prevX, car.prevZ);
       if (car.airborne) {
+        const prevY = car.y;
         car.vy -= gravity * dt;
         car.y += car.vy * dt;
         car.airTime += dt;
-        if (car.y <= ground) landCar(ground);
+        if (car.y <= ground) {
+          if (ground - prevY > 1 && prevGround < ground - 1) {
+            // Flew into a ramp's tall face or side: bounce off it instead of popping onto the top.
+            car.x = car.prevX;
+            car.z = car.prevZ;
+            car.velocity.multiplyScalar(-0.3);
+            car.cameraShake = Math.max(car.cameraShake, 0.4);
+            spawnImpact(car.x, car.y + 1.2, car.z, "#59f0c2", 8);
+            if (car.y <= prevGround) landCar(prevGround);
+          } else {
+            landCar(ground);
+          }
+        }
         return;
       }
 
-      if (ground - car.y > 1.6) {
+      // The rise allowed per step grows with step length while already climbing, so fast climbs at low
+      // frame rates do not hit a phantom wall near the top of a ramp.
+      const stepLength = Math.hypot(car.x - car.prevX, car.z - car.prevZ);
+      const allowedRise = 1.6 + (prevGround > 0.3 ? 0.55 * stepLength : 0);
+      if (ground - car.y > allowedRise) {
+        if (prevGround - car.y > 1.6) {
+          // Already inside a ramp body (shoved in): stand on the surface instead of staying pinned.
+          car.y = ground;
+          car.vy = 0;
+          return;
+        }
         // Drove into the tall lip of a ramp: it behaves like a wall.
         const hitSpeed = car.velocity.length();
         car.x = car.prevX;
@@ -3663,7 +3764,11 @@ import("three")
       const pitchError = Math.abs(car.airPitch - flips * TWO_PI);
       const rollError = Math.abs(car.airRoll - rolls * TWO_PI);
       const spins = Math.floor((Math.abs(car.airSpin) + 0.6) / TWO_PI);
-      const clean = pitchError < 0.8 && rollError < 0.8;
+      // Judge the landing by the car's real up vector (chassis is Rx(pitch) * Rz(roll)): a half flip plus a
+      // half roll also lands on the wheels, facing backwards.
+      const upY = Math.cos(car.airPitch) * Math.cos(car.airRoll);
+      const clean = upY > Math.cos(0.8);
+      const corkscrew = clean && (pitchError >= 0.8 || rollError >= 0.8);
       const airTime = car.airTime;
       car.airPitch = 0;
       car.airRoll = 0;
@@ -3688,12 +3793,15 @@ import("three")
         addCombo(`${spins * 360}`, 5 * spins);
         tricks += 1;
       }
-      if (flips !== 0) {
+      if (corkscrew) {
+        addCombo("CORKSCREW", 9);
+        tricks += 1;
+      } else if (flips !== 0) {
         const count = Math.abs(flips);
         addCombo(count > 1 ? `${count}X FLIP` : flips > 0 ? "FRONTFLIP" : "BACKFLIP", 7 * count);
         tricks += 1;
       }
-      if (rolls !== 0) {
+      if (!corkscrew && rolls !== 0) {
         addCombo(Math.abs(rolls) > 1 ? `${Math.abs(rolls)}X BARREL ROLL` : "BARREL ROLL", 6 * Math.abs(rolls));
         tricks += 1;
       }
@@ -3766,7 +3874,8 @@ import("three")
         const collision = getCarCapsuleCollision(car, other) || (Math.abs(dy) < 2.6 ? getSweptCarCollision(car, other) : null);
         if (!collision) continue;
 
-        if (car.airborne && car.vy < -5 && dy > 0.7) {
+        // Stomp only on real roof contact (roof is ~2.5 above the other car's base).
+        if (car.airborne && car.vy < -5 && dy > 0.7 && dy < 3.4) {
           if (now - state.lastHitAt > HIT_COOLDOWN_MS) {
             state.lastHitAt = now;
             sendMessage({
@@ -3791,12 +3900,16 @@ import("three")
 
         const remoteVelocity = getRemoteVelocity(entry);
         const relativeX = car.velocity.x - remoteVelocity.x;
-        const relativeZ = car.velocity.y - remoteVelocity.z;
+        const relativeZ = car.velocity.y - remoteVelocity.y;
         const closingSpeed = -(relativeX * collision.nx + relativeZ * collision.nz);
         const impactSpeed = Math.max(0, closingSpeed, car.speed * (collision.swept ? 0.42 : 0.25));
         const push = Math.min(collision.swept ? 1.35 : 2.25, collision.penetration * 0.72 + (collision.swept ? 0.28 : 0.08));
-        car.x += collision.nx * push;
-        car.z += collision.nz * push;
+        const pushedX = car.x + collision.nx * push;
+        const pushedZ = car.z + collision.nz * push;
+        if (ARENA.groundHeightAt(pushedX, pushedZ) - car.y <= 1.6) {
+          car.x = pushedX;
+          car.z = pushedZ;
+        }
 
         if (closingSpeed > 0.1) {
           const bounce = Math.min(24, closingSpeed * (slamming ? 0.82 : 0.62) + 4);
@@ -4024,7 +4137,7 @@ import("three")
       for (const [id, entry] of players) {
         if (id === state.id) continue;
         const mesh = entry.mesh;
-        if (entry.mode !== "arena" || entry.wreckedUntil > serverNow) {
+        if (entry.mode !== "arena" || entry.wreckedUntil > serverNow || state.arenaWorldVisible === false) {
           mesh.group.visible = false;
           entry.hiddenLastFrame = true;
           continue;
@@ -4108,7 +4221,7 @@ import("three")
       if (animate) state.lastPickupVisualAt = frameNow;
       const now = frameNow * 0.001;
       for (const pickup of pickups.values()) {
-        pickup.mesh.visible = pickup.active;
+        pickup.mesh.visible = pickup.active && state.arenaWorldVisible !== false;
         if (!pickup.active) continue;
         if (!animate) continue;
         pickup.mesh.rotation.y += dt * 2.8;
@@ -4136,8 +4249,12 @@ import("three")
       state.gulag.muzzleFlash = Math.max(0, (state.gulag.muzzleFlash || 0) - dt * 9);
       state.gulag.enemyMuzzleFlash = Math.max(0, (state.gulag.enemyMuzzleFlash || 0) - dt * 8);
       if (els.damage) {
-        const maxDamageOpacity = state.mode === "gulag" ? 0.28 : 0.56;
-        els.damage.style.opacity = String(Math.min(maxDamageOpacity, state.car.damageFlash || 0));
+        if (document.body.classList.contains("is-bomb-holder")) {
+          els.damage.style.removeProperty("opacity");
+        } else {
+          const maxDamageOpacity = state.mode === "gulag" ? 0.28 : 0.56;
+          els.damage.style.opacity = String(Math.min(maxDamageOpacity, state.car.damageFlash || 0));
+        }
       }
     }
 
@@ -4164,6 +4281,8 @@ import("three")
       state.gulag.yaw = Math.PI;
       state.gulag.pitch = 0;
       clearInput();
+      resetCombo();
+      cancelWeaponRoll();
       els.chaosBanner?.classList.add("hidden");
       gulagWorld.group.visible = true;
       gulagWorld.enemy.visible = true;
@@ -4188,14 +4307,17 @@ import("three")
       gulagWorld.group.visible = false;
       weapon.visible = false;
       modeOverlay.root.classList.add("hidden");
-      setArenaWorldVisible(true);
-      scene.background = arenaBackground;
-      scene.fog = arenaFog;
-      localCar.group.visible = true;
+      if (!state.podium.active) {
+        setArenaWorldVisible(true);
+        scene.background = arenaBackground;
+        scene.fog = arenaFog;
+        localCar.group.visible = true;
+      }
       document.exitPointerLock?.();
     }
 
     function setArenaWorldVisible(visible) {
+      state.arenaWorldVisible = visible;
       for (const child of scene.children) {
         if (child === camera || child === gulagWorld.group || child === podiumShowcase.group || child.isLight) continue;
         child.visible = visible;
@@ -4239,6 +4361,8 @@ import("three")
       state.mode = "arena";
       document.exitPointerLock?.();
       clearInput();
+      resetCombo();
+      cancelWeaponRoll();
       setMenu(false);
       state.podium.active = true;
       state.podium.round = state.room.round;
@@ -4379,7 +4503,11 @@ import("three")
       endGulag();
       clearInput();
       localCar.group.visible = false;
+      resetCombo();
+      cancelWeaponRoll();
       state.spectator.position.set(state.car.x || 0, 58, (state.car.z || 0) + 76);
+      state.spectator.yaw = 0;
+      state.spectator.pitch = -Math.atan2(58, 76);
       state.spectator.velocity.set(0, 0, 0);
       showModeOverlay("SPECTATOR", "Free cam enabled.", `${reason}. WASD + mouse to fly around. You redeploy automatically when the timer hits zero.`);
       setStatus("Spectating the arena in free cam.", "offline");
@@ -4633,6 +4761,7 @@ import("three")
       const height = 7.5 + speedPull * 2.5 + boostPull * 0.8 + airPull * 3;
       const desired = scratch3.set(car.x - Math.sin(yaw) * back, car.y + height, car.z - Math.cos(yaw) * back);
       camera.position.lerp(desired, 1 - Math.pow(0.0009, rawDt));
+      if (!Number.isFinite(car.cameraShake)) car.cameraShake = 0;
       if (car.cameraShake > 0.001) {
         const shake = car.cameraShake;
         camera.position.x += (Math.random() - 0.5) * shake;
@@ -4676,7 +4805,7 @@ import("three")
           els.objective.textContent = `Gulag: eliminate ${state.gulag.opponentName} to redeploy.`;
         } else if (state.mode === "spectator") {
           els.objective.textContent = "Spectator free cam: WASD to fly, mouse to look, Q/E for height.";
-        } else {
+        } else if (now >= (state.noticeUntil || 0)) {
           els.objective.textContent = getObjectiveText();
         }
       }
@@ -4731,7 +4860,8 @@ import("three")
       if (id === state.id) {
         state.car.name = player.name || state.car.name;
         state.car.color = player.color || state.car.color;
-        state.mode = player.mode || state.mode;
+        // The podium owns the screen until the next round; snapshots must not flip it back into Gulag/spectator input.
+        if (!state.podium.active) state.mode = player.mode || state.mode;
         state.car.health = player.health ?? state.car.health;
         state.car.score = player.score ?? state.car.score;
         state.car.roundWins = player.roundWins ?? state.car.roundWins;
@@ -4789,7 +4919,7 @@ import("three")
         weapon: player.weapon || null,
         isBot: Boolean(player.isBot)
       });
-      entry.mesh.group.visible = entry.mode === "arena";
+      entry.mesh.group.visible = entry.mode === "arena" && state.arenaWorldVisible !== false;
 
       if (id === state.id && hardSync) {
         entry.mesh.group.position.set(state.car.x, state.car.y + 0.08, state.car.z);
@@ -4814,8 +4944,20 @@ import("three")
     function removeRemotePlayer(id) {
       const entry = players.get(id);
       if (!entry) return;
-      if (id !== state.id) scene.remove(entry.mesh.group);
+      if (entry.mesh !== localCar) scene.remove(entry.mesh.group);
       players.delete(id);
+    }
+
+    function resetForRejoin() {
+      for (const [id, entry] of players) {
+        if (entry.mesh !== localCar) scene.remove(entry.mesh.group);
+        players.delete(id);
+      }
+      if (!localCar.group.parent) scene.add(localCar.group);
+      endPodiumShow();
+      endGulag();
+      clearArenaChaos();
+      state.mode = "arena";
     }
 
     function setPickups(list) {
@@ -4834,7 +4976,7 @@ import("three")
           pickups.set(pickup.id, entry);
         }
         entry.active = Boolean(pickup.active);
-        entry.mesh.visible = entry.active;
+        entry.mesh.visible = entry.active && state.arenaWorldVisible !== false;
       }
     }
 
@@ -5019,7 +5161,11 @@ import("three")
 
     function copyInvite() {
       const invite = roomShareUrl(state.room.code || roomCode);
-      navigator.clipboard?.writeText(invite).then(
+      if (!navigator.clipboard?.writeText) {
+        toast(invite, "info");
+        return;
+      }
+      navigator.clipboard.writeText(invite).then(
         () => toast("Invite copied.", "info"),
         () => toast(invite, "info")
       );
@@ -5051,6 +5197,7 @@ import("three")
       const now = performance.now();
       if (settings.quality === "performance" && now - state.lastNoticeAt < 280) return;
       state.lastNoticeAt = now;
+      state.noticeUntil = now + 950;
       els.objective.textContent = text;
       clearTimeout(lightweightNoticeTimer);
       lightweightNoticeTimer = setTimeout(() => {
@@ -5193,16 +5340,32 @@ import("three")
       return String(value || "main").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 16) || "main";
     }
 
+    function readStorage(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+
+    function writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        // Storage is blocked or full: settings simply will not persist.
+      }
+    }
+
     function loadName() {
-      return localStorage.getItem("crash-club-name") || `Driver ${Math.floor(Math.random() * 900 + 100)}`;
+      return readStorage("crash-club-name") || `Driver ${Math.floor(Math.random() * 900 + 100)}`;
     }
 
     function loadColor() {
-      let color = localStorage.getItem("crash-club-color");
+      let color = readStorage("crash-club-color");
       if (!color) {
         const colors = ["#ff6b6b", "#ffd166", "#06d6a0", "#4cc9f0", "#a78bfa", "#f97316"];
         color = colors[Math.floor(Math.random() * colors.length)];
-        localStorage.setItem("crash-club-color", color);
+        writeStorage("crash-club-color", color);
       }
       return color;
     }

@@ -101,6 +101,24 @@
     return height;
   }
 
+  // Slope of the ramp surface under (x, z), measured along a unit direction. 0 when not on a ramp.
+  // Analytic, so it does not mistake the drop past a ramp lip for a downhill slope.
+  function groundSlopeAt(x, z, dirX, dirZ) {
+    let best = null;
+    let bestHeight = 0;
+    for (const ramp of ramps) {
+      const rampHeight = rampHeightAt(ramp, x, z);
+      if (rampHeight > bestHeight) {
+        bestHeight = rampHeight;
+        best = ramp;
+      }
+    }
+    if (!best) return 0;
+    const t = (toLocal(best, x, z).along + best.length / 2) / best.length;
+    const rise = (best.height * 1.5 * Math.sqrt(Math.max(0, Math.min(1, t)))) / best.length;
+    return rise * (dirX * Math.sin(best.angle) + dirZ * Math.cos(best.angle));
+  }
+
   function jumpPadAt(x, z) {
     for (const pad of jumpPads) {
       const dx = x - pad.x;
@@ -141,6 +159,7 @@
     rampProfile,
     rampHeightAt,
     groundHeightAt,
+    groundSlopeAt,
     jumpPadAt,
     boostPadAt,
     ringPathAt

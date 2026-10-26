@@ -1357,14 +1357,21 @@ body.is-slowmo canvas {
 }
 
 body.is-bomb-holder .damage-vignette {
-  opacity: 0.4 !important;
   animation: bomb-vignette 0.45s ease-in-out infinite alternate;
 }
 
 @keyframes bomb-vignette {
+  from {
+    opacity: 0.4;
+  }
   to {
     opacity: 0.75;
   }
+}
+
+#app,
+.touch-controls {
+  touch-action: none;
 }
 
 @media (max-width: 1440px) and (min-width: 721px) {
@@ -1479,6 +1486,7 @@ body.is-bomb-holder .damage-vignette {
   }
 }
 
+.toast.combo,
 .toast.streak {
   border-color: rgba(255, 122, 31, 0.6);
   box-shadow: 0 0 18px rgba(255, 122, 31, 0.25);

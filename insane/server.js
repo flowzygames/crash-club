@@ -47,6 +47,10 @@ const BOMB_FUSE_MS = 20000;
 const BOMB_PASS_LOCK_MS = 900;
 const MAX_MINES = 18;
 const BLACKHOLE_PULL_RADIUS = 46;
+const HUMAN_HIT_COOLDOWN_MS = 450;
+const RESPAWN_COOLDOWN_MS = 4000;
+const STATE_STALE_MS = 600;
+const MAX_MESSAGE_BYTES = 16 * 1024;
 
 const PICKUP_TYPES = {
   boost: {
@@ -187,8 +191,30 @@ const BOT_NAMES = [
 const BOT_FIRST_NAMES = ["Mason", "Jade", "Logan", "Avery", "Nolan", "Riley", "Maya", "Eli", "Sam", "Kai", "Tessa", "Owen", "Zara", "Leo", "Ivy", "Theo", "Mila", "Noah", "Sage", "Aria", "Brooke", "Caleb", "Nia", "Miles", "Parker"];
 const BOT_LAST_NAMES = ["Cole", "Rivera", "Pierce", "Brooks", "Hayes", "Stone", "Quinn", "Carter", "Bishop", "Morgan", "Reed", "Blake", "Knight", "Bennett", "Parker", "Walsh", "Cross", "Flynn", "Collins", "Lane", "Wells", "Foster", "Banks", "Hale", "Rowan"];
 
+function toText(value, fallback = "") {
+  return typeof value === "string" || typeof value === "number" ? String(value) : fallback;
+}
+
+function toNumber(value, fallback = 0) {
+  if (typeof value !== "number" && typeof value !== "string") return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function rankPlayers(a, b) {
+  return (b.score || 0) - (a.score || 0) || (b.wrecks || 0) - (a.wrecks || 0) || String(a.name).localeCompare(String(b.name));
+}
+
+function isLive(player, now = Date.now()) {
+  return Boolean(player) && player.mode === "arena" && player.health > 0 && !(player.wreckedUntil > now);
+}
+
 function sanitizeRoomCode(input) {
-  const cleaned = String(input || "main")
+  const cleaned = (toText(input, "") || "main")
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "")
     .slice(0, 16);
@@ -315,7 +341,7 @@ function getPlayerCollision(source, target, allowance = 0) {
   const closest = closestSegments2D(sourceAxis.ax, sourceAxis.az, sourceAxis.bx, sourceAxis.bz, targetAxis.ax, targetAxis.az, targetAxis.bx, targetAxis.bz);
   const distance = Math.sqrt(closest.distanceSq);
   const range = CAR_COLLISION_RANGE + allowance;
-  if (distance >= range) return null;
+  if (!(distance < range)) return null;
 
   let nx = distance > 0.0001 ? (closest.ax - closest.bx) / distance : source.x - target.x;
   let nz = distance > 0.0001 ? (closest.az - closest.bz) / distance : source.z - target.z;
@@ -516,22 +542,34 @@ function serializeHazard(hazard) {
     id: hazard.id,
     kind: hazard.kind,
     x: round2(hazard.x),
+    y: round2(hazard.y || 0),
     z: round2(hazard.z),
     spawnedAt: hazard.spawnedAt,
     impactAt: hazard.impactAt
   };
 }
 
+function isClearSpawn(x, z) {
+  if (ARENA.groundHeightAt(x, z) > 0 || ARENA.jumpPadAt(x, z) || ARENA.boostPadAt(x, z)) return false;
+  if (ARENA.ramps.some((ramp) => Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + ramp.width / 2 + 3)) return false;
+  return !ARENA.colliders.some((collider) => Math.hypot(x - collider.x, z - collider.z) < collider.r + 4);
+}
+
 function createSpawnState(id, name, color) {
   const seed = numberFromId(id);
-  const spawnAngle = (seed * 0.95) % (Math.PI * 2);
+  let spawnAngle = (seed * 0.95) % (Math.PI * 2);
   const spawnRadius = 26 + (seed % 5) * 8;
+  for (let tries = 0; tries < 24 && !isClearSpawn(Math.cos(spawnAngle) * spawnRadius, Math.sin(spawnAngle) * spawnRadius); tries += 1) {
+    spawnAngle += 0.27;
+  }
+  const x = Math.cos(spawnAngle) * spawnRadius;
+  const z = Math.sin(spawnAngle) * spawnRadius;
   return {
-    name: String(name || `Driver ${id}`).slice(0, 18),
+    name: (toText(name, "") || `Driver ${id}`).slice(0, 18),
     color: color || randomColor(),
-    x: Math.cos(spawnAngle) * spawnRadius,
-    y: 0,
-    z: Math.sin(spawnAngle) * spawnRadius,
+    x,
+    y: ARENA.groundHeightAt(x, z),
+    z,
     angle: spawnAngle + Math.PI,
     speed: 0,
     vx: 0,
@@ -640,16 +678,17 @@ function resetPlayerForRound(player) {
   });
 }
 
-function respawnPlayer(player) {
+function respawnPlayer(player, options = {}) {
+  // A voluntary reset (R) only unsticks the car: it keeps health and powerups so it is never a free heal.
+  const kept = options.voluntary
+    ? { health: player.health, shieldUntil: player.shieldUntil || 0, slamUntil: player.slamUntil || 0 }
+    : { health: MAX_HEALTH, shieldUntil: 0, slamUntil: 0 };
   Object.assign(player, createSpawnState(player.id, player.name, player.color), {
     mode: "arena",
-    health: MAX_HEALTH,
-    shieldUntil: 0,
-    slamUntil: 0,
+    ...kept,
     wreckedUntil: 0,
     gulagUntil: 0,
     spectatorUntil: 0,
-    nextStyleScoreAt: 0,
     botPlan: null
   });
 }
@@ -758,12 +797,12 @@ function cleanupRooms() {
 }
 
 function findWinner(room) {
-  return [...room.players.values()].sort((a, b) => b.score - a.score || a.wrecks - b.wrecks)[0] || null;
+  return [...room.players.values()].sort(rankPlayers)[0] || null;
 }
 
 function buildStandings(room) {
   return [...room.players.values()]
-    .sort((a, b) => b.score - a.score || b.wrecks - a.wrecks || String(a.name).localeCompare(String(b.name)))
+    .sort(rankPlayers)
     .slice(0, 3)
     .map((player) => ({
       id: player.id,
@@ -836,7 +875,7 @@ function maybeFinishRound(room, now = Date.now()) {
   if (process.env.CRASH_CLUB_README_SAFE_ARENA === "1") {
     return;
   }
-  const winnerByScore = [...room.players.values()].find((player) => player.score >= ROUND_WIN_SCORE);
+  const winnerByScore = [...room.players.values()].filter((player) => player.score >= ROUND_WIN_SCORE).sort(rankPlayers)[0];
   if (winnerByScore) {
     finishRound(room, winnerByScore, now);
     return;
@@ -896,13 +935,19 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now(), options
     return 0;
   }
 
+  if (!Number.isFinite(rawDamage) || rawDamage <= 0) {
+    return 0;
+  }
+
   const shielded = target.shieldUntil > now && !options.unblockable;
   const damage = Math.max(1, shielded ? Math.ceil(rawDamage * 0.35) : Math.round(rawDamage));
+  const healthBefore = target.health;
   target.health = clamp(target.health - damage, 0, MAX_HEALTH);
+  const dealt = healthBefore - target.health;
   const credited = source && !source.isWorld && source.id !== target.id ? source : null;
   if (credited) {
     credited.hits = (credited.hits || 0) + 1;
-    let points = Math.max(1, Math.round(damage / 8));
+    let points = Math.max(1, Math.round(dealt / 8));
     if (room.event?.kind === "bounty" && room.event.targetId === target.id) points *= 2;
     addScore(room, credited, points);
   }
@@ -911,7 +956,7 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now(), options
     type: "player-damaged",
     sourceId: source?.id || null,
     targetId: target.id,
-    damage,
+    damage: dealt,
     shielded,
     cause: options.cause || "ram",
     player: serializePlayer(target),
@@ -921,7 +966,7 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now(), options
   if (target.health <= 0) {
     handleWreck(room, credited, target, options.cause || "ram", now, source);
   }
-  return damage;
+  return dealt;
 }
 
 function handleWreck(room, source, target, cause, now, rawSource) {
@@ -980,7 +1025,7 @@ function handleWreck(room, source, target, cause, now, rawSource) {
   }
 
   if (room.event?.kind === "bomb" && room.event.holderId === target.id && cause !== "bomb") {
-    const heir = source && source.mode === "arena" ? source : null;
+    const heir = isLive(source, now) ? source : null;
     assignBomb(room, heir, now, heir ? `${heir.name} wrecked the bomb carrier and caught the bomb!` : null);
   }
   if (room.event?.kind === "bounty" && room.event.targetId === target.id) {
@@ -1000,6 +1045,13 @@ function handleWreck(room, source, target, cause, now, rawSource) {
   }
 }
 
+// Humans report their position every ~80ms; project it forward so blast checks match where the car really is.
+function effectivePosition(player, now) {
+  if (player.isBot) return player;
+  const staleness = clamp((now - (player.lastStateAt || now)) / 1000, 0, 0.2);
+  return { x: player.x + (player.vx || 0) * staleness, y: player.y || 0, z: player.z + (player.vz || 0) * staleness };
+}
+
 function explode(room, options, now = Date.now()) {
   const spec = EXPLOSIONS[options.kind] || EXPLOSIONS.rocket;
   const radius = options.radius || spec.radius;
@@ -1007,6 +1059,7 @@ function explode(room, options, now = Date.now()) {
   const y = options.y || 0;
   const z = options.z;
   const source = options.source || null;
+  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(y)) return;
   const id = `fx-${nextEntityId++}`;
 
   broadcastRoom(room, {
@@ -1025,9 +1078,10 @@ function explode(room, options, now = Date.now()) {
 
   for (const target of arenaPlayers(room, now)) {
     if (options.excludeId && target.id === options.excludeId) continue;
-    const dx = target.x - x;
-    const dz = target.z - z;
-    const dy = ((target.y || 0) - y) * 0.6;
+    const position = effectivePosition(target, now);
+    const dx = position.x - x;
+    const dz = position.z - z;
+    const dy = ((position.y || 0) - y) * 0.6;
     const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
     if (distance > radius) continue;
     const falloff = 1 - distance / radius;
@@ -1204,9 +1258,10 @@ function updateProjectiles(room, now, deltaSeconds) {
       if (!detonate) {
         for (const car of cars) {
           if (car.id === projectile.ownerId) continue;
-          if (Math.abs((car.y || 0) + 1 - projectile.y) > 4) continue;
-          const point = closestPointOnSegment2D(car.x, car.z, prevX, prevZ, projectile.x, projectile.z);
-          if (distanceSq2D(point.x, point.z, car.x, car.z) < 3.6 * 3.6) {
+          const position = effectivePosition(car, now);
+          if (Math.abs((position.y || 0) + 1 - projectile.y) > 4) continue;
+          const point = closestPointOnSegment2D(position.x, position.z, prevX, prevZ, projectile.x, projectile.z);
+          if (distanceSq2D(point.x, point.z, position.x, position.z) < 3.6 * 3.6) {
             projectile.x = point.x;
             projectile.z = point.z;
             detonate = true;
@@ -1229,8 +1284,9 @@ function updateProjectiles(room, now, deltaSeconds) {
       if (now < projectile.armedAt) continue;
       const trigger = cars.find((car) => {
         if (car.id === projectile.ownerId && now < projectile.ownerSafeUntil) return false;
-        if (Math.abs((car.y || 0) - projectile.y) > 3.5) return false;
-        return distanceSq2D(car.x, car.z, projectile.x, projectile.z) < 4.4 * 4.4;
+        const position = effectivePosition(car, now);
+        if (Math.abs((position.y || 0) - projectile.y) > 3.5) return false;
+        return distanceSq2D(position.x, position.z, projectile.x, projectile.z) < 4.4 * 4.4;
       });
       if (trigger) {
         removeProjectile(room, projectile);
@@ -1243,10 +1299,16 @@ function updateProjectiles(room, now, deltaSeconds) {
       if (projectile.phase === "flying") {
         projectile.x = clamp(projectile.x + projectile.vx * deltaSeconds, -WORLD_SIZE, WORLD_SIZE);
         projectile.z = clamp(projectile.z + projectile.vz * deltaSeconds, -WORLD_SIZE, WORLD_SIZE);
-        if (now >= projectile.stopAt) {
+        const hitWall = ARENA.colliders.some(
+          (collider) => projectile.y <= collider.h && distanceSq2D(projectile.x, projectile.z, collider.x, collider.z) < collider.r * collider.r
+        );
+        if (hitWall || now >= projectile.stopAt) {
           projectile.phase = "pulling";
           projectile.vx = 0;
           projectile.vz = 0;
+          // The pull is flat, so settle at car height or the collapse would miss what it pulled in.
+          projectile.y = ARENA.groundHeightAt(projectile.x, projectile.z) + 2.2;
+          if (hitWall) projectile.collapseAt = now + 3600;
           broadcastRoom(room, { type: "projectile-updated", projectile: serializeProjectile(projectile, now) });
         }
       } else {
@@ -1283,11 +1345,14 @@ function spawnMeteor(room, now, aimAtCars = true) {
     x = Math.cos(angle) * radius;
     z = Math.sin(angle) * radius;
   }
+  const hazardX = clamp(x, -WORLD_SIZE + 6, WORLD_SIZE - 6);
+  const hazardZ = clamp(z, -WORLD_SIZE + 6, WORLD_SIZE - 6);
   const hazard = {
     id: `m-${nextEntityId++}`,
     kind: "meteor",
-    x: clamp(x, -WORLD_SIZE + 6, WORLD_SIZE - 6),
-    z: clamp(z, -WORLD_SIZE + 6, WORLD_SIZE - 6),
+    x: hazardX,
+    y: ARENA.groundHeightAt(hazardX, hazardZ),
+    z: hazardZ,
     spawnedAt: now,
     impactAt: now + 1700
   };
@@ -1300,25 +1365,27 @@ function updateHazards(room, now) {
   for (const hazard of [...room.hazards]) {
     if (now < hazard.impactAt) continue;
     room.hazards.splice(room.hazards.indexOf(hazard), 1);
-    explode(room, { kind: "meteor", x: hazard.x, y: 0, z: hazard.z, source: WORLD_SOURCES.meteor }, now);
+    explode(room, { kind: "meteor", x: hazard.x, y: hazard.y || 0, z: hazard.z, source: WORLD_SOURCES.meteor }, now);
   }
 }
 
-function assignBomb(room, preferred, now, message) {
+function assignBomb(room, preferred, now, message, passerId = null) {
   const event = room.event;
   if (!event || event.kind !== "bomb") return;
   const candidates = arenaPlayers(room, now).filter((player) => player.id !== event.holderId);
-  const holder = preferred && preferred.mode === "arena" ? preferred : candidates[Math.floor(Math.random() * candidates.length)];
+  const holder = isLive(preferred, now) ? preferred : candidates[Math.floor(Math.random() * candidates.length)];
   if (!holder) {
     endChaosEvent(room, now);
     return;
   }
   event.holderId = holder.id;
+  event.lastPasserId = passerId;
   event.passLockUntil = now + BOMB_PASS_LOCK_MS;
   broadcastRoom(room, {
     type: "bomb-passed",
     holderId: holder.id,
     holderName: holder.name,
+    passerId,
     fuseEndsAt: event.fuseEndsAt
   });
   if (message) broadcastEvent(room, message, "danger");
@@ -1327,9 +1394,8 @@ function assignBomb(room, preferred, now, message) {
 function maybePassBomb(room, source, target, now) {
   const event = room.event;
   if (!event || event.kind !== "bomb" || event.holderId !== source.id || now < (event.passLockUntil || 0)) return;
-  if (!target || target.mode !== "arena" || target.wreckedUntil > now) return;
-  event.lastPasserId = source.id;
-  assignBomb(room, target, now, `${source.name} passed the bomb to ${target.name}!`);
+  if (!isLive(target, now)) return;
+  assignBomb(room, target, now, `${source.name} passed the bomb to ${target.name}!`, source.id);
 }
 
 function startChaosEvent(room, kind, now = Date.now()) {
@@ -1381,30 +1447,36 @@ function endChaosEvent(room, now = Date.now(), options = {}) {
   }
 }
 
-function chooseChaosEvent(room, now) {
+function chooseChaosEvent(room, now, availableMs) {
   const active = arenaPlayers(room, now).length;
   const recent = new Set(room.recentEvents || []);
+  const fits = (kind) => CHAOS_EVENTS[kind].durationMs <= availableMs;
+  if (CHAOS_EVENTS[FORCED_EVENT]) return fits(FORCED_EVENT) ? FORCED_EVENT : null;
   const options = Object.entries(CHAOS_EVENTS)
-    .filter(([kind, meta]) => !recent.has(kind) && active >= (meta.minPlayers || 1))
+    .filter(([kind, meta]) => fits(kind) && !recent.has(kind) && active >= (meta.minPlayers || 1))
     .map(([kind]) => kind);
-  if (CHAOS_EVENTS[FORCED_EVENT]) return FORCED_EVENT;
-  const pool = options.length ? options : Object.keys(CHAOS_EVENTS).filter((kind) => !CHAOS_EVENTS[kind].minPlayers);
-  return pool[Math.floor(Math.random() * pool.length)];
+  const pool = options.length ? options : Object.keys(CHAOS_EVENTS).filter((kind) => fits(kind) && !CHAOS_EVENTS[kind].minPlayers);
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
 function updateChaos(room, now) {
   if (room.round.phase !== "live") return;
   const event = room.event;
 
-  if (now >= room.round.endsAt - FINAL_FRENZY_MS && event?.kind !== "frenzy") {
+  if (now >= room.round.endsAt - FINAL_FRENZY_MS && now < room.round.endsAt && event?.kind !== "frenzy") {
     endChaosEvent(room, now, { silent: true });
     startChaosEvent(room, "frenzy", now);
     return;
   }
 
   if (!event) {
-    if (now >= room.nextEventAt && now + 12000 < room.round.endsAt - FINAL_FRENZY_MS) {
-      startChaosEvent(room, chooseChaosEvent(room, now), now);
+    if (now >= room.nextEventAt) {
+      const kind = chooseChaosEvent(room, now, room.round.endsAt - FINAL_FRENZY_MS - now);
+      if (kind) {
+        startChaosEvent(room, kind, now);
+      } else {
+        room.nextEventAt = room.round.endsAt;
+      }
     }
     return;
   }
@@ -1428,7 +1500,7 @@ function updateChaos(room, now) {
       event.fuseEndsAt = 0;
       if (victim && victim.mode === "arena") {
         const passer = room.players.get(event.lastPasserId);
-        const credit = passer && passer.id !== victim.id ? passer : WORLD_SOURCES.bomb;
+        const credit = passer && passer.id !== victim.id && passer.mode === "arena" ? passer : WORLD_SOURCES.bomb;
         broadcastEvent(room, `BOOM! The bomb went off on ${victim.name}.`, "danger");
         damagePlayer(room, credit, victim, 999, now, { cause: "bomb", unblockable: true });
         explode(room, { kind: "bomb", x: victim.x, y: victim.y || 0, z: victim.z, source: credit, excludeId: victim.id }, now);
@@ -1551,8 +1623,13 @@ function resolveBotBodyCollisions(room, bot, now) {
       continue;
     }
     const push = Math.min(2.4, collision.penetration * 0.62 + 0.12);
-    bot.x += collision.nx * push;
-    bot.z += collision.nz * push;
+    const nextX = bot.x + collision.nx * push;
+    const nextZ = bot.z + collision.nz * push;
+    if (ARENA.groundHeightAt(nextX, nextZ) - (bot.y || 0) > 1.6) {
+      continue;
+    }
+    bot.x = nextX;
+    bot.z = nextZ;
     bot.speed *= 0.74;
     bot.vx = Math.sin(bot.angle) * bot.speed;
     bot.vz = Math.cos(bot.angle) * bot.speed;
@@ -1577,15 +1654,44 @@ function resolveBotStaticCollisions(bot) {
   }
 }
 
-function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds) {
+function steerBotAroundRamp(bot, now) {
+  if (now < (bot.botDetourUntil || 0)) return;
+  let nearest = ARENA.ramps[0];
+  for (const ramp of ARENA.ramps) {
+    if (distanceSq2D(bot.x, bot.z, ramp.x, ramp.z) < distanceSq2D(bot.x, bot.z, nearest.x, nearest.z)) nearest = ramp;
+  }
+  const away = Math.atan2(bot.x - nearest.x, bot.z - nearest.z) + (Math.random() < 0.5 ? -0.9 : 0.9);
+  bot.botTarget = {
+    x: clamp(bot.x + Math.sin(away) * 28, -WORLD_SIZE + 10, WORLD_SIZE - 10),
+    z: clamp(bot.z + Math.cos(away) * 28, -WORLD_SIZE + 10, WORLD_SIZE - 10)
+  };
+  bot.botPlan = null;
+  bot.botDetourUntil = now + 1400;
+  bot.botNextDecisionAt = now + 1400;
+}
+
+function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
   const gravity = ARENA.GRAVITY * (room.event?.kind === "lowgrav" ? ARENA.LOW_GRAVITY_SCALE : 1);
   const ground = ARENA.groundHeightAt(bot.x, bot.z);
+  const prevGround = ARENA.groundHeightAt(prevX, prevZ);
   if (bot.airborne) {
+    const prevY = bot.y;
     bot.vy -= gravity * deltaSeconds;
     bot.y += bot.vy * deltaSeconds;
     bot.pitch = clamp(-bot.vy * 0.02, -0.45, 0.45);
     if (bot.y <= ground) {
-      bot.y = ground;
+      if (ground - prevY > 1 && prevGround < ground - 1) {
+        // Flew into a ramp's tall face: bounce off it instead of popping onto the top.
+        bot.x = prevX;
+        bot.z = prevZ;
+        bot.speed *= 0.4;
+        bot.kx = (bot.kx || 0) * -0.3;
+        bot.kz = (bot.kz || 0) * -0.3;
+        if (bot.y > prevGround) return;
+        bot.y = prevGround;
+      } else {
+        bot.y = ground;
+      }
       bot.vy = 0;
       bot.airborne = false;
       bot.pitch = 0;
@@ -1593,12 +1699,25 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds) {
     return;
   }
 
-  if (ground - bot.y > 1.6) {
-    bot.x = prevX;
-    bot.z = prevZ;
-    bot.speed *= 0.35;
-    bot.botNextDecisionAt = 0;
-    bot.botPlan = null;
+  const stepLength = Math.hypot(bot.x - prevX, bot.z - prevZ);
+  const allowedRise = 1.6 + (prevGround > 0.3 ? 0.55 * stepLength : 0);
+  if (ground - bot.y > allowedRise) {
+    if (prevGround - bot.y > 1.6) {
+      // Already inside a ramp body (shoved in): stand on the surface rather than staying trapped.
+      bot.y = ground;
+      bot.vy = 0;
+      return;
+    }
+    if (ARENA.groundHeightAt(bot.x, prevZ) - bot.y <= 1.6) {
+      bot.z = prevZ;
+    } else if (ARENA.groundHeightAt(prevX, bot.z) - bot.y <= 1.6) {
+      bot.x = prevX;
+    } else {
+      bot.x = prevX;
+      bot.z = prevZ;
+    }
+    bot.speed *= 0.6;
+    steerBotAroundRamp(bot, now);
     return;
   }
   if (ground < bot.y - 0.25) {
@@ -1618,7 +1737,19 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds) {
   }
   const strip = ARENA.boostPadAt(bot.x, bot.z);
   if (strip) {
-    bot.speed = Math.max(bot.speed, strip.speed);
+    // Strips push along their arrows, the same as for human cars.
+    if (Math.cos(angleDelta(bot.angle, strip.angle)) > 0.7) {
+      bot.speed = Math.max(bot.speed, strip.speed);
+    } else {
+      const dirX = Math.sin(strip.angle);
+      const dirZ = Math.cos(strip.angle);
+      const along = (bot.vx || 0) * dirX + (bot.vz || 0) * dirZ;
+      if (along < strip.speed) {
+        const add = strip.speed - Math.max(0, along);
+        bot.kx = (bot.kx || 0) + dirX * add;
+        bot.kz = (bot.kz || 0) + dirZ * add;
+      }
+    }
   }
 }
 
@@ -1724,7 +1855,7 @@ function updateBots(room, now, deltaSeconds) {
     bot.z += bot.vz * deltaSeconds;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
-    updateBotVertical(room, bot, prevX, prevZ, deltaSeconds);
+    updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now);
     resolveBotStaticCollisions(bot);
     bot.inZone = !bot.airborne && isInRing(ring, bot.x, bot.z);
     resolveBotBodyCollisions(room, bot, now);
@@ -1762,8 +1893,8 @@ function updateBots(room, now, deltaSeconds) {
       if (collision && (bot.speed > 13 || stomp)) {
         const closingSpeed = Math.max(bot.speed, getRelativeClosingSpeed(bot, target, collision));
         const damage = stomp ? STOMP_DAMAGE : Math.round(clamp(closingSpeed / 38, 0.32, 1.08) * 23);
-        maybePassBomb(room, bot, target, now);
         damagePlayer(room, bot, target, damage, now, { cause: stomp ? "stomp" : "ram" });
+        maybePassBomb(room, bot, target, now);
         broadcastRoom(room, {
           type: "impact",
           sourceId: bot.id,
@@ -1784,7 +1915,24 @@ function updateBots(room, now, deltaSeconds) {
 }
 
 function serveFile(req, res) {
-  const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+  try {
+    serveRequest(req, res);
+  } catch (error) {
+    console.error("HTTP request failed", error);
+    if (!res.headersSent) res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Server error");
+  }
+}
+
+function serveRequest(req, res) {
+  let requestUrl;
+  try {
+    requestUrl = new URL(req.url, "http://localhost");
+  } catch {
+    res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Bad request");
+    return;
+  }
   if (requestUrl.pathname === "/health") {
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
@@ -1831,19 +1979,27 @@ function serveFile(req, res) {
 }
 
 const server = http.createServer(serveFile);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: MAX_MESSAGE_BYTES });
 
 function syncFireOrigin(player, msg) {
-  const x = Number(msg.x);
-  const z = Number(msg.z);
+  const x = toNumber(msg.x, NaN);
+  const z = toNumber(msg.z, NaN);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return;
   if (distanceSq2D(x, z, player.x, player.z) > 14 * 14) return;
   player.x = clamp(x, -WORLD_SIZE, WORLD_SIZE);
   player.z = clamp(z, -WORLD_SIZE, WORLD_SIZE);
-  player.y = clamp(Number(msg.y) || player.y || 0, 0, 90);
-  if (Number.isFinite(Number(msg.angle))) player.angle = Number(msg.angle);
-  player.vx = clamp(Number(msg.vx) || 0, -110, 110);
-  player.vz = clamp(Number(msg.vz) || 0, -110, 110);
+  player.y = clamp(toNumber(msg.y, player.y || 0), 0, 90);
+  player.angle = normalizeAngle(toNumber(msg.angle, player.angle || 0));
+  player.vx = clamp(toNumber(msg.vx, 0), -110, 110);
+  player.vz = clamp(toNumber(msg.vz, 0), -110, 110);
+}
+
+function resetIdleRoom(room, now) {
+  // The round clock and chaos deadlines kept running while nobody was here; start the next human on a fresh round.
+  room.round = createRoundState(now, room.round.round + 1);
+  room.pickups = createPickups();
+  resetChaos(room, now);
+  room.idleSince = 0;
 }
 
 wss.on("connection", (ws) => {
@@ -1869,237 +2025,256 @@ wss.on("connection", (ws) => {
     if (!msg || typeof msg !== "object") {
       return;
     }
+    try {
+      if (msg.type === "join") {
+        if (player) {
+          return;
+        }
 
-    if (msg.type === "join") {
-      if (player) {
+        const room = getRoom(msg.room);
+        if (room.idleSince && humanCount(room) === 0) {
+          resetIdleRoom(room, Date.now());
+        }
+        const id = String(nextPlayerId++);
+        const color = toText(msg.color, "");
+        player = {
+          id,
+          roomCode: room.code,
+          ws,
+          mode: "arena",
+          score: 0,
+          health: MAX_HEALTH,
+          wrecks: 0,
+          streak: 0,
+          weapon: null,
+          weaponCharges: 0,
+          shieldUntil: 0,
+          slamUntil: 0,
+          wreckedUntil: 0,
+          nextStyleScoreAt: 0,
+          nextHitAt: 0,
+          nextRespawnAt: 0,
+          lastStateAt: 0,
+          ...createSpawnState(id, msg.name, /^#[0-9a-f]{6}$/i.test(color) ? color : null)
+        };
+        room.players.set(player.id, player);
+        ensureBots(room);
+
+        send(ws, {
+          type: "joined",
+          id: player.id,
+          room: room.code,
+          roomState: serializeRoom(room),
+          players: [...room.players.values()].map(serializePlayer),
+          pickups: room.pickups.map(serializePickup),
+          projectiles: room.projectiles.map((projectile) => serializeProjectile(projectile)),
+          hazards: room.hazards.map(serializeHazard)
+        });
+
+        broadcastRoom(
+          room,
+          {
+            type: "player-joined",
+            player: serializePlayer(player)
+          },
+          ws
+        );
+        broadcastEvent(room, `${player.name} joined the arena.`, "join");
         return;
       }
 
-      const room = getRoom(msg.room);
-      const id = String(nextPlayerId++);
-      player = {
-        id,
-        roomCode: room.code,
-        ws,
-        mode: "arena",
-        score: 0,
-        health: MAX_HEALTH,
-        wrecks: 0,
-        streak: 0,
-        weapon: null,
-        weaponCharges: 0,
-        shieldUntil: 0,
-        slamUntil: 0,
-        wreckedUntil: 0,
-        nextStyleScoreAt: 0,
-        ...createSpawnState(id, msg.name, /^#[0-9a-f]{6}$/i.test(String(msg.color || "")) ? msg.color : null)
-      };
-      room.players.set(player.id, player);
+      if (!player) {
+        return;
+      }
+
+      const room = rooms.get(player.roomCode);
+      if (!room) {
+        return;
+      }
+      room.lastActiveAt = Date.now();
+
+      if (msg.type === "state") {
+        if (player.mode !== "arena") {
+          return;
+        }
+        player.x = clamp(toNumber(msg.x, player.x), -WORLD_SIZE, WORLD_SIZE);
+        player.y = clamp(toNumber(msg.y, player.y), 0, 90);
+        player.z = clamp(toNumber(msg.z, player.z), -WORLD_SIZE, WORLD_SIZE);
+        player.angle = normalizeAngle(toNumber(msg.angle, player.angle || 0));
+        player.speed = clamp(toNumber(msg.speed, 0), -25, 110);
+        player.vx = clamp(toNumber(msg.vx, 0), -110, 110);
+        player.vz = clamp(toNumber(msg.vz, 0), -110, 110);
+        player.pitch = clamp(toNumber(msg.pitch, 0), -40, 40);
+        player.roll = clamp(toNumber(msg.roll, 0), -40, 40);
+        player.boosting = Boolean(msg.boosting);
+        player.airborne = Boolean(msg.airborne);
+        player.lastStateAt = Date.now();
+        return;
+      }
+
+      if (msg.type === "rename") {
+        player.name = (toText(msg.name, "") || player.name).slice(0, 18);
+        broadcastRoom(room, {
+          type: "player-renamed",
+          id: player.id,
+          name: player.name
+        });
+        return;
+      }
+
+      if (msg.type === "respawn") {
+        const now = Date.now();
+        if (room.round.phase !== "live") {
+          return;
+        }
+        if (player.mode !== "arena") {
+          send(ws, {
+            type: "event",
+            text: player.mode === "gulag" ? "Win the Gulag to respawn." : "Spectators redeploy automatically. Hang tight.",
+            tone: "danger"
+          });
+          return;
+        }
+        if ((player.nextRespawnAt || 0) > now) {
+          return;
+        }
+        player.nextRespawnAt = now + RESPAWN_COOLDOWN_MS;
+        respawnPlayer(player, { voluntary: true });
+        send(ws, {
+          type: "respawned",
+          player: serializePlayer(player)
+        });
+        broadcastEvent(room, `${player.name} respawned.`, "info");
+        return;
+      }
+
+      if (msg.type === "pickup-collected") {
+        const pickup = room.pickups.find((entry) => entry.id === msg.pickupId);
+        if (!pickup) {
+          return;
+        }
+        if (room.round.phase !== "live" || player.mode !== "arena" || !pickup.active) {
+          // The client hid it optimistically; tell it the real state so it does not stay invisible.
+          send(ws, { type: "pickup-state", pickupId: pickup.id, active: pickup.active });
+          return;
+        }
+        collectPickupFor(player, pickup, room, Date.now());
+        return;
+      }
+
+      if (msg.type === "fire") {
+        const now = Date.now();
+        if (room.round.phase !== "live" || player.mode !== "arena" || player.wreckedUntil > now) {
+          return;
+        }
+        syncFireOrigin(player, msg);
+        fireWeapon(room, player, now);
+        return;
+      }
+
+      if (msg.type === "hit") {
+        const now = Date.now();
+        if (room.round.phase !== "live" || player.mode !== "arena" || player.wreckedUntil > now || (player.nextHitAt || 0) > now) {
+          return;
+        }
+        const impulse = clamp(toNumber(msg.impulse, 0), 0, 1.8);
+        const target = room.players.get(toText(msg.targetId, ""));
+        if (!target || target.id === player.id || target.mode !== "arena") {
+          return;
+        }
+        const slamReady = player.slamUntil > now;
+        const verticalGap = (player.y || 0) - (target.y || 0);
+        // A stomp needs the server's own view of the attacker falling from above, not just the client's claim.
+        const stomp = Boolean(msg.stomp) && player.airborne && verticalGap > 0.6 && verticalGap < 6;
+        const verticalOk = stomp || Math.abs(verticalGap) < 4.5;
+        const collision = verticalOk ? getPlayerCollision(player, target, HIT_LAG_ALLOWANCE + (stomp ? 1.4 : 0)) : null;
+        if (!collision) {
+          return;
+        }
+        player.nextHitAt = now + HUMAN_HIT_COOLDOWN_MS;
+        const closingSpeed = getRelativeClosingSpeed(player, target, collision);
+        const validatedImpulse = clamp(Math.min(impulse, closingSpeed / 38 + 0.5), 0, slamReady ? 1.9 : 1.55);
+        let damage = Math.round(validatedImpulse * (slamReady ? 38 : 24));
+        if (stomp) damage = Math.max(damage, STOMP_DAMAGE);
+        if (slamReady) {
+          player.slamUntil = 0;
+        }
+        if (damage > 4) {
+          damagePlayer(room, player, target, damage, now, { cause: stomp ? "stomp" : slamReady ? "slam" : "ram" });
+        }
+        maybePassBomb(room, player, target, now);
+        broadcastRoom(room, {
+          type: "impact",
+          sourceId: player.id,
+          targetId: target.id,
+          impulse: validatedImpulse || impulse,
+          slam: slamReady,
+          stomp
+        });
+        maybeFinishRound(room, now);
+        return;
+      }
+
+      if (msg.type === "style-score") {
+        const now = Date.now();
+        if (room.round.phase !== "live" || player.mode !== "arena" || player.health <= 0 || player.wreckedUntil > now) {
+          return;
+        }
+        if (player.nextStyleScoreAt && player.nextStyleScoreAt > now) {
+          return;
+        }
+        const points = clamp(Math.round(toNumber(msg.points, 1)), 1, STYLE_SCORE_MAX);
+        const reason = (toText(msg.reason, "") || "style").replace(/[^a-z0-9 -]/gi, "").slice(0, 24) || "style";
+        const awarded = addScore(room, player, points);
+        player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
+        send(player.ws, {
+          type: "style-awarded",
+          reason,
+          points: awarded,
+          player: serializePlayer(player)
+        });
+        if (awarded >= 15) {
+          broadcastEvent(room, `${player.name} cashed a ${awarded} pt ${reason}.`, "combo");
+        }
+        maybeFinishRound(room, now);
+        return;
+      }
+
+      if (msg.type === "gulag-result") {
+        const now = Date.now();
+        if (player.mode !== "gulag" || room.round.phase !== "live") {
+          return;
+        }
+        if (msg.result === "win" && player.gulagUntil >= now) {
+          respawnPlayer(player);
+          addScore(room, player, 6);
+          send(ws, {
+            type: "gulag-ended",
+            result: "win",
+            player: serializePlayer(player)
+          });
+          sendPlayerState(room, player, "respawned");
+          broadcastEvent(room, `${player.name} won the Gulag and redeployed!`, "start");
+        } else {
+          sendToSpectator(room, player, msg.result === "timeout" ? "timed out in the Gulag" : "lost the Gulag", now);
+        }
+        maybeFinishRound(room, now);
+      }
+    } catch (error) {
+      console.error("Client message failed", error);
+    }
+  });
+
+  const leave = () => {
+    removePlayer(player);
+    const room = player?.roomCode ? rooms.get(player.roomCode) : null;
+    if (room) {
       ensureBots(room);
-
-      send(ws, {
-        type: "joined",
-        id: player.id,
-        room: room.code,
-        roomState: serializeRoom(room),
-        players: [...room.players.values()].map(serializePlayer),
-        pickups: room.pickups.map(serializePickup),
-        projectiles: room.projectiles.map((projectile) => serializeProjectile(projectile)),
-        hazards: room.hazards.map(serializeHazard)
-      });
-
-      broadcastRoom(
-        room,
-        {
-          type: "player-joined",
-          player: serializePlayer(player)
-        },
-        ws
-      );
-      broadcastEvent(room, `${player.name} joined the arena.`, "join");
-      return;
+      if (humanCount(room) === 0 && !room.idleSince) room.idleSince = Date.now();
     }
-
-    if (!player) {
-      return;
-    }
-
-    const room = rooms.get(player.roomCode);
-    if (!room) {
-      return;
-    }
-    room.lastActiveAt = Date.now();
-
-    if (msg.type === "state") {
-      if (player.mode !== "arena") {
-        return;
-      }
-      player.x = clamp(Number(msg.x) || 0, -WORLD_SIZE, WORLD_SIZE);
-      player.y = clamp(Number(msg.y) || 0, 0, 90);
-      player.z = clamp(Number(msg.z) || 0, -WORLD_SIZE, WORLD_SIZE);
-      player.angle = Number(msg.angle) || 0;
-      player.speed = clamp(Number(msg.speed) || 0, -25, 110);
-      player.vx = clamp(Number(msg.vx) || 0, -110, 110);
-      player.vz = clamp(Number(msg.vz) || 0, -110, 110);
-      player.pitch = clamp(Number(msg.pitch) || 0, -40, 40);
-      player.roll = clamp(Number(msg.roll) || 0, -40, 40);
-      player.boosting = Boolean(msg.boosting);
-      player.airborne = Boolean(msg.airborne);
-      player.inZone = Boolean(msg.inZone) && !player.airborne;
-      return;
-    }
-
-    if (msg.type === "rename") {
-      player.name = String(msg.name || player.name).slice(0, 18);
-      broadcastRoom(room, {
-        type: "player-renamed",
-        id: player.id,
-        name: player.name
-      });
-      return;
-    }
-
-    if (msg.type === "respawn") {
-      if (player.mode !== "arena") {
-        send(ws, {
-          type: "event",
-          text: player.mode === "gulag" ? "Win the Gulag to respawn." : "Spectators redeploy automatically. Hang tight.",
-          tone: "danger"
-        });
-        return;
-      }
-      respawnPlayer(player);
-      send(ws, {
-        type: "respawned",
-        player: serializePlayer(player)
-      });
-      broadcastEvent(room, `${player.name} respawned.`, "info");
-      return;
-    }
-
-    if (msg.type === "pickup-collected") {
-      if (room.round.phase !== "live" || player.mode !== "arena") {
-        return;
-      }
-      const pickup = room.pickups.find((entry) => entry.id === msg.pickupId);
-      if (!pickup || !pickup.active) {
-        return;
-      }
-      collectPickupFor(player, pickup, room, Date.now());
-      return;
-    }
-
-    if (msg.type === "fire") {
-      const now = Date.now();
-      if (room.round.phase !== "live" || player.mode !== "arena" || player.wreckedUntil > now) {
-        return;
-      }
-      syncFireOrigin(player, msg);
-      fireWeapon(room, player, now);
-      return;
-    }
-
-    if (msg.type === "hit") {
-      const now = Date.now();
-      if (player.mode !== "arena" || player.wreckedUntil > now) {
-        return;
-      }
-      const impulse = clamp(Number(msg.impulse) || 0, 0, 1.8);
-      const target = room.players.get(String(msg.targetId || ""));
-      if (!target || target.id === player.id || target.mode !== "arena") {
-        return;
-      }
-      const stomp = Boolean(msg.stomp);
-      const slamReady = player.slamUntil > now;
-      const verticalGap = (player.y || 0) - (target.y || 0);
-      const verticalOk = stomp ? verticalGap > -0.8 && verticalGap < 9 : Math.abs(verticalGap) < 4.5;
-      const collision = verticalOk ? getPlayerCollision(player, target, HIT_LAG_ALLOWANCE + (stomp ? 1.4 : 0)) : null;
-      if (!collision) {
-        return;
-      }
-      const closingSpeed = getRelativeClosingSpeed(player, target, collision);
-      const validatedImpulse = clamp(Math.max(impulse, closingSpeed / 38), 0, slamReady ? 1.9 : 1.55);
-      let damage = Math.round(validatedImpulse * (slamReady ? 38 : 24));
-      if (stomp) damage = Math.max(damage, STOMP_DAMAGE);
-      if (slamReady) {
-        player.slamUntil = 0;
-      }
-      maybePassBomb(room, player, target, now);
-      if (damage > 4) {
-        damagePlayer(room, player, target, damage, now, { cause: stomp ? "stomp" : slamReady ? "slam" : "ram" });
-      }
-      broadcastRoom(room, {
-        type: "impact",
-        sourceId: player.id,
-        targetId: target.id,
-        impulse: validatedImpulse || impulse,
-        slam: slamReady,
-        stomp
-      });
-      maybeFinishRound(room, now);
-      return;
-    }
-
-    if (msg.type === "style-score") {
-      const now = Date.now();
-      if (room.round.phase !== "live" || player.mode !== "arena" || player.health <= 0 || player.wreckedUntil > now) {
-        return;
-      }
-      if (player.nextStyleScoreAt && player.nextStyleScoreAt > now) {
-        return;
-      }
-      const points = clamp(Math.round(Number(msg.points) || 1), 1, STYLE_SCORE_MAX);
-      const reason = String(msg.reason || "style").replace(/[^a-z0-9 -]/gi, "").slice(0, 24) || "style";
-      const awarded = addScore(room, player, points);
-      player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
-      send(player.ws, {
-        type: "style-awarded",
-        reason,
-        points: awarded,
-        player: serializePlayer(player)
-      });
-      if (awarded >= 15) {
-        broadcastEvent(room, `${player.name} cashed a ${awarded} pt ${reason} combo.`, "boost");
-      }
-      maybeFinishRound(room, now);
-      return;
-    }
-
-    if (msg.type === "gulag-result") {
-      const now = Date.now();
-      if (player.mode !== "gulag") {
-        return;
-      }
-      if (msg.result === "win" && player.gulagUntil >= now) {
-        respawnPlayer(player);
-        addScore(room, player, 6);
-        send(ws, {
-          type: "gulag-ended",
-          result: "win",
-          player: serializePlayer(player)
-        });
-        sendPlayerState(room, player, "respawned");
-        broadcastEvent(room, `${player.name} won the Gulag and redeployed!`, "start");
-      } else {
-        sendToSpectator(room, player, msg.result === "timeout" ? "timed out in the Gulag" : "lost the Gulag", now);
-      }
-      maybeFinishRound(room, now);
-    }
-  });
-
-  ws.on("close", () => {
-    removePlayer(player);
-    if (player?.roomCode && rooms.has(player.roomCode)) {
-      ensureBots(rooms.get(player.roomCode));
-    }
-  });
-
-  ws.on("error", () => {
-    removePlayer(player);
-    if (player?.roomCode && rooms.has(player.roomCode)) {
-      ensureBots(rooms.get(player.roomCode));
-    }
-  });
+  };
+  ws.on("close", leave);
+  ws.on("error", leave);
 });
 
 const heartbeat = setInterval(() => {
@@ -2131,6 +2306,9 @@ function shutdown(signal) {
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
+// Last line of defence: one bad request or packet should never take every room down with it.
+process.on("uncaughtException", (error) => console.error("Uncaught exception", error));
+process.on("unhandledRejection", (error) => console.error("Unhandled rejection", error));
 
 setInterval(() => {
   cleanupRooms();
@@ -2165,7 +2343,7 @@ function tickRoom(room, now, deltaSeconds) {
   }
 
   for (const player of room.players.values()) {
-    if (player.mode === "gulag" && player.gulagUntil > 0 && player.gulagUntil <= now) {
+    if (player.mode === "gulag" && player.gulagUntil > 0 && player.gulagUntil <= now && room.round.phase === "live") {
       sendToSpectator(room, player, "timed out in the Gulag", now);
       continue;
     }
@@ -2212,27 +2390,42 @@ function tickRoom(room, now, deltaSeconds) {
 setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
-    if (room.round.phase !== "live") {
-      continue;
-    }
-    const ring = getRing(room, now);
-    let scored = false;
-    for (const player of room.players.values()) {
-      if (player.mode === "arena" && player.inZone && player.health > 0) {
-        addScore(room, player, ring.mult);
-        scored = true;
-      }
-    }
-
-    if (scored) {
-      maybeFinishRound(room, now);
-      if (now - (room.lastSnapshotAt || 0) >= 1000 / SNAPSHOT_RATE) {
-        room.lastSnapshotAt = now;
-        broadcastSnapshot(room, now);
-      }
+    try {
+      scoreRing(room, now);
+    } catch (error) {
+      console.error(`Room ${room.code} ring scoring failed`, error);
     }
   }
 }, SCORE_TICK_MS);
+
+function scoreRing(room, now) {
+  if (room.round.phase !== "live") {
+    return;
+  }
+  const ring = getRing(room, now);
+  // Humans are checked against the server's ring (it moves during Ring Rush) with a little latency slack,
+  // and only while their client is still reporting.
+  const humanRing = { ...ring, min: ring.min - 1.5, max: ring.max + 1.5 };
+  let scored = false;
+  for (const player of room.players.values()) {
+    if (player.mode !== "arena" || player.health <= 0) continue;
+    const inZone = player.isBot
+      ? player.inZone
+      : now - (player.lastStateAt || 0) < STATE_STALE_MS && !player.airborne && isInRing(humanRing, player.x, player.z);
+    if (inZone) {
+      addScore(room, player, ring.mult);
+      scored = true;
+    }
+  }
+
+  if (scored) {
+    maybeFinishRound(room, now);
+    if (now - (room.lastSnapshotAt || 0) >= 1000 / SNAPSHOT_RATE) {
+      room.lastSnapshotAt = now;
+      broadcastSnapshot(room, now);
+    }
+  }
+}
 
 server.listen(PORT, () => {
   console.log(`Crash Club INSANE server running on http://localhost:${PORT}`);
