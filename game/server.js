@@ -10,8 +10,7 @@ const TICK_RATE = Number(process.env.CRASH_CLUB_TICK_RATE || 24);
 const SNAPSHOT_RATE = Number(process.env.CRASH_CLUB_SNAPSHOT_RATE || 15);
 const SCORE_TICK_MS = 500;
 const PICKUP_RESPAWN_MS = 9000;
-const CRATE_RESPAWN_MS = 7000;
-const LOOT_STORM_RESPAWN_MS = 1400;
+const RING_POINTS = 1;
 const WORLD_SIZE = ARENA.WORLD_SIZE;
 const ROOM_IDLE_MS = 1000 * 60 * 10;
 const MAX_HEALTH = 100;
@@ -36,17 +35,8 @@ const CAR_COLLISION_RANGE = CAR_COLLISION_RADIUS * 2;
 const HIT_LAG_ALLOWANCE = 2.8;
 const STOMP_DAMAGE = 46;
 const FINAL_FRENZY_MS = 30000;
-const FIRST_EVENT_DELAY_MS = Number(process.env.CRASH_CLUB_FIRST_EVENT_MS || 20000);
-const FORCED_EVENT = process.env.CRASH_CLUB_FORCE_EVENT || "";
-const FORCED_WEAPON = process.env.CRASH_CLUB_FORCE_WEAPON || "";
-const EVENT_GAP_MIN_MS = 11000;
-const EVENT_GAP_MAX_MS = 18000;
 const STREAK_BOUNTY_MIN = 3;
 const MULTI_WRECK_WINDOW_MS = 4500;
-const BOMB_FUSE_MS = 20000;
-const BOMB_PASS_LOCK_MS = 900;
-const MAX_MINES = 18;
-const BLACKHOLE_PULL_RADIUS = 46;
 const HUMAN_HIT_COOLDOWN_MS = 450;
 const RESPAWN_COOLDOWN_MS = 4000;
 const STATE_STALE_MS = 600;
@@ -73,11 +63,6 @@ const PICKUP_TYPES = {
     label: "Slam",
     color: "#ff4f8b",
     score: 4
-  },
-  crate: {
-    label: "Mystery Crate",
-    color: "#c084fc",
-    score: 1
   }
 };
 
@@ -91,50 +76,8 @@ const PICKUP_TEMPLATES = [
   { id: "shield-left", type: "shield", x: -78, z: -10 },
   { id: "shield-right", type: "shield", x: 78, z: 10 },
   { id: "slam-center-east", type: "slam", x: 28, z: 28 },
-  { id: "slam-center-west", type: "slam", x: -28, z: -28 },
-  { id: "crate-ring-north", type: "crate", x: -9, z: -34 },
-  { id: "crate-ring-south", type: "crate", x: 9, z: 34 },
-  { id: "crate-ring-east", type: "crate", x: 34, z: -9 },
-  { id: "crate-ring-west", type: "crate", x: -34, z: 9 },
-  { id: "crate-corner-northwest", type: "crate", x: -80, z: 80 },
-  { id: "crate-corner-southeast", type: "crate", x: 80, z: -80 },
-  { id: "crate-lane-north", type: "crate", x: -30, z: -70 },
-  { id: "crate-lane-south", type: "crate", x: 30, z: 70 }
+  { id: "slam-center-west", type: "slam", x: -28, z: -28 }
 ];
-
-const WEAPONS = {
-  rocket: { label: "Homing Rockets", charges: 3, cooldownMs: 420 },
-  mine: { label: "Prox Mines", charges: 3, cooldownMs: 360 },
-  shockwave: { label: "Shockwave", charges: 1, cooldownMs: 0 },
-  blackhole: { label: "Black Hole", charges: 1, cooldownMs: 0 }
-};
-const WEAPON_WEIGHTS = [
-  ["rocket", 40],
-  ["mine", 26],
-  ["shockwave", 20],
-  ["blackhole", 14]
-];
-
-const EXPLOSIONS = {
-  rocket: { radius: 9, damage: 24, force: 30, lift: 13 },
-  mine: { radius: 10, damage: 30, force: 26, lift: 19 },
-  shockwave: { radius: 19, damage: 18, force: 50, lift: 11 },
-  blackhole: { radius: 17, damage: 36, force: 62, lift: 24 },
-  meteor: { radius: 11, damage: 32, force: 40, lift: 18 },
-  bomb: { radius: 18, damage: 40, force: 70, lift: 28 }
-};
-
-const CHAOS_EVENTS = {
-  meteors: { name: "METEOR SHOWER", tagline: "Watch the red circles. The sky is falling.", durationMs: 18000 },
-  lowgrav: { name: "MOON GRAVITY", tagline: "Gravity is optional. Hit a ramp.", durationMs: 20000 },
-  ice: { name: "BLACK ICE", tagline: "Zero grip. Pure drift.", durationMs: 18000 },
-  bomb: { name: "HOT POTATO", tagline: "Someone has the bomb. Ram a rival to pass it.", durationMs: BOMB_FUSE_MS + 1500, minPlayers: 2 },
-  ringrush: { name: "RING RUSH", tagline: "The ring is on the move. Triple points.", durationMs: 22000 },
-  nitro: { name: "NITRO FRENZY", tagline: "Infinite boost. Overclocked engines.", durationMs: 15000 },
-  bounty: { name: "BOUNTY HUNT", tagline: "Wreck the leader for +25.", durationMs: 20000, minPlayers: 2 },
-  lootstorm: { name: "LOOT STORM", tagline: "Crates respawn instantly. Arm up.", durationMs: 16000 }
-};
-const FINAL_FRENZY = { name: "FINAL FRENZY", tagline: "Double points. Meteors. No mercy." };
 
 const STREAK_CALLOUTS = {
   3: "is ON FIRE",
@@ -155,16 +98,10 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml"
 };
 
-const WORLD_SOURCES = {
-  meteor: { id: "world-meteor", name: "a meteor", isWorld: true },
-  bomb: { id: "world-bomb", name: "the bomb", isWorld: true }
-};
-
 const publicDir = path.join(__dirname, "public");
 const rooms = new Map();
 let nextPlayerId = 1;
 let nextBotId = 1;
-let nextEntityId = 1;
 
 const BOT_NAMES = [
   "Mason Cole",
@@ -207,10 +144,6 @@ function normalizeAngle(angle) {
 
 function rankPlayers(a, b) {
   return (b.score || 0) - (a.score || 0) || (b.wrecks || 0) - (a.wrecks || 0) || String(a.name).localeCompare(String(b.name));
-}
-
-function isLive(player, now = Date.now()) {
-  return Boolean(player) && player.mode === "arena" && player.health > 0 && !(player.wreckedUntil > now);
 }
 
 function sanitizeRoomCode(input) {
@@ -394,29 +327,25 @@ function createRoundState(now = Date.now(), round = 1) {
   };
 }
 
-function resetChaos(room, now = Date.now()) {
-  room.event = null;
-  room.nextEventAt = now + FIRST_EVENT_DELAY_MS;
-  room.recentEvents = room.recentEvents || [];
-  room.projectiles = [];
-  room.hazards = [];
-  room.firstBloodTaken = false;
-}
-
 function createRoom(code) {
   const now = Date.now();
-  const room = {
+  return {
     code,
     players: new Map(),
     pickups: createPickups(),
     round: createRoundState(now),
+    firstBloodTaken: false,
     createdAt: now,
     lastActiveAt: now,
-    lastSnapshotAt: 0,
-    recentEvents: []
+    lastSnapshotAt: 0
   };
-  resetChaos(room, now);
-  return room;
+}
+
+// Starts the next round on a fresh grid: new clock, every pickup back, first blood up for grabs again.
+function resetRoundState(room, now) {
+  room.round = createRoundState(now, room.round.round + 1);
+  room.pickups = createPickups();
+  room.firstBloodTaken = false;
 }
 
 function getRoom(code) {
@@ -429,47 +358,29 @@ function getRoom(code) {
   return room;
 }
 
-function getRing(room, now = Date.now()) {
-  if (room.event?.kind === "ringrush") {
-    const point = ARENA.ringPathAt((now - room.event.startedAt) / 1000);
-    return { x: point.x, z: point.z, min: ARENA.RING.min, max: ARENA.RING.max, mult: 3 };
-  }
-  return { x: ARENA.RING.x, z: ARENA.RING.z, min: ARENA.RING.min, max: ARENA.RING.max, mult: 1 };
+// slack widens the scoring band, so a human whose position is a few frames old still counts.
+function isInRing(x, z, slack = 0) {
+  const dist = Math.hypot(x - ARENA.RING.x, z - ARENA.RING.z);
+  return dist >= ARENA.RING.min - slack && dist <= ARENA.RING.max + slack;
 }
 
-function isInRing(ring, x, z) {
-  const dist = Math.hypot(x - ring.x, z - ring.z);
-  return dist >= ring.min && dist <= ring.max;
-}
-
-function serializeEvent(event) {
-  if (!event) return null;
-  return {
-    kind: event.kind,
-    name: event.name,
-    tagline: event.tagline,
-    startedAt: event.startedAt,
-    endsAt: event.endsAt,
-    holderId: event.holderId || null,
-    fuseEndsAt: event.fuseEndsAt || 0,
-    targetId: event.targetId || null
-  };
+// The last FINAL_FRENZY_MS of a live round pay double. A cashout flushed as the clock runs out still counts.
+function isFinalFrenzy(room, now = Date.now()) {
+  return room.round.phase === "live" && now >= room.round.endsAt - FINAL_FRENZY_MS;
 }
 
 function serializeRoom(room, now = Date.now()) {
-  const ring = getRing(room, now);
   return {
     phase: room.round.phase,
     round: room.round.round,
     endsAt: room.round.endsAt,
+    frenzyAt: room.round.endsAt - FINAL_FRENZY_MS,
     nextRoundAt: room.round.nextRoundAt,
     winner: room.round.winner,
     standings: room.round.standings || [],
     now,
     version: GAME_VERSION,
-    targetScore: ROUND_WIN_SCORE,
-    event: serializeEvent(room.event),
-    ring: { x: round2(ring.x), z: round2(ring.z), min: ring.min, max: ring.max, mult: ring.mult }
+    targetScore: ROUND_WIN_SCORE
   };
 }
 
@@ -497,8 +408,6 @@ function serializePlayer(player) {
     health: player.health,
     wrecks: player.wrecks || 0,
     streak: player.streak || 0,
-    weapon: player.weapon || null,
-    weaponCharges: player.weaponCharges || 0,
     shieldUntil: player.shieldUntil || 0,
     slamUntil: player.slamUntil || 0,
     wreckedUntil: player.wreckedUntil || 0,
@@ -517,35 +426,6 @@ function serializePickup(pickup) {
     x: pickup.x,
     z: pickup.z,
     active: pickup.active
-  };
-}
-
-function serializeProjectile(projectile, now = Date.now()) {
-  return {
-    id: projectile.id,
-    kind: projectile.kind,
-    ownerId: projectile.ownerId,
-    x: round2(projectile.x),
-    y: round2(projectile.y),
-    z: round2(projectile.z),
-    vx: round2(projectile.vx || 0),
-    vz: round2(projectile.vz || 0),
-    angle: round2(projectile.angle || 0),
-    phase: projectile.phase || "flying",
-    armed: projectile.armedAt ? now >= projectile.armedAt : true,
-    collapseAt: projectile.collapseAt || 0
-  };
-}
-
-function serializeHazard(hazard) {
-  return {
-    id: hazard.id,
-    kind: hazard.kind,
-    x: round2(hazard.x),
-    y: round2(hazard.y || 0),
-    z: round2(hazard.z),
-    spawnedAt: hazard.spawnedAt,
-    impactAt: hazard.impactAt
   };
 }
 
@@ -600,8 +480,6 @@ function createBot(room) {
     health: MAX_HEALTH,
     wrecks: 0,
     streak: 0,
-    weapon: null,
-    weaponCharges: 0,
     shieldUntil: 0,
     slamUntil: 0,
     wreckedUntil: 0,
@@ -611,8 +489,6 @@ function createBot(room) {
     botNextDecisionAt: 0,
     botNextHitAt: 0,
     botNextPickupCheckAt: 0,
-    botNextWeaponAt: 0,
-    botWeaponSince: 0,
     ...createSpawnState(id, name, randomColor())
   };
 }
@@ -666,8 +542,6 @@ function resetPlayerForRound(player) {
     multiCount: 0,
     lastWreckAt: 0,
     lastWreckedById: null,
-    weapon: null,
-    weaponCharges: 0,
     shieldUntil: 0,
     slamUntil: 0,
     wreckedUntil: 0,
@@ -758,9 +632,7 @@ function broadcastSnapshot(room, now = Date.now()) {
   broadcastRoom(room, {
     type: "snapshot",
     room: serializeRoom(room, now),
-    players: [...room.players.values()].map(serializePlayer),
-    projectiles: room.projectiles.map((projectile) => serializeProjectile(projectile, now)),
-    hazards: room.hazards.map(serializeHazard)
+    players: [...room.players.values()].map(serializePlayer)
   });
 }
 
@@ -816,10 +688,10 @@ function buildStandings(room) {
     }));
 }
 
-function addScore(room, player, points) {
+function addScore(room, player, points, now = Date.now()) {
   const base = Number(points) || 0;
-  if (!player || player.isWorld || base <= 0) return 0;
-  const frenzy = room?.event?.kind === "frenzy" ? 2 : 1;
+  if (!player || base <= 0) return 0;
+  const frenzy = isFinalFrenzy(room, now) ? 2 : 1;
   const value = player.isBot ? Math.floor(base * frenzy * BOT_SCORE_MULTIPLIER + Math.random()) : Math.round(base * frenzy);
   if (value <= 0) return 0;
   player.score = (player.score || 0) + value;
@@ -830,9 +702,6 @@ function finishRound(room, winner, now = Date.now()) {
   if (room.round.phase === "intermission") {
     return;
   }
-  endChaosEvent(room, now, { silent: true });
-  room.projectiles = [];
-  room.hazards = [];
   room.round.phase = "intermission";
   room.round.endsAt = now;
   room.round.nextRoundAt = now + INTERMISSION_MS;
@@ -854,9 +723,7 @@ function finishRound(room, winner, now = Date.now()) {
 }
 
 function startNextRound(room, now = Date.now()) {
-  room.round = createRoundState(now, room.round.round + 1);
-  room.pickups = createPickups();
-  resetChaos(room, now);
+  resetRoundState(room, now);
   for (const player of room.players.values()) {
     resetPlayerForRound(player);
   }
@@ -870,7 +737,7 @@ function startNextRound(room, now = Date.now()) {
 }
 
 function awardStyle(room, player, points, reason, now) {
-  const awarded = addScore(room, player, points);
+  const awarded = addScore(room, player, points, now);
   player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
   send(player.ws, {
     type: "style-awarded",
@@ -915,20 +782,9 @@ function maybeFinishRound(room, now = Date.now()) {
   }
 }
 
-function rollWeapon() {
-  if (WEAPONS[FORCED_WEAPON]) return FORCED_WEAPON;
-  const total = WEAPON_WEIGHTS.reduce((sum, [, weight]) => sum + weight, 0);
-  let roll = Math.random() * total;
-  for (const [type, weight] of WEAPON_WEIGHTS) {
-    roll -= weight;
-    if (roll <= 0) return type;
-  }
-  return WEAPON_WEIGHTS[0][0];
-}
-
 function applyPickup(player, pickup, room, now = Date.now()) {
   const meta = PICKUP_TYPES[pickup.type] || PICKUP_TYPES.boost;
-  addScore(room, player, meta.score || 0);
+  addScore(room, player, meta.score || 0, now);
 
   if (pickup.type === "repair") {
     player.health = clamp(player.health + meta.heal, 0, MAX_HEALTH);
@@ -939,20 +795,14 @@ function applyPickup(player, pickup, room, now = Date.now()) {
   if (pickup.type === "slam") {
     player.slamUntil = now + SLAM_DURATION_MS;
   }
-  if (pickup.type === "crate") {
-    player.weapon = rollWeapon();
-    player.weaponCharges = WEAPONS[player.weapon].charges;
-    player.botWeaponSince = now;
-  }
 
   send(player.ws, {
     type: "pickup-awarded",
     pickup: serializePickup(pickup),
     player: serializePlayer(player),
-    weapon: pickup.type === "crate" ? player.weapon : null,
     expiresAt: pickup.type === "shield" ? player.shieldUntil : player.slamUntil
   });
-  if (!player.isBot && pickup.type !== "crate") {
+  if (!player.isBot) {
     broadcastEvent(room, `${player.name} grabbed ${meta.label}.`, pickup.type);
   }
 }
@@ -969,17 +819,15 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now(), options
     return 0;
   }
 
-  const shielded = target.shieldUntil > now && !options.unblockable;
+  const shielded = target.shieldUntil > now;
   const damage = Math.max(1, shielded ? Math.ceil(rawDamage * 0.35) : Math.round(rawDamage));
   const healthBefore = target.health;
   target.health = clamp(target.health - damage, 0, MAX_HEALTH);
   const dealt = healthBefore - target.health;
-  const credited = source && !source.isWorld && source.id !== target.id ? source : null;
+  const credited = source && source.id !== target.id ? source : null;
   if (credited) {
     credited.hits = (credited.hits || 0) + 1;
-    let points = Math.max(1, Math.round(dealt / 8));
-    if (room.event?.kind === "bounty" && room.event.targetId === target.id) points *= 2;
-    addScore(room, credited, points);
+    addScore(room, credited, Math.max(1, Math.round(dealt / 8)), now);
   }
 
   broadcastRoom(room, {
@@ -994,18 +842,16 @@ function damagePlayer(room, source, target, rawDamage, now = Date.now(), options
   });
 
   if (target.health <= 0) {
-    handleWreck(room, credited, target, options.cause || "ram", now, source);
+    handleWreck(room, credited, target, options.cause || "ram", now);
   }
   return dealt;
 }
 
-function handleWreck(room, source, target, cause, now, rawSource) {
+function handleWreck(room, source, target, cause, now) {
   const victimStreak = target.streak || 0;
   const bounty = victimStreak >= STREAK_BOUNTY_MIN ? Math.min(30, 4 + victimStreak * 4) : 0;
   const callouts = [];
   target.streak = 0;
-  target.weapon = null;
-  target.weaponCharges = 0;
 
   if (source) {
     source.wrecks = (source.wrecks || 0) + 1;
@@ -1023,19 +869,15 @@ function handleWreck(room, source, target, cause, now, rawSource) {
       source.lastWreckedById = null;
       callouts.push("REVENGE");
     }
-    if (room.event?.kind === "bounty" && room.event.targetId === target.id) {
-      bonus += 25;
-      callouts.push("BOUNTY CLAIMED");
-    }
     if (bounty) callouts.push("STREAK SNAPPED");
-    addScore(room, source, bonus);
+    addScore(room, source, bonus, now);
   }
   target.lastWreckedById = source ? source.id : null;
 
   broadcastRoom(room, {
     type: "wreck",
-    sourceId: source?.id || rawSource?.id || null,
-    sourceName: source?.name || rawSource?.name || "the arena",
+    sourceId: source?.id || null,
+    sourceName: source?.name || "the arena",
     targetId: target.id,
     targetName: target.name,
     cause,
@@ -1054,14 +896,6 @@ function handleWreck(room, source, target, cause, now, rawSource) {
     broadcastEvent(room, `${source.name} ${STREAK_CALLOUTS[source.streak]}!`, "streak");
   }
 
-  if (room.event?.kind === "bomb" && room.event.holderId === target.id && cause !== "bomb") {
-    const heir = isLive(source, now) ? source : null;
-    assignBomb(room, heir, now, heir ? `${heir.name} wrecked the bomb carrier and caught the bomb!` : null);
-  }
-  if (room.event?.kind === "bounty" && room.event.targetId === target.id) {
-    endChaosEvent(room, now);
-  }
-
   if (target.isBot) {
     target.wreckedUntil = now + WRECK_RESPAWN_MS;
     target.speed = 0;
@@ -1071,555 +905,16 @@ function handleWreck(room, source, target, cause, now, rawSource) {
       broadcastEvent(room, `${source.name} wrecked ${target.name}!`, "danger");
     }
   } else {
-    enterGulag(room, target, source || rawSource, now);
-  }
-}
-
-// Humans report their position every ~80ms; project it forward so blast checks match where the car really is.
-// A stalled stream (hidden tab, hitch) is not projected: everyone sees that car frozen where it last reported.
-function effectivePosition(player, now) {
-  if (player.isBot) return player;
-  const age = now - (player.lastStateAt || now);
-  const staleness = age > 250 ? 0 : clamp(age / 1000, 0, 0.12);
-  return { x: player.x + (player.vx || 0) * staleness, y: player.y || 0, z: player.z + (player.vz || 0) * staleness };
-}
-
-function explode(room, options, now = Date.now()) {
-  const spec = EXPLOSIONS[options.kind] || EXPLOSIONS.rocket;
-  const radius = options.radius || spec.radius;
-  const x = options.x;
-  const y = options.y || 0;
-  const z = options.z;
-  const source = options.source || null;
-  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(y)) return;
-  const id = `fx-${nextEntityId++}`;
-
-  const caught = [];
-  for (const target of arenaPlayers(room, now)) {
-    if (options.excludeId && target.id === options.excludeId) continue;
-    const position = effectivePosition(target, now);
-    const dx = position.x - x;
-    const dz = position.z - z;
-    const dy = ((position.y || 0) - y) * 0.6;
-    const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
-    if (distance > radius) continue;
-    caught.push({ target, dx, dz, falloff: 1 - distance / radius });
-  }
-
-  // The server decides who was caught, so a client knocks itself back only when it also takes the damage.
-  const hits = {};
-  for (const { target, falloff } of caught) hits[target.id] = round2(falloff);
-  broadcastRoom(room, {
-    type: "explosion",
-    id,
-    kind: options.kind,
-    x: round2(x),
-    y: round2(y),
-    z: round2(z),
-    radius,
-    force: spec.force,
-    lift: spec.lift,
-    sourceId: source?.id || null,
-    excludeId: options.excludeId || null,
-    hits
-  });
-
-  for (const { target, dx, dz, falloff } of caught) {
-    damagePlayer(room, source, target, spec.damage * (0.35 + 0.65 * falloff), now, { cause: options.kind });
-    if (target.isBot && target.mode === "arena") {
-      const flat = Math.hypot(dx, dz) || 1;
-      target.kx = (target.kx || 0) + (dx / flat) * spec.force * falloff;
-      target.kz = (target.kz || 0) + (dz / flat) * spec.force * falloff;
-      target.vy = Math.max(target.vy || 0, spec.lift * (0.4 + falloff * 0.6));
-      target.airborne = true;
-      target.y = (target.y || 0) + 0.05;
-    }
-  }
-  maybeFinishRound(room, now);
-}
-
-function forwardOf(player) {
-  return { x: Math.sin(player.angle || 0), z: Math.cos(player.angle || 0) };
-}
-
-function pickRocketTarget(room, owner, origin, angle, now) {
-  const fx = Math.sin(angle);
-  const fz = Math.cos(angle);
-  let best = null;
-  let bestScore = Infinity;
-  for (const target of arenaPlayers(room, now)) {
-    if (target.id === owner.id) continue;
-    const dx = target.x - origin.x;
-    const dz = target.z - origin.z;
-    const distance = Math.hypot(dx, dz);
-    if (distance > 110 || distance < 0.1) continue;
-    const dot = (dx * fx + dz * fz) / distance;
-    if (dot < 0.42) continue;
-    const score = distance * (1.6 - dot);
-    if (score < bestScore) {
-      bestScore = score;
-      best = target;
-    }
-  }
-  return best;
-}
-
-function spawnProjectile(room, projectile) {
-  room.projectiles.push(projectile);
-  broadcastRoom(room, {
-    type: "projectile-spawned",
-    projectile: serializeProjectile(projectile)
-  });
-}
-
-function removeProjectile(room, projectile) {
-  const index = room.projectiles.indexOf(projectile);
-  if (index >= 0) room.projectiles.splice(index, 1);
-  broadcastRoom(room, {
-    type: "projectile-removed",
-    id: projectile.id
-  });
-}
-
-function fireWeapon(room, player, now = Date.now()) {
-  const weapon = WEAPONS[player.weapon];
-  if (!weapon || (player.weaponCharges || 0) <= 0 || now < (player.nextFireAt || 0)) return false;
-  player.weaponCharges -= 1;
-  player.nextFireAt = now + weapon.cooldownMs;
-  const kind = player.weapon;
-  if (player.weaponCharges <= 0) {
-    player.weapon = null;
-    player.weaponCharges = 0;
-  }
-
-  const forward = forwardOf(player);
-  const baseY = player.y || 0;
-  if (kind === "rocket") {
-    const origin = { x: player.x + forward.x * 4.2, z: player.z + forward.z * 4.2 };
-    const target = pickRocketTarget(room, player, origin, player.angle || 0, now);
-    const speed = 92;
-    spawnProjectile(room, {
-      id: `p-${nextEntityId++}`,
-      kind,
-      ownerId: player.id,
-      x: origin.x,
-      y: baseY + 1.5,
-      z: origin.z,
-      angle: player.angle || 0,
-      speed,
-      vx: forward.x * speed,
-      vz: forward.z * speed,
-      targetId: target?.id || null,
-      bornAt: now,
-      expiresAt: now + 2800
-    });
-  } else if (kind === "mine") {
-    const mines = room.projectiles.filter((projectile) => projectile.kind === "mine");
-    if (mines.length >= MAX_MINES) removeProjectile(room, mines[0]);
-    const x = clamp(player.x - forward.x * 5.2, -WORLD_SIZE, WORLD_SIZE);
-    const z = clamp(player.z - forward.z * 5.2, -WORLD_SIZE, WORLD_SIZE);
-    spawnProjectile(room, {
-      id: `p-${nextEntityId++}`,
-      kind,
-      ownerId: player.id,
-      x,
-      y: ARENA.groundHeightAt(x, z) + 0.3,
-      z,
-      angle: player.angle || 0,
-      bornAt: now,
-      armedAt: now + 700,
-      ownerSafeUntil: now + 1800,
-      expiresAt: now + 25000
-    });
-  } else if (kind === "shockwave") {
-    explode(room, { kind, x: player.x, y: baseY, z: player.z, source: player, excludeId: player.id }, now);
-  } else if (kind === "blackhole") {
-    const speed = 48;
-    spawnProjectile(room, {
-      id: `p-${nextEntityId++}`,
-      kind,
-      ownerId: player.id,
-      x: player.x + forward.x * 6,
-      y: baseY + 2.6,
-      z: player.z + forward.z * 6,
-      angle: player.angle || 0,
-      vx: forward.x * speed + (player.vx || 0) * 0.3,
-      vz: forward.z * speed + (player.vz || 0) * 0.3,
-      phase: "flying",
-      bornAt: now,
-      stopAt: now + 650,
-      collapseAt: now + 650 + 3600
-    });
-  }
-
-  broadcastRoom(room, {
-    type: "weapon-fired",
-    playerId: player.id,
-    kind,
-    player: serializePlayer(player)
-  });
-  return true;
-}
-
-function updateProjectiles(room, now, deltaSeconds) {
-  if (!room.projectiles.length) return;
-  const cars = arenaPlayers(room, now);
-  for (const projectile of [...room.projectiles]) {
-    if (room.round.phase !== "live") return;
-    const owner = room.players.get(projectile.ownerId) || null;
-
-    if (projectile.kind === "rocket") {
-      const target = projectile.targetId ? room.players.get(projectile.targetId) : null;
-      if (target && target.mode === "arena" && target.health > 0 && !(target.wreckedUntil > now)) {
-        const desired = Math.atan2(target.x - projectile.x, target.z - projectile.z);
-        const turn = clamp(angleDelta(projectile.angle, desired), -3.4 * deltaSeconds, 3.4 * deltaSeconds);
-        projectile.angle += turn;
-        const targetY = (target.y || 0) + 1.3;
-        projectile.y += clamp(targetY - projectile.y, -18 * deltaSeconds, 18 * deltaSeconds);
-      }
-      projectile.vx = Math.sin(projectile.angle) * projectile.speed;
-      projectile.vz = Math.cos(projectile.angle) * projectile.speed;
-      const prevX = projectile.x;
-      const prevZ = projectile.z;
-      projectile.x += projectile.vx * deltaSeconds;
-      projectile.z += projectile.vz * deltaSeconds;
-
-      let detonate = now >= projectile.expiresAt || Math.abs(projectile.x) > WORLD_SIZE || Math.abs(projectile.z) > WORLD_SIZE;
-      if (!detonate && projectile.y < ARENA.groundHeightAt(projectile.x, projectile.z) + 0.4) detonate = true;
-      if (!detonate) {
-        for (const collider of ARENA.colliders) {
-          if (projectile.y > collider.h) continue;
-          if (distanceSq2D(projectile.x, projectile.z, collider.x, collider.z) < collider.r * collider.r) {
-            detonate = true;
-            break;
-          }
-        }
-      }
-      if (!detonate) {
-        for (const car of cars) {
-          if (car.id === projectile.ownerId) continue;
-          const position = effectivePosition(car, now);
-          if (Math.abs((position.y || 0) + 1 - projectile.y) > 4) continue;
-          const point = closestPointOnSegment2D(position.x, position.z, prevX, prevZ, projectile.x, projectile.z);
-          if (distanceSq2D(point.x, point.z, position.x, position.z) < 3.6 * 3.6) {
-            projectile.x = point.x;
-            projectile.z = point.z;
-            detonate = true;
-            break;
-          }
-        }
-      }
-      if (detonate) {
-        removeProjectile(room, projectile);
-        explode(room, { kind: "rocket", x: projectile.x, y: projectile.y, z: projectile.z, source: owner, excludeId: projectile.ownerId }, now);
-      }
-      continue;
-    }
-
-    if (projectile.kind === "mine") {
-      if (now >= projectile.expiresAt) {
-        removeProjectile(room, projectile);
-        continue;
-      }
-      if (now < projectile.armedAt) continue;
-      const trigger = cars.find((car) => {
-        if (car.id === projectile.ownerId && now < projectile.ownerSafeUntil) return false;
-        const position = effectivePosition(car, now);
-        if (Math.abs((position.y || 0) - projectile.y) > 3.5) return false;
-        return distanceSq2D(position.x, position.z, projectile.x, projectile.z) < 4.4 * 4.4;
-      });
-      if (trigger) {
-        removeProjectile(room, projectile);
-        explode(room, { kind: "mine", x: projectile.x, y: projectile.y, z: projectile.z, source: owner }, now);
-      }
-      continue;
-    }
-
-    if (projectile.kind === "blackhole") {
-      if (projectile.phase === "flying") {
-        projectile.x = clamp(projectile.x + projectile.vx * deltaSeconds, -WORLD_SIZE, WORLD_SIZE);
-        projectile.z = clamp(projectile.z + projectile.vz * deltaSeconds, -WORLD_SIZE, WORLD_SIZE);
-        const hitWall = ARENA.colliders.some(
-          (collider) => projectile.y <= collider.h && distanceSq2D(projectile.x, projectile.z, collider.x, collider.z) < collider.r * collider.r
-        );
-        if (hitWall || now >= projectile.stopAt) {
-          projectile.phase = "pulling";
-          projectile.vx = 0;
-          projectile.vz = 0;
-          // A hole that stopped above a building or rail would drop into it: settle just outside its footprint.
-          for (const collider of ARENA.colliders) {
-            const dx = projectile.x - collider.x;
-            const dz = projectile.z - collider.z;
-            const distance = Math.hypot(dx, dz);
-            if (distance >= collider.r) continue;
-            const outX = distance > 0.01 ? dx / distance : -Math.sin(projectile.angle || 0);
-            const outZ = distance > 0.01 ? dz / distance : -Math.cos(projectile.angle || 0);
-            projectile.x = clamp(collider.x + outX * (collider.r + 0.5), -WORLD_SIZE, WORLD_SIZE);
-            projectile.z = clamp(collider.z + outZ * (collider.r + 0.5), -WORLD_SIZE, WORLD_SIZE);
-          }
-          // The pull is flat, so settle at car height or the collapse would miss what it pulled in.
-          projectile.y = ARENA.groundHeightAt(projectile.x, projectile.z) + 2.2;
-          if (hitWall) projectile.collapseAt = now + 3600;
-          broadcastRoom(room, { type: "projectile-updated", projectile: serializeProjectile(projectile, now) });
-        }
-      } else {
-        for (const car of cars) {
-          if (!car.isBot || car.id === projectile.ownerId) continue;
-          const dx = projectile.x - car.x;
-          const dz = projectile.z - car.z;
-          const distance = Math.hypot(dx, dz);
-          if (distance > BLACKHOLE_PULL_RADIUS || distance < 0.5) continue;
-          const pull = (1 - distance / BLACKHOLE_PULL_RADIUS) * 70 * deltaSeconds;
-          car.kx = (car.kx || 0) + (dx / distance) * pull;
-          car.kz = (car.kz || 0) + (dz / distance) * pull;
-        }
-      }
-      if (now >= projectile.collapseAt) {
-        removeProjectile(room, projectile);
-        explode(room, { kind: "blackhole", x: projectile.x, y: projectile.y, z: projectile.z, source: owner, excludeId: projectile.ownerId }, now);
-      }
-    }
-  }
-}
-
-function spawnMeteor(room, now, aimAtCars = true) {
-  const cars = arenaPlayers(room, now);
-  let x;
-  let z;
-  if (aimAtCars && cars.length && Math.random() < 0.62) {
-    const target = cars[Math.floor(Math.random() * cars.length)];
-    x = target.x + (target.vx || 0) * 1.3 + (Math.random() - 0.5) * 12;
-    z = target.z + (target.vz || 0) * 1.3 + (Math.random() - 0.5) * 12;
-  } else {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = Math.sqrt(Math.random()) * 95;
-    x = Math.cos(angle) * radius;
-    z = Math.sin(angle) * radius;
-  }
-  const hazardX = clamp(x, -WORLD_SIZE + 6, WORLD_SIZE - 6);
-  const hazardZ = clamp(z, -WORLD_SIZE + 6, WORLD_SIZE - 6);
-  const hazard = {
-    id: `m-${nextEntityId++}`,
-    kind: "meteor",
-    x: hazardX,
-    y: ARENA.groundHeightAt(hazardX, hazardZ),
-    z: hazardZ,
-    spawnedAt: now,
-    impactAt: now + 1700
-  };
-  room.hazards.push(hazard);
-  broadcastRoom(room, { type: "hazard-spawned", hazard: serializeHazard(hazard) });
-}
-
-function updateHazards(room, now) {
-  if (!room.hazards.length) return;
-  for (const hazard of [...room.hazards]) {
-    if (now < hazard.impactAt) continue;
-    room.hazards.splice(room.hazards.indexOf(hazard), 1);
-    explode(room, { kind: "meteor", x: hazard.x, y: hazard.y || 0, z: hazard.z, source: WORLD_SOURCES.meteor }, now);
-  }
-}
-
-function assignBomb(room, preferred, now, message, passerId = null) {
-  const event = room.event;
-  if (!event || event.kind !== "bomb") return;
-  const candidates = arenaPlayers(room, now).filter((player) => player.id !== event.holderId);
-  const holder = isLive(preferred, now) ? preferred : candidates[Math.floor(Math.random() * candidates.length)];
-  if (!holder) {
-    endChaosEvent(room, now);
-    return;
-  }
-  event.holderId = holder.id;
-  event.lastPasserId = passerId;
-  event.passLockUntil = now + BOMB_PASS_LOCK_MS;
-  broadcastRoom(room, {
-    type: "bomb-passed",
-    holderId: holder.id,
-    holderName: holder.name,
-    passerId,
-    fuseEndsAt: event.fuseEndsAt
-  });
-  if (message) broadcastEvent(room, message, "danger");
-}
-
-function maybePassBomb(room, source, target, now) {
-  const event = room.event;
-  if (!event || event.kind !== "bomb" || event.holderId !== source.id || now < (event.passLockUntil || 0)) return;
-  if (!isLive(target, now)) {
-    // The ram wrecked them, so the bomb bounces to the nearest rival still driving instead.
-    const heir = arenaPlayers(room, now)
-      .filter((player) => player.id !== source.id && player.id !== target.id && isLive(player, now))
-      .sort((a, b) => distanceSq2D(a.x, a.z, source.x, source.z) - distanceSq2D(b.x, b.z, source.x, source.z))[0];
-    if (heir) {
-      assignBomb(room, heir, now, `${source.name} wrecked ${target.name} and the bomb bounced to ${heir.name}!`, source.id);
-    }
-    return;
-  }
-  assignBomb(room, target, now, `${source.name} passed the bomb to ${target.name}!`, source.id);
-}
-
-function startChaosEvent(room, kind, now = Date.now()) {
-  const meta = kind === "frenzy" ? FINAL_FRENZY : CHAOS_EVENTS[kind];
-  const event = {
-    kind,
-    name: meta.name,
-    tagline: meta.tagline,
-    startedAt: now,
-    endsAt: kind === "frenzy" ? room.round.endsAt : now + meta.durationMs,
-    nextMeteorAt: now + 600
-  };
-  room.event = event;
-  room.recentEvents = [kind, ...(room.recentEvents || [])].slice(0, 3);
-
-  if (kind === "bomb") {
-    event.fuseEndsAt = now + BOMB_FUSE_MS;
-    event.endsAt = event.fuseEndsAt + 1500;
-  }
-  if (kind === "bounty") {
-    const leader = arenaPlayers(room, now).sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-    event.targetId = leader?.id || null;
-    if (leader) event.tagline = `Wreck ${leader.name} for +25. Hits on them pay double.`;
-  }
-  if (kind === "lootstorm") {
-    for (const pickup of room.pickups) {
-      if (pickup.type !== "crate" || pickup.active) continue;
-      pickup.active = true;
-      pickup.respawnAt = 0;
-      broadcastRoom(room, { type: "pickup-state", pickupId: pickup.id, active: true });
-    }
-  }
-
-  broadcastRoom(room, { type: "chaos-event", event: serializeEvent(event), room: serializeRoom(room, now) });
-  if (kind === "bomb") {
-    assignBomb(room, null, now, null);
-  }
-}
-
-function endChaosEvent(room, now = Date.now(), options = {}) {
-  const event = room.event;
-  if (!event) return;
-  room.event = null;
-  if (event.kind !== "frenzy") {
-    room.nextEventAt = now + EVENT_GAP_MIN_MS + Math.random() * (EVENT_GAP_MAX_MS - EVENT_GAP_MIN_MS);
-  }
-  if (!options.silent) {
-    broadcastRoom(room, { type: "chaos-event-ended", kind: event.kind, room: serializeRoom(room, now) });
-  }
-}
-
-function chooseChaosEvent(room, now, availableMs) {
-  const active = arenaPlayers(room, now).length;
-  const recent = new Set(room.recentEvents || []);
-  const fits = (kind) => CHAOS_EVENTS[kind].durationMs <= availableMs;
-  if (CHAOS_EVENTS[FORCED_EVENT]) return fits(FORCED_EVENT) ? FORCED_EVENT : null;
-  const options = Object.entries(CHAOS_EVENTS)
-    .filter(([kind, meta]) => fits(kind) && !recent.has(kind) && active >= (meta.minPlayers || 1))
-    .map(([kind]) => kind);
-  const pool = options.length ? options : Object.keys(CHAOS_EVENTS).filter((kind) => fits(kind) && !CHAOS_EVENTS[kind].minPlayers);
-  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
-}
-
-function updateChaos(room, now) {
-  if (room.round.phase !== "live") return;
-  const event = room.event;
-
-  if (now >= room.round.endsAt - FINAL_FRENZY_MS && now < room.round.endsAt && event?.kind !== "frenzy") {
-    endChaosEvent(room, now, { silent: true });
-    startChaosEvent(room, "frenzy", now);
-    return;
-  }
-
-  if (!event) {
-    if (now >= room.nextEventAt) {
-      const kind = chooseChaosEvent(room, now, room.round.endsAt - FINAL_FRENZY_MS - now);
-      if (kind) {
-        startChaosEvent(room, kind, now);
-      } else {
-        room.nextEventAt = room.round.endsAt;
-      }
-    }
-    return;
-  }
-
-  if (event.kind === "meteors" && now >= event.nextMeteorAt) {
-    spawnMeteor(room, now);
-    event.nextMeteorAt = now + 380 + Math.random() * 160;
-  }
-  if (event.kind === "frenzy" && now >= event.nextMeteorAt) {
-    spawnMeteor(room, now);
-    event.nextMeteorAt = now + 900 + Math.random() * 500;
-  }
-
-  if (event.kind === "bomb") {
-    const holder = room.players.get(event.holderId);
-    if (!holder || holder.mode !== "arena" || holder.wreckedUntil > now) {
-      assignBomb(room, null, now, null);
-    }
-    if (room.event === event && event.fuseEndsAt && now >= event.fuseEndsAt) {
-      const victim = room.players.get(event.holderId);
-      event.fuseEndsAt = 0;
-      if (victim && victim.mode === "arena") {
-        const passer = room.players.get(event.lastPasserId);
-        const credit = passer && passer.id !== victim.id && passer.mode === "arena" ? passer : WORLD_SOURCES.bomb;
-        broadcastEvent(room, `BOOM! The bomb went off on ${victim.name}.`, "danger");
-        damagePlayer(room, credit, victim, 999, now, { cause: "bomb", unblockable: true });
-        explode(room, { kind: "bomb", x: victim.x, y: victim.y || 0, z: victim.z, source: credit, excludeId: victim.id }, now);
-      }
-      if (room.event === event) endChaosEvent(room, now);
-      return;
-    }
-  }
-
-  if (event.kind === "bounty") {
-    const target = room.players.get(event.targetId);
-    if (!target || target.mode !== "arena") {
-      endChaosEvent(room, now);
-      return;
-    }
-  }
-
-  if (room.event && now >= room.event.endsAt) {
-    endChaosEvent(room, now);
+    enterGulag(room, target, source, now);
   }
 }
 
 function chooseBotTarget(room, bot, now) {
   const livePickups = room.pickups.filter((pickup) => pickup.active);
-  const crates = livePickups.filter((pickup) => pickup.type === "crate");
   const others = arenaPlayers(room, now).filter((player) => player.id !== bot.id);
   const humans = others.filter((player) => !player.isBot);
-  const event = room.event;
   const roll = Math.random();
   bot.botNextDecisionAt = now + BOT_DECISION_MIN_MS + Math.random() * (BOT_DECISION_MAX_MS - BOT_DECISION_MIN_MS);
-
-  if (event?.kind === "bomb" && others.length) {
-    if (event.holderId === bot.id) {
-      const nearest = others.sort((a, b) => distanceSq2D(a.x, a.z, bot.x, bot.z) - distanceSq2D(b.x, b.z, bot.x, bot.z))[0];
-      bot.botTarget = { x: nearest.x + (nearest.vx || 0) * 0.4, z: nearest.z + (nearest.vz || 0) * 0.4 };
-      bot.botNextDecisionAt = now + 260;
-      return;
-    }
-    const holder = room.players.get(event.holderId);
-    if (holder && distanceSq2D(holder.x, holder.z, bot.x, bot.z) < 40 * 40) {
-      const away = Math.atan2(bot.x - holder.x, bot.z - holder.z) + (Math.random() - 0.5) * 0.8;
-      bot.botTarget = { x: clamp(bot.x + Math.sin(away) * 45, -150, 150), z: clamp(bot.z + Math.cos(away) * 45, -150, 150) };
-      return;
-    }
-  }
-
-  if (event?.kind === "ringrush" && roll < 0.55) {
-    const lead = ARENA.ringPathAt((now + 1500 - event.startedAt) / 1000);
-    bot.botTarget = { x: lead.x, z: lead.z + ARENA.RING.min + 4 };
-    return;
-  }
-
-  if (event?.kind === "bounty" && roll < 0.5) {
-    const target = room.players.get(event.targetId);
-    if (target && target.id !== bot.id && target.mode === "arena") {
-      bot.botTarget = { x: target.x, z: target.z };
-      return;
-    }
-  }
 
   if (!bot.botPlan && roll > 0.9) {
     const ramp = ARENA.ramps[Math.floor(Math.random() * ARENA.ramps.length)];
@@ -1638,10 +933,7 @@ function chooseBotTarget(room, bot, now) {
     return;
   }
 
-  if (!bot.weapon && crates.length && roll < 0.18) {
-    const crate = crates.sort((a, b) => distanceSq2D(a.x, a.z, bot.x, bot.z) - distanceSq2D(b.x, b.z, bot.x, bot.z))[0];
-    bot.botTarget = { x: crate.x, z: crate.z };
-  } else if (humans.length > 0 && roll < 0.52) {
+  if (humans.length > 0 && roll < 0.52) {
     const target = humans[Math.floor(Math.random() * humans.length)];
     bot.botTarget = { x: target.x, z: target.z };
   } else if (others.length > 0 && roll < 0.68) {
@@ -1659,7 +951,7 @@ function chooseBotTarget(room, bot, now) {
 
 function collectPickupFor(player, pickup, room, now) {
   pickup.active = false;
-  pickup.respawnAt = now + (pickup.type === "crate" ? (room.event?.kind === "lootstorm" ? LOOT_STORM_RESPAWN_MS : CRATE_RESPAWN_MS) : PICKUP_RESPAWN_MS);
+  pickup.respawnAt = now + PICKUP_RESPAWN_MS;
   applyPickup(player, pickup, room, now);
   broadcastRoom(room, {
     type: "pickup-state",
@@ -1730,13 +1022,12 @@ function steerBotAroundRamp(bot, now) {
   bot.botNextDecisionAt = now + 1400;
 }
 
-function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
-  const gravity = ARENA.GRAVITY * (room.event?.kind === "lowgrav" ? ARENA.LOW_GRAVITY_SCALE : 1);
+function updateBotVertical(bot, prevX, prevZ, deltaSeconds, now) {
   const ground = ARENA.groundHeightAt(bot.x, bot.z);
   const prevGround = ARENA.groundHeightAt(prevX, prevZ);
   if (bot.airborne) {
     const prevY = bot.y;
-    bot.vy -= gravity * deltaSeconds;
+    bot.vy -= ARENA.GRAVITY * deltaSeconds;
     bot.y += bot.vy * deltaSeconds;
     bot.pitch = clamp(-bot.vy * 0.02, -0.45, 0.45);
     let landY = ground;
@@ -1789,7 +1080,7 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
 
   const pad = ARENA.jumpPadAt(bot.x, bot.z);
   if (pad) {
-    bot.vy = pad.power * (room.event?.kind === "lowgrav" ? 0.7 : 1);
+    bot.vy = pad.power;
     bot.airborne = true;
     bot.y += 0.1;
   }
@@ -1813,46 +1104,10 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
   }
 }
 
-function updateBotWeapons(room, bot, now) {
-  if (!bot.weapon || now < (bot.botNextWeaponAt || 0)) return;
-  bot.botNextWeaponAt = now + 650;
-  if (Math.random() < 0.5) return;
-  const forward = forwardOf(bot);
-  const others = arenaPlayers(room, now).filter((player) => player.id !== bot.id);
-  let fire = false;
-
-  if (bot.weapon === "rocket") {
-    fire = Boolean(pickRocketTarget(room, bot, bot, bot.angle, now)) && others.some((other) => distanceSq2D(other.x, other.z, bot.x, bot.z) < 80 * 80);
-  } else if (bot.weapon === "mine") {
-    fire = others.some((other) => {
-      const dx = other.x - bot.x;
-      const dz = other.z - bot.z;
-      const distance = Math.hypot(dx, dz);
-      return distance < 30 && (dx * forward.x + dz * forward.z) / Math.max(distance, 0.1) < -0.55;
-    });
-  } else if (bot.weapon === "shockwave") {
-    fire = others.some((other) => distanceSq2D(other.x, other.z, bot.x, bot.z) < 15 * 15);
-  } else if (bot.weapon === "blackhole") {
-    fire = others.filter((other) => {
-      const dx = other.x - bot.x;
-      const dz = other.z - bot.z;
-      const distance = Math.hypot(dx, dz);
-      return distance > 18 && distance < 70 && (dx * forward.x + dz * forward.z) / distance > 0.6;
-    }).length >= 1;
-  }
-
-  if (!fire && now - (bot.botWeaponSince || now) > 9000) fire = true;
-  if (fire) fireWeapon(room, bot, now);
-}
-
 function updateBots(room, now, deltaSeconds) {
   if (room.round.phase !== "live") {
     return;
   }
-  const ring = getRing(room, now);
-  const nitro = room.event?.kind === "nitro";
-  const ice = room.event?.kind === "ice";
-
   for (const bot of room.players.values()) {
     if (!bot.isBot) {
       continue;
@@ -1893,10 +1148,10 @@ function updateBots(room, now, deltaSeconds) {
     const personality = 0.9 + (botSeed % 7) * 0.035;
     const weave = bot.botPlan ? 0 : Math.sin(now * 0.0017 + botSeed) * 0.085;
     const desiredAngle = Math.atan2(dx, dz) + weave;
-    const turnSpeed = (2.7 + personality * 0.55) * deltaSeconds * (ice ? 0.55 : 1) * (bot.airborne ? 0.15 : 1);
+    const turnSpeed = (2.7 + personality * 0.55) * deltaSeconds * (bot.airborne ? 0.15 : 1);
     const turn = clamp(angleDelta(bot.angle, desiredAngle), -turnSpeed, turnSpeed);
     bot.angle += turn;
-    const speedLimit = (35 + (botSeed % 6) * 1.8 + Math.sin(now * 0.0012 + botSeed) * 3 + (bot.botPlan ? 8 : 0)) * (nitro ? 1.3 : 1);
+    const speedLimit = 35 + (botSeed % 6) * 1.8 + Math.sin(now * 0.0012 + botSeed) * 3 + (bot.botPlan ? 8 : 0);
     const acceleration = targetDistance > 7 ? 48 * personality : -56;
     if (!bot.airborne) {
       if (bot.speed > speedLimit) {
@@ -1905,7 +1160,7 @@ function updateBots(room, now, deltaSeconds) {
         bot.speed = clamp(bot.speed + acceleration * deltaSeconds, targetDistance > 7 ? 11 : 0, speedLimit);
       }
     }
-    bot.boosting = nitro || bot.speed > speedLimit + 2 || Boolean(bot.botPlan && bot.botPlan.stage === 1);
+    bot.boosting = bot.speed > speedLimit + 2 || Boolean(bot.botPlan && bot.botPlan.stage === 1);
     const knockDecay = Math.exp(-2.6 * deltaSeconds);
     bot.kx = (bot.kx || 0) * knockDecay;
     bot.kz = (bot.kz || 0) * knockDecay;
@@ -1915,11 +1170,10 @@ function updateBots(room, now, deltaSeconds) {
     bot.z += bot.vz * deltaSeconds;
     bot.x = clamp(bot.x, -WORLD_SIZE, WORLD_SIZE);
     bot.z = clamp(bot.z, -WORLD_SIZE, WORLD_SIZE);
-    updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now);
+    updateBotVertical(bot, prevX, prevZ, deltaSeconds, now);
     resolveBotStaticCollisions(bot);
-    bot.inZone = !bot.airborne && isInRing(ring, bot.x, bot.z);
+    bot.inZone = !bot.airborne && isInRing(bot.x, bot.z);
     resolveBotBodyCollisions(room, bot, now);
-    updateBotWeapons(room, bot, now);
 
     if (targetDistance < 5 && !bot.botPlan) {
       bot.botNextDecisionAt = 0;
@@ -1954,7 +1208,6 @@ function updateBots(room, now, deltaSeconds) {
         const closingSpeed = Math.max(bot.speed, getRelativeClosingSpeed(bot, target, collision));
         const damage = stomp ? STOMP_DAMAGE : Math.round(clamp(closingSpeed / 38, 0.32, 1.08) * 23);
         damagePlayer(room, bot, target, damage, now, { cause: stomp ? "stomp" : "ram" });
-        maybePassBomb(room, bot, target, now);
         broadcastRoom(room, {
           type: "impact",
           sourceId: bot.id,
@@ -2002,7 +1255,6 @@ function serveRequest(req, res) {
       JSON.stringify({
         ok: true,
         name: "crash-club",
-        edition: "insane",
         version: GAME_VERSION,
         rooms: rooms.size
       })
@@ -2041,25 +1293,9 @@ function serveRequest(req, res) {
 const server = http.createServer(serveFile);
 const wss = new WebSocketServer({ server, maxPayload: MAX_MESSAGE_BYTES });
 
-function syncFireOrigin(player, msg) {
-  const x = toNumber(msg.x, NaN);
-  const z = toNumber(msg.z, NaN);
-  if (!Number.isFinite(x) || !Number.isFinite(z)) return;
-  if (distanceSq2D(x, z, player.x, player.z) > 14 * 14) return;
-  player.x = clamp(x, -WORLD_SIZE, WORLD_SIZE);
-  player.z = clamp(z, -WORLD_SIZE, WORLD_SIZE);
-  player.y = clamp(toNumber(msg.y, player.y || 0), 0, 90);
-  player.angle = normalizeAngle(toNumber(msg.angle, player.angle || 0));
-  player.vx = clamp(toNumber(msg.vx, 0), -110, 110);
-  player.vz = clamp(toNumber(msg.vz, 0), -110, 110);
-  player.lastStateAt = Date.now();
-}
-
 function resetIdleRoom(room, now) {
-  // The round clock and chaos deadlines kept running while nobody was here; start the next human on a fresh round.
-  room.round = createRoundState(now, room.round.round + 1);
-  room.pickups = createPickups();
-  resetChaos(room, now);
+  // The round clock kept running while nobody was here; start the next human on a fresh round.
+  resetRoundState(room, now);
   room.idleSince = 0;
 }
 
@@ -2073,7 +1309,7 @@ wss.on("connection", (ws) => {
 
   send(ws, {
     type: "hello",
-    motd: "Welcome to Crash Club INSANE."
+    motd: "Welcome to Crash Club."
   });
 
   ws.on("message", (raw) => {
@@ -2107,8 +1343,6 @@ wss.on("connection", (ws) => {
           health: MAX_HEALTH,
           wrecks: 0,
           streak: 0,
-          weapon: null,
-          weaponCharges: 0,
           shieldUntil: 0,
           slamUntil: 0,
           wreckedUntil: 0,
@@ -2127,9 +1361,7 @@ wss.on("connection", (ws) => {
           room: room.code,
           roomState: serializeRoom(room),
           players: [...room.players.values()].map(serializePlayer),
-          pickups: room.pickups.map(serializePickup),
-          projectiles: room.projectiles.map((projectile) => serializeProjectile(projectile)),
-          hazards: room.hazards.map(serializeHazard)
+          pickups: room.pickups.map(serializePickup)
         });
 
         broadcastRoom(
@@ -2223,16 +1455,6 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      if (msg.type === "fire") {
-        const now = Date.now();
-        if (room.round.phase !== "live" || player.mode !== "arena" || player.wreckedUntil > now) {
-          return;
-        }
-        syncFireOrigin(player, msg);
-        fireWeapon(room, player, now);
-        return;
-      }
-
       if (msg.type === "hit") {
         const now = Date.now();
         if (room.round.phase !== "live" || player.mode !== "arena" || player.wreckedUntil > now || (player.nextHitAt || 0) > now) {
@@ -2274,7 +1496,6 @@ wss.on("connection", (ws) => {
         if (damage > 4) {
           damagePlayer(room, player, target, damage, now, { cause: stomp ? "stomp" : slamReady ? "slam" : "ram" });
         }
-        maybePassBomb(room, player, target, now);
         broadcastRoom(room, {
           type: "impact",
           sourceId: player.id,
@@ -2313,7 +1534,7 @@ wss.on("connection", (ws) => {
         }
         if (msg.result === "win" && player.gulagUntil >= now) {
           respawnPlayer(player);
-          addScore(room, player, 6);
+          addScore(room, player, 6, now);
           send(ws, {
             type: "gulag-ended",
             result: "win",
@@ -2399,10 +1620,7 @@ function tickRoom(room, now, deltaSeconds) {
 
   if (room.round.phase === "live") {
     flushPendingStyle(room, now);
-    updateChaos(room, now);
     updateBots(room, now, deltaSeconds);
-    updateProjectiles(room, now, deltaSeconds);
-    updateHazards(room, now);
   }
 
   if (room.round.phase === "intermission" && now >= room.round.nextRoundAt) {
@@ -2469,23 +1687,15 @@ function scoreRing(room, now) {
   if (room.round.phase !== "live") {
     return;
   }
-  const ring = getRing(room, now);
-  // Humans are checked against the server's ring (it moves during Ring Rush) with a little latency slack,
-  // and only while their client is still reporting.
-  const widen = (zone) => ({ ...zone, min: zone.min - 1.5, max: zone.max + 1.5 });
-  const humanRing = widen(ring);
   let scored = false;
   for (const player of room.players.values()) {
     if (player.mode !== "arena" || player.health <= 0) continue;
+    // Humans get a little latency slack, and only count while their client is still reporting.
     const inZone = player.isBot
       ? player.inZone
-      : now - (player.lastStateAt || 0) < STATE_STALE_MS &&
-        !player.airborne &&
-        (isInRing(humanRing, player.x, player.z) ||
-          // A roaming ring has moved on since the client drew it: also accept where it was one round trip ago.
-          (ring.mult > 1 && isInRing(widen(getRing(room, Math.min(now, player.lastStateAt) - 250)), player.x, player.z)));
+      : now - (player.lastStateAt || 0) < STATE_STALE_MS && !player.airborne && isInRing(player.x, player.z, 1.5);
     if (inZone) {
-      addScore(room, player, ring.mult);
+      addScore(room, player, RING_POINTS, now);
       scored = true;
     }
   }
@@ -2500,5 +1710,5 @@ function scoreRing(room, now) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Crash Club INSANE server running on http://localhost:${PORT}`);
+  console.log(`Crash Club server running on http://localhost:${PORT}`);
 });

@@ -1,7 +1,7 @@
 {
-  "name": "Crash Club INSANE",
+  "name": "Crash Club",
   "short_name": "Crash Club",
-  "description": "The browser derby lost its mind: ramps, rockets, black holes, and meteor showers.",
+  "description": "A multiplayer 3D browser derby: hit the ramps, chain stunts, hold the ring, and wreck your friends.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#08121d",

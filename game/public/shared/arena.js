@@ -1,4 +1,4 @@
-// Shared arena layout for Crash Club INSANE.
+// Shared arena layout for Crash Club.
 // Loaded by the browser as a classic script (window.CRASH_CLUB_ARENA) and by the Node server via require().
 (function (root, factory) {
   const api = factory();
@@ -10,7 +10,6 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const WORLD_SIZE = 180;
   const GRAVITY = 38;
-  const LOW_GRAVITY_SCALE = 0.3;
   const HALF_PI = Math.PI / 2;
   const RING = { x: 0, z: 0, min: 8, max: 19 };
 
@@ -153,19 +152,9 @@
     return null;
   }
 
-  // Ring Rush path: eases out of the center, then wanders the arena.
-  function ringPathAt(seconds) {
-    const blend = Math.max(0, Math.min(1, seconds / 2.5));
-    return {
-      x: Math.sin(seconds * 0.42) * 54 * blend,
-      z: Math.sin(seconds * 0.33) * Math.cos(seconds * 0.11) * 48 * blend
-    };
-  }
-
   return {
     WORLD_SIZE,
     GRAVITY,
-    LOW_GRAVITY_SCALE,
     RING,
     rails,
     buildings,
@@ -179,7 +168,6 @@
     groundSlopeAt,
     hitsRampFace,
     jumpPadAt,
-    boostPadAt,
-    ringPathAt
+    boostPadAt
   };
 });

@@ -9,6 +9,7 @@
   --danger: #ff5d73;
   --warning: #ffcf6b;
   --power: #7eb8ff;
+  --frenzy: #ff2d55;
   --chrome: #121826;
   --shadow: rgba(0, 0, 0, 0.25);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
@@ -288,10 +289,6 @@ canvas {
   border-color: rgba(255, 93, 115, 0.5);
 }
 
-.toast.boost,
-.toast.repair,
-.toast.shield,
-.toast.slam,
 .toast.start {
   border-color: rgba(89, 240, 194, 0.44);
 }
@@ -843,51 +840,7 @@ code {
   }
 }
 
-/* ---------- Crash Club INSANE ---------- */
-
-.insane-title {
-  position: relative;
-  text-shadow: 0 0 18px rgba(255, 79, 139, 0.45);
-}
-
-.insane-title::before,
-.insane-title::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.7;
-  mix-blend-mode: screen;
-}
-
-.insane-title::before {
-  color: #ff4f8b;
-  animation: glitch-shift 2.6s infinite steps(1);
-}
-
-.insane-title::after {
-  color: #59f0c2;
-  animation: glitch-shift 3.1s infinite reverse steps(1);
-}
-
-@keyframes glitch-shift {
-  0%, 86%, 100% {
-    transform: translate(0, 0);
-    clip-path: inset(0 0 0 0);
-  }
-  88% {
-    transform: translate(-3px, 1px);
-    clip-path: inset(10% 0 55% 0);
-  }
-  91% {
-    transform: translate(3px, -1px);
-    clip-path: inset(60% 0 8% 0);
-  }
-  94% {
-    transform: translate(-2px, 0);
-    clip-path: inset(30% 0 35% 0);
-  }
-}
+/* ---------- Game feel: frenzy, callouts, combos, kill feed ---------- */
 
 .feature-chips {
   display: flex;
@@ -907,7 +860,7 @@ code {
   border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
 }
 
-.chaos-bar {
+.frenzy-bar {
   position: fixed;
   left: 50%;
   top: 16px;
@@ -921,34 +874,34 @@ code {
   transform: translateX(-50%);
   border-radius: 16px;
   background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--event-color, #ff4f8b) 55%, transparent);
-  box-shadow: 0 0 26px color-mix(in srgb, var(--event-color, #ff4f8b) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--frenzy) 55%, transparent);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--frenzy) 35%, transparent);
   backdrop-filter: blur(10px);
   pointer-events: none;
+  animation: frenzy-glow 0.9s ease-in-out infinite alternate;
 }
 
-.chaos-bar.hidden,
-.chaos-banner.hidden,
+.frenzy-bar.hidden,
 .callout.hidden,
-.bomb-warning.hidden,
 .combo-meter.hidden {
   display: none;
 }
 
-.chaos-bar-name {
+.frenzy-bar-name {
   font-weight: 900;
   letter-spacing: 0.12em;
-  color: var(--event-color, #ff4f8b);
+  text-transform: uppercase;
+  color: var(--frenzy);
 }
 
-.chaos-bar-detail {
+.frenzy-bar-detail {
   justify-self: end;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 700;
 }
 
-.chaos-bar-track {
+.frenzy-bar-track {
   grid-column: 1 / -1;
   display: block;
   height: 6px;
@@ -957,82 +910,29 @@ code {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.chaos-bar-track b {
+.frenzy-bar-track b {
   display: block;
   height: 100%;
   width: 100%;
   border-radius: inherit;
-  background: var(--event-color, #ff4f8b);
+  background: var(--frenzy);
   transform-origin: left center;
 }
 
-.chaos-banner {
-  position: fixed;
-  left: 50%;
-  top: 13%;
-  z-index: 36;
-  width: min(820px, calc(100vw - 24px));
-  text-align: center;
-  transform: translateX(-50%);
-  pointer-events: none;
-  animation: chaos-slam 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
-}
-
-.chaos-kicker {
-  display: inline-block;
-  padding: 5px 14px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: #08121d;
-  background: var(--event-color, #ff4f8b);
-}
-
-.chaos-banner strong {
-  position: relative;
-  display: block;
-  margin-top: 10px;
-  font-size: clamp(2rem, 6.6vw, 5rem);
-  font-weight: 900;
-  line-height: 1;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  color: #fff;
-  text-shadow:
-    0 0 24px var(--event-color, #ff4f8b),
-    0 6px 0 rgba(0, 0, 0, 0.35);
-  animation: chaos-shake 120ms 4 linear;
-}
-
-.chaos-banner p {
-  margin: 10px 0 0;
-  font-size: clamp(1rem, 2.4vw, 1.35rem);
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-}
-
-@keyframes chaos-slam {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) scale(2.4);
-    filter: blur(8px);
-  }
+@keyframes frenzy-glow {
   to {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-    filter: blur(0);
+    box-shadow: 0 0 44px color-mix(in srgb, var(--frenzy) 60%, transparent);
   }
 }
 
-@keyframes chaos-shake {
-  0% { transform: translate(0, 0); }
-  25% { transform: translate(-6px, 3px); }
-  50% { transform: translate(5px, -4px); }
-  75% { transform: translate(-3px, -2px); }
-  100% { transform: translate(0, 0); }
+body.is-frenzy #timer-value,
+body.is-frenzy #score-value {
+  color: var(--frenzy);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--frenzy) 70%, transparent);
+}
+
+body.quality-performance .frenzy-bar {
+  animation: none;
 }
 
 .callout {
@@ -1090,53 +990,10 @@ code {
   }
 }
 
-.bomb-warning {
-  position: fixed;
-  left: 50%;
-  top: 92px;
-  z-index: 33;
-  display: grid;
-  justify-items: center;
-  padding: 10px 22px 12px;
-  transform: translateX(-50%);
-  border-radius: 18px;
-  color: #fff;
-  background: rgba(60, 4, 18, 0.82);
-  border: 2px solid #ff2d55;
-  box-shadow: 0 0 32px rgba(255, 45, 85, 0.6);
-  pointer-events: none;
-  animation: bomb-pulse 0.5s ease-in-out infinite alternate;
-}
-
-.bomb-warning strong {
-  font-size: 0.86rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-
-.bomb-warning b {
-  font-size: 2.4rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.bomb-warning span {
-  font-size: 0.86rem;
-  font-weight: 800;
-  color: #ffcf6b;
-}
-
-@keyframes bomb-pulse {
-  to {
-    box-shadow: 0 0 60px rgba(255, 45, 85, 0.95);
-    transform: translateX(-50%) scale(1.04);
-  }
-}
-
 .combo-meter {
   position: fixed;
   left: 50%;
-  bottom: 98px;
+  bottom: 24px;
   z-index: 27;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1208,78 +1065,10 @@ code {
   }
 }
 
-.weapon-slot {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  z-index: 27;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-width: 250px;
-  padding: 10px 14px;
-  transform: translateX(-50%);
-  border-radius: 18px;
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--weapon-color, #a4b4c7) 50%, transparent);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--weapon-color, #a4b4c7) 22%, transparent);
-  backdrop-filter: blur(10px);
-  pointer-events: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.is-menu-open .weapon-slot,
 .is-menu-open .combo-meter,
-.is-menu-open .chaos-bar,
+.is-menu-open .frenzy-bar,
 .is-menu-open .killfeed {
   opacity: 0.4;
-}
-
-.weapon-glyph {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 1.5rem;
-  background: color-mix(in srgb, var(--weapon-color, #a4b4c7) 18%, transparent);
-}
-
-.weapon-slot.is-rolling .weapon-glyph {
-  animation: weapon-roll 90ms linear infinite;
-}
-
-.weapon-slot.is-armed .weapon-glyph {
-  animation: weapon-ready 1.2s ease-in-out infinite;
-}
-
-@keyframes weapon-roll {
-  50% {
-    transform: translateY(-3px) rotate(8deg);
-  }
-}
-
-@keyframes weapon-ready {
-  50% {
-    box-shadow: 0 0 18px var(--weapon-color, #a4b4c7);
-  }
-}
-
-.weapon-copy {
-  display: grid;
-  gap: 2px;
-  flex: 1;
-}
-
-.weapon-copy strong {
-  font-size: 0.98rem;
-  color: var(--weapon-color, var(--text));
-}
-
-.weapon-copy span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
 }
 
 .killfeed {
@@ -1356,58 +1145,30 @@ body.is-slowmo canvas {
   filter: saturate(1.6) contrast(1.15);
 }
 
-body.is-bomb-holder .damage-vignette {
-  animation: bomb-vignette 0.45s ease-in-out infinite alternate;
-}
-
-@keyframes bomb-vignette {
-  from {
-    opacity: 0.4;
-  }
-  to {
-    opacity: 0.75;
-  }
-}
-
 #app,
 .touch-controls {
   touch-action: none;
 }
 
 @media (max-width: 1440px) and (min-width: 721px) {
-  .chaos-banner,
   .callout {
     left: calc(50% + 180px);
-  }
-
-  .chaos-banner {
-    width: calc(100vw - 400px);
-  }
-
-  .chaos-banner strong {
-    font-size: clamp(2rem, 5.4vw, 5rem);
   }
 }
 
 @media (max-width: 1180px) and (min-width: 721px) {
-  .chaos-bar,
-  .bomb-warning,
-  .combo-meter,
-  .weapon-slot {
+  .frenzy-bar,
+  .combo-meter {
     left: calc(50% + 180px);
   }
 
-  .chaos-bar {
+  .frenzy-bar {
     top: 84px;
     width: min(440px, calc(100vw - 400px));
   }
 
   .killfeed {
     top: 150px;
-  }
-
-  .bomb-warning {
-    top: 160px;
   }
 
   .toast-stack {
@@ -1434,24 +1195,8 @@ body.is-bomb-holder .damage-vignette {
     font-size: 0.88rem;
   }
 
-  .weapon-slot {
-    bottom: 196px;
-    min-width: 0;
-    padding: 6px 10px;
-  }
-
-  .weapon-glyph {
-    width: 34px;
-    height: 34px;
-    font-size: 1.15rem;
-  }
-
-  .weapon-slot kbd {
-    display: none;
-  }
-
   .combo-meter {
-    bottom: 258px;
+    bottom: 196px;
     min-width: 0;
     padding: 6px 12px 8px;
   }
@@ -1465,7 +1210,7 @@ body.is-bomb-holder .damage-vignette {
   }
 
   .toast-stack {
-    bottom: 330px;
+    bottom: 262px;
   }
 
   .killfeed {
@@ -1477,12 +1222,8 @@ body.is-bomb-holder .damage-vignette {
     display: none;
   }
 
-  .chaos-bar {
+  .frenzy-bar {
     top: 8px;
-  }
-
-  .bomb-warning {
-    top: 76px;
   }
 }
 

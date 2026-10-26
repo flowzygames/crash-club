@@ -23,7 +23,7 @@ import("three")
     const AIR_FLIP_RATE = 5.4;
     const COMBO_WINDOW_MS = 3200;
     const COMBO_MAX_CASHOUT = 40;
-    const BLACKHOLE_PULL_RADIUS = 46;
+    const FRENZY_COLOR = "#ff2d55";
     const TWO_PI = Math.PI * 2;
     const GAME_KEY_PATTERN = /^(arrow(up|down|left|right)|[wasdqefr ]|shift)$/i;
 
@@ -31,49 +31,19 @@ import("three")
       boost: { label: "Boost", color: "#ffcf6b", emissive: "#8a5c00" },
       repair: { label: "Repair", color: "#59f0c2", emissive: "#0f6b56" },
       shield: { label: "Shield", color: "#7eb8ff", emissive: "#204a82" },
-      slam: { label: "Slam", color: "#ff4f8b", emissive: "#7e173b" },
-      crate: { label: "Mystery Crate", color: "#c084fc", emissive: "#5b21b6" }
+      slam: { label: "Slam", color: "#ff4f8b", emissive: "#7e173b" }
     };
 
-    const weaponMeta = {
-      rocket: { label: "Homing Rockets", color: "#ff8a4c", glyph: "\u{1F680}", hint: "Locks onto whoever is in front of you.", cooldownMs: 420 },
-      mine: { label: "Prox Mines", color: "#ffcf6b", glyph: "\u{1F4A3}", hint: "Drops behind you. Arms after a beat.", cooldownMs: 360 },
-      shockwave: { label: "Shockwave", color: "#7eb8ff", glyph: "\u{1F300}", hint: "Blasts everyone near you into orbit." },
-      blackhole: { label: "Black Hole", color: "#c084fc", glyph: "\u{1F573}\u{FE0F}", hint: "Lobbed forward. Sucks cars in, then pops." }
-    };
-
-    const chaosMeta = {
-      meteors: { color: "#ff6b1f" },
-      lowgrav: { color: "#9be7ff" },
-      ice: { color: "#bdefff" },
-      bomb: { color: "#ff2d55" },
-      ringrush: { color: "#ffcf6b" },
-      nitro: { color: "#59f0c2" },
-      bounty: { color: "#ffd166" },
-      lootstorm: { color: "#c084fc" },
-      frenzy: { color: "#ff2d55" }
-    };
-
+    // Visual-only bursts: a wrecked car's fireball and the pulse under a jump pad launch.
     const explosionStyles = {
-      rocket: { core: "#ffb36b", ring: "#ff8a4c", smoke: 4 },
-      mine: { core: "#ffe08a", ring: "#ffcf6b", smoke: 5 },
-      shockwave: { core: "#bfe0ff", ring: "#7eb8ff", smoke: 0 },
-      blackhole: { core: "#e9d5ff", ring: "#c084fc", smoke: 3 },
-      meteor: { core: "#ff9a4c", ring: "#ff4f1f", smoke: 7 },
-      bomb: { core: "#fff1c2", ring: "#ff2d55", smoke: 9 },
+      launch: { core: "#bfe0ff", ring: "#7eb8ff", smoke: 0 },
       wreck: { core: "#ffd08a", ring: "#ff6b3d", smoke: 6 }
     };
 
     const causeGlyphs = {
       ram: "\u{1F4A5}",
       slam: "\u{1F528}",
-      stomp: "⬇️",
-      rocket: "\u{1F680}",
-      mine: "\u{1F4A3}",
-      shockwave: "\u{1F300}",
-      blackhole: "\u{1F573}\u{FE0F}",
-      meteor: "☄️",
-      bomb: "\u{1F9E8}"
+      stomp: "⬇️"
     };
 
     const els = {
@@ -124,28 +94,17 @@ import("three")
       announcer: document.getElementById("announcer-toggle"),
       announcerMenu: document.getElementById("announcer-toggle-popover"),
       streak: document.getElementById("streak-value"),
-      chaosBar: document.getElementById("chaos-bar"),
-      chaosBarName: document.getElementById("chaos-bar-name"),
-      chaosBarDetail: document.getElementById("chaos-bar-detail"),
-      chaosBarFill: document.getElementById("chaos-bar-fill"),
-      chaosBanner: document.getElementById("chaos-banner"),
-      chaosKicker: document.getElementById("chaos-kicker"),
-      chaosTitle: document.getElementById("chaos-title"),
-      chaosTagline: document.getElementById("chaos-tagline"),
+      frenzyBar: document.getElementById("frenzy-bar"),
+      frenzyBarDetail: document.getElementById("frenzy-bar-detail"),
+      frenzyBarFill: document.getElementById("frenzy-bar-fill"),
       callout: document.getElementById("callout"),
       calloutText: document.getElementById("callout-text"),
       calloutSub: document.getElementById("callout-sub"),
-      bombWarning: document.getElementById("bomb-warning"),
-      bombTimer: document.getElementById("bomb-timer"),
       combo: document.getElementById("combo-meter"),
       comboMult: document.getElementById("combo-mult"),
       comboPoints: document.getElementById("combo-points"),
       comboLabels: document.getElementById("combo-labels"),
       comboTimer: document.getElementById("combo-timer"),
-      weaponSlot: document.getElementById("weapon-slot"),
-      weaponGlyph: document.getElementById("weapon-glyph"),
-      weaponName: document.getElementById("weapon-name"),
-      weaponCharges: document.getElementById("weapon-charges"),
       killfeed: document.getElementById("killfeed"),
       flash: document.getElementById("flash-overlay")
     };
@@ -160,8 +119,6 @@ import("three")
     const touchLook = new Map();
     const players = new Map();
     const pickups = new Map();
-    const projectiles = new Map();
-    const hazards = new Map();
     const effects = [];
     const blasts = [];
     const debris = [];
@@ -202,28 +159,23 @@ import("three")
       mouseLook: false,
       serverOffset: 0,
       serverOffsetReady: false,
-      nextFireAt: 0,
       timeScale: 1,
       slowmoUntil: 0,
       lastCalloutAt: 0,
       calloutTimer: 0,
-      bannerTimer: 0,
-      weaponRollUntil: 0,
-      lastBombBeepAt: 0,
-      ring: { x: 0, z: 0, min: CENTER_MIN, max: CENTER_MAX, mult: 1 },
+      frenzyShownFor: 0,
       combo: { count: 0, points: 0, multiplier: 1, expiresAt: 0, labels: [] },
       room: {
         code: roomCode,
         phase: "live",
         round: 1,
         endsAt: Date.now() + 180000,
+        frenzyAt: 0,
         nextRoundAt: 0,
         winner: null,
         standings: [],
         now: Date.now(),
-        targetScore: 150,
-        event: null,
-        ring: null
+        targetScore: 150
       },
       car: {
         x: 0,
@@ -241,8 +193,6 @@ import("three")
         lastStripId: null,
         lastStripAt: 0,
         streak: 0,
-        weapon: null,
-        weaponCharges: 0,
         z: 34,
         prevX: 0,
         prevZ: 34,
@@ -344,8 +294,8 @@ import("three")
     const podiumShowcase = createPodiumShowcase();
     scene.add(podiumShowcase.group);
     scene.add(camera);
-    const weapon = createWeaponMesh();
-    camera.add(weapon);
+    const gulagGun = createGulagGunMesh();
+    camera.add(gulagGun);
     setupLights();
     setupControls();
     setupSettingsControls();
@@ -377,8 +327,6 @@ import("three")
         updateRemoteCars(rawDt);
         updatePickups(rawDt);
         updateStuntVisuals(rawDt);
-        updateProjectiles(rawDt);
-        updateHazards(rawDt);
       }
       updateEffects(dt);
       updateBlasts(dt);
@@ -562,8 +510,9 @@ import("three")
       pillar.visible = false;
 
       group.add(ring, torus, beacon, pillar);
+      group.position.set(ARENA.RING.x, 0, ARENA.RING.z);
       scene.add(group);
-      ringVisual = { group, ringMat, torusMat, beacon, pillar };
+      ringVisual = { ringMat, torusMat, beacon, pillar };
     }
 
     function addGuardRails() {
@@ -918,26 +867,15 @@ import("three")
       mesh.instanceMatrix.needsUpdate = true;
     }
 
+    // The ring burns brighter through the Final Frenzy, while every point it pays counts double.
     function updateRing(dt) {
-      const event = state.room.event;
-      const rush = event?.kind === "ringrush" && state.room.phase === "live";
-      let x = ARENA.RING.x;
-      let z = ARENA.RING.z;
-      if (rush) {
-        const point = ARENA.ringPathAt(Math.max(0, (getServerNow() - event.startedAt) / 1000));
-        x = point.x;
-        z = point.z;
-      }
-      state.ring.x = x;
-      state.ring.z = z;
-      state.ring.mult = rush ? 3 : 1;
       if (!ringVisual) return;
-      ringVisual.group.position.set(x, 0, z);
-      ringVisual.pillar.visible = rush;
-      ringVisual.ringMat.opacity = rush ? 0.5 + Math.sin(performance.now() * 0.008) * 0.2 : 0.36;
-      ringVisual.torusMat.emissiveIntensity = rush ? 2.4 : 0.8;
-      ringVisual.beacon.intensity = rush ? 2.6 : 1.2;
-      if (rush) ringVisual.pillar.rotation.y += dt * 0.6;
+      const frenzy = isFinalFrenzy();
+      ringVisual.pillar.visible = frenzy;
+      ringVisual.ringMat.opacity = frenzy ? 0.5 + Math.sin(performance.now() * 0.008) * 0.2 : 0.36;
+      ringVisual.torusMat.emissiveIntensity = frenzy ? 2.4 : 0.8;
+      ringVisual.beacon.intensity = frenzy ? 2.6 : 1.2;
+      if (frenzy) ringVisual.pillar.rotation.y += dt * 0.6;
     }
 
     function updateStuntVisuals(dt) {
@@ -1281,7 +1219,7 @@ import("three")
       return enemy;
     }
 
-    function createWeaponMesh() {
+    function createGulagGunMesh() {
       const group = new THREE.Group();
       const mat = new THREE.MeshStandardMaterial({ color: "#111722", roughness: 0.42, metalness: 0.48 });
       const dark = new THREE.MeshStandardMaterial({ color: "#03050a", roughness: 0.5, metalness: 0.55 });
@@ -1408,14 +1346,9 @@ import("three")
         sphereGeometry: new THREE.SphereGeometry(1, 18, 12),
         ringGeometry: new THREE.RingGeometry(0.82, 1, 48),
         debrisGeometry: new THREE.BoxGeometry(0.9, 0.5, 1.2),
-        rockGeometry: new THREE.DodecahedronGeometry(2.2, 0),
         crownBandGeometry: new THREE.CylinderGeometry(1.05, 1.2, 0.55, 12, 1, true),
         crownSpikeGeometry: new THREE.ConeGeometry(0.26, 0.75, 6),
-        bombGeometry: new THREE.SphereGeometry(1.15, 16, 12),
         crownMat,
-        bombMat: new THREE.MeshStandardMaterial({ color: "#111318", roughness: 0.35, metalness: 0.6, emissive: "#3a0010", emissiveIntensity: 0.6 }),
-        fuseMat: new THREE.MeshBasicMaterial({ color: "#c9a26b" }),
-        sparkMat: additive(glowColor("#ffcf6b", 2.2), 1),
         flameMat: additive(glowColor("#59f0c2", 1.8), 0.85),
         fireFlameMat: additive(glowColor("#ff7a1f", 1.8), 0.9),
         shieldMat: new THREE.MeshBasicMaterial({ color: "#7eb8ff", transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
@@ -1434,20 +1367,6 @@ import("three")
         crown.add(spike);
       }
       return crown;
-    }
-
-    function createBombProp() {
-      const bomb = new THREE.Group();
-      const shell = new THREE.Mesh(fx.bombGeometry, fx.bombMat);
-      const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6), fx.fuseMat);
-      fuse.position.set(0.3, 1.25, 0);
-      fuse.rotation.z = -0.4;
-      const spark = new THREE.Mesh(fx.sphereGeometry, fx.sparkMat);
-      spark.scale.setScalar(0.32);
-      spark.position.set(0.5, 1.62, 0);
-      bomb.add(shell, fuse, spark);
-      bomb.userData.spark = spark;
-      return bomb;
     }
 
     function createCarMesh(color, isLocal, name, isBot = false) {
@@ -1548,12 +1467,9 @@ import("three")
       const crown = createCrown();
       crown.position.y = 5.6;
       crown.visible = false;
-      const bomb = createBombProp();
-      bomb.position.y = 6.4;
-      bomb.visible = false;
 
       chassis.add(body, nose, cabin, spoiler, leftHead, rightHead, leftTail, rightTail, ...wheels, ...flames, ...fireFlames);
-      group.add(underglow, label, botMarker, bubble, crown, bomb);
+      group.add(underglow, label, botMarker, bubble, crown);
       return {
         group,
         chassis,
@@ -1565,7 +1481,6 @@ import("three")
         fireFlames,
         bubble,
         crown,
-        bomb,
         baseColor: new THREE.Color(color),
         target: new THREE.Vector3(),
         targetAngle: 0
@@ -1593,14 +1508,6 @@ import("three")
       if (mesh.crown.visible) {
         mesh.crown.rotation.y += dt * 1.8;
         mesh.crown.position.y = 5.6 + Math.sin(now * 0.004) * 0.2;
-      }
-      mesh.bomb.visible = Boolean(info.hasBomb);
-      if (mesh.bomb.visible) {
-        const fuseLeft = Math.max(0, (state.room.event?.fuseEndsAt || 0) - getServerNow());
-        const rate = fuseLeft < 5000 ? 0.04 : 0.016;
-        mesh.bomb.userData.spark.scale.setScalar(0.25 + (Math.sin(now * rate) > 0 ? 0.25 : 0.05));
-        mesh.bomb.rotation.y += dt * 3;
-        mesh.bomb.position.y = 6.4 + Math.sin(now * 0.01) * 0.25;
       }
       if (mesh.slamGlow !== info.slamming) {
         mesh.slamGlow = info.slamming;
@@ -1772,7 +1679,7 @@ import("three")
       ctx.fillText("TOP 3 PODIUM", 448, 134);
       ctx.fillStyle = "rgba(255, 79, 139, 0.95)";
       ctx.font = "800 25px Trebuchet MS, Arial";
-      ctx.fillText("CONFETTI, BRAGGING RIGHTS, THEN BACK TO CHAOS", 448, 190);
+      ctx.fillText("CONFETTI, BRAGGING RIGHTS, THEN BACK TO THE ARENA", 448, 190);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       return texture;
@@ -1806,13 +1713,11 @@ import("three")
         if (state.mode === "gulag") {
           event.preventDefault();
           state.gulag.firing = true;
-          document.body.requestPointerLock?.();
+          lockPointer();
           fireGulagShot();
         } else if (state.mode === "spectator") {
           event.preventDefault();
-          document.body.requestPointerLock?.();
-        } else if (event.button === 0 && event.pointerType === "mouse" && event.target === renderer.domElement) {
-          fireWeapon();
+          lockPointer();
         }
       });
       addEventListener("pointerup", (event) => {
@@ -1885,10 +1790,6 @@ import("three")
           if (!event.repeat) hopCar();
           return;
         }
-        if (key === "f" && state.mode === "arena") {
-          if (!event.repeat) fireWeapon();
-          return;
-        }
         input.add(key);
       });
 
@@ -1905,10 +1806,6 @@ import("three")
           }
           if (key === " ") {
             hopCar();
-            return;
-          }
-          if (key === "fire") {
-            fireWeapon();
             return;
           }
           input.add(key);
@@ -2131,6 +2028,16 @@ import("three")
       target.pitch = THREE.MathUtils.clamp(target.pitch - dy * 0.002, -1.1, 1.05);
     }
 
+    // Without a recent user gesture (Gulag or spectator started by a server message) the browser refuses the
+    // lock; newer browsers reject the returned promise, so swallow that and let the next click take the lock.
+    function lockPointer() {
+      try {
+        document.body.requestPointerLock?.()?.catch?.(() => {});
+      } catch {
+        // Older browsers throw instead; the next click on the canvas requests the lock again.
+      }
+    }
+
     function unlockAudio(event) {
       if (!event.isTrusted) return;
       playTone.enabled = true;
@@ -2327,12 +2234,9 @@ import("three")
         applyRoom(msg.roomState);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
-        syncProjectiles(msg.projectiles || []);
-        syncHazards(msg.hazards || []);
         const self = (msg.players || []).find((player) => String(player.id) === state.id);
         if (self) syncLocalTransform(self);
         syncRoundPresentation();
-        if (state.room.event) startChaosPresentation(state.room.event);
         setMenu(false);
         setStatus(`Online in room ${state.room.code}`, "online");
         playTone(360, 0.08, "triangle", 0.05);
@@ -2342,8 +2246,6 @@ import("three")
       if (msg.type === "snapshot") {
         applyRoom(msg.room);
         setPlayers(msg.players || []);
-        syncProjectiles(msg.projectiles || []);
-        syncHazards(msg.hazards || []);
         syncRoundPresentation();
         return;
       }
@@ -2351,7 +2253,7 @@ import("three")
       if (msg.type === "round-started") {
         endPodiumShow();
         if (state.gulag.active || !modeOverlay.root.classList.contains("hidden")) endGulag();
-        clearArenaChaos();
+        resetCombo();
         applyRoom(msg.room);
         setPlayers(msg.players || []);
         setPickups(msg.pickups || []);
@@ -2403,10 +2305,6 @@ import("three")
 
       if (msg.type === "pickup-awarded") {
         if (msg.player) upsertPlayer(msg.player);
-        if (msg.weapon && weaponMeta[msg.weapon]) {
-          startWeaponRoll(msg.weapon);
-          return;
-        }
         const meta = msg.pickup ? pickupMeta[msg.pickup.type] : null;
         if (meta) {
           lightweightNotice(`Picked up ${meta.label}.`);
@@ -2472,8 +2370,8 @@ import("three")
           state.car.health = msg.player?.health ?? state.car.health;
           state.car.damageFlash = 0.9;
         } else if (String(msg.sourceId) === state.id) {
-          const labels = { ram: "SMASH", slam: "SLAM", stomp: "STOMP", rocket: "ROCKET HIT", mine: "MINE HIT", shockwave: "SHOCKWAVE", blackhole: "SINGULARITY" };
-          const points = { ram: 2, slam: 4, stomp: 10, rocket: 3, mine: 3, shockwave: 3, blackhole: 5 };
+          const labels = { ram: "SMASH", slam: "SLAM", stomp: "STOMP" };
+          const points = { ram: 2, slam: 4, stomp: 10 };
           if (labels[msg.cause]) addCombo(labels[msg.cause], points[msg.cause]);
           playTone(msg.shielded ? 380 : 980, 0.04, "square", 0.03);
         }
@@ -2492,51 +2390,8 @@ import("three")
         return;
       }
 
-      if (msg.type === "chaos-event") {
-        applyRoom(msg.room);
-        startChaosPresentation(msg.event);
-        return;
-      }
-
-      if (msg.type === "chaos-event-ended") {
-        applyRoom(msg.room);
-        endChaosPresentation(msg.kind);
-        return;
-      }
-
       if (msg.type === "wreck") {
         handleWreckMessage(msg);
-        return;
-      }
-
-      if (msg.type === "explosion") {
-        handleExplosionMessage(msg);
-        return;
-      }
-
-      if (msg.type === "projectile-spawned" || msg.type === "projectile-updated") {
-        upsertProjectile(msg.projectile);
-        return;
-      }
-
-      if (msg.type === "projectile-removed") {
-        removeProjectile(msg.id);
-        return;
-      }
-
-      if (msg.type === "hazard-spawned") {
-        upsertHazard(msg.hazard);
-        return;
-      }
-
-      if (msg.type === "bomb-passed") {
-        handleBombPassed(msg);
-        return;
-      }
-
-      if (msg.type === "weapon-fired") {
-        if (msg.player) upsertPlayer(msg.player);
-        handleWeaponFired(msg);
         return;
       }
 
@@ -2556,119 +2411,42 @@ import("three")
     const music = { gain: null, nextTime: 0, step: 0, intensity: 0 };
 
     function getObjectiveText() {
-      const event = state.room.phase === "live" ? state.room.event : null;
-      const car = state.car;
-      if (event?.kind === "bomb" && String(event.holderId) === state.id) return "YOU HAVE THE BOMB. Ram anyone to pass it before it blows.";
-      if (event?.kind === "bounty" && String(event.targetId) === state.id) return "You are the bounty. Survive, or someone cashes +25 on your wreck.";
-      if (car.inZone) {
-        return state.ring.mult > 1 ? "Ring Rush! Triple points while you hold the moving ring." : "Scoring zone active. Hold the ring or ram anyone trying to steal it.";
-      }
-      if (event?.kind === "ringrush") return "The ring is on the move. Chase the golden pillar for triple points.";
-      if (event?.kind === "meteors" || event?.kind === "frenzy") return "Red circles mean incoming meteors. Keep moving.";
-      if (car.weapon && weaponMeta[car.weapon]) return `Armed with ${weaponMeta[car.weapon].label}. Press F or click to fire.`;
-      return "Chase the gold ring, hit ramps, grab purple crates for weapons, and wreck rivals.";
+      if (state.car.inZone) return "Scoring zone active. Hold the ring or ram anyone trying to steal it.";
+      if (isFinalFrenzy()) return "Final Frenzy: every point counts double until the horn.";
+      return "Chase the gold ring, hit ramps, grab pickups, and wreck rivals.";
     }
 
-    function getChaosDetail(event, left, serverNow) {
-      const secs = `${Math.ceil(left / 1000)}s`;
-      const nameOf = (id) => (String(id) === state.id ? "YOU" : players.get(String(id))?.name || "???");
-      if (event.kind === "bomb") {
-        const fuse = Math.max(0, ((event.fuseEndsAt || 0) - serverNow) / 1000);
-        return event.holderId ? `${nameOf(event.holderId)} ${causeGlyphs.bomb} ${fuse.toFixed(1)}s` : secs;
-      }
-      if (event.kind === "bounty") return event.targetId ? `Target: ${nameOf(event.targetId)} · ${secs}` : secs;
-      if (event.kind === "ringrush") return `Ring x3 · ${secs}`;
-      if (event.kind === "frenzy") return `x2 points · ${secs}`;
-      return secs;
-    }
-
-    function updateChaosHud() {
-      const event = state.room.phase === "live" && !state.podium.active ? state.room.event : null;
+    // The server pays double from frenzyAt until the round clock runs out.
+    function isFinalFrenzy() {
+      if (!state.joined || state.room.phase !== "live" || !state.room.frenzyAt) return false;
       const serverNow = getServerNow();
-      if (els.chaosBar) {
-        els.chaosBar.classList.toggle("hidden", !event);
-        if (event) {
-          const total = Math.max(1, event.endsAt - event.startedAt);
-          const left = Math.max(0, event.endsAt - serverNow);
-          els.chaosBarName.textContent = event.name;
-          els.chaosBarFill.style.transform = `scaleX(${(left / total).toFixed(3)})`;
-          els.chaosBarDetail.textContent = getChaosDetail(event, left, serverNow);
-        }
-      }
-      const holdingBomb = Boolean(event?.kind === "bomb" && String(event.holderId) === state.id && state.mode === "arena" && event.fuseEndsAt > serverNow);
-      document.body.classList.toggle("is-bomb-holder", holdingBomb);
-      els.bombWarning?.classList.toggle("hidden", !holdingBomb);
-      if (!holdingBomb) return;
-      const left = event.fuseEndsAt - serverNow;
-      if (els.bombTimer) els.bombTimer.textContent = (left / 1000).toFixed(1);
-      const interval = left < 3000 ? 160 : left < 7000 ? 380 : 800;
-      const now = performance.now();
-      if (now - state.lastBombBeepAt > interval) {
-        state.lastBombBeepAt = now;
-        playTone(left < 3000 ? 1500 : 1100, 0.05, "square", 0.035);
-      }
+      return serverNow >= state.room.frenzyAt && serverNow < state.room.endsAt;
     }
 
-    function cancelWeaponRoll() {
-      clearTimeout(state.weaponRollTimer);
-      state.weaponRollUntil = 0;
+    function updateFrenzyHud() {
+      const frenzy = isFinalFrenzy() && !state.podium.active;
+      document.body.classList.toggle("is-frenzy", frenzy);
+      els.frenzyBar?.classList.toggle("hidden", !frenzy);
+      if (!frenzy) return;
+      if (state.frenzyShownFor !== state.room.frenzyAt) {
+        state.frenzyShownFor = state.room.frenzyAt;
+        presentFinalFrenzy();
+      }
+      const left = Math.max(0, state.room.endsAt - getServerNow());
+      const total = Math.max(1, state.room.endsAt - state.room.frenzyAt);
+      if (els.frenzyBarFill) els.frenzyBarFill.style.transform = `scaleX(${(left / total).toFixed(3)})`;
+      if (els.frenzyBarDetail) els.frenzyBarDetail.textContent = `x2 points · ${Math.ceil(left / 1000)}s`;
     }
 
-    function startWeaponRoll(weapon) {
-      cancelWeaponRoll();
-      state.weaponRollUntil = performance.now() + 750;
-      playSweep(300, 900, 0.7, "square", 0.018);
-      state.weaponRollTimer = setTimeout(() => {
-        const meta = weaponMeta[weapon];
-        if (!meta || state.mode !== "arena" || state.podium.active || state.room.phase !== "live" || state.car.weapon !== weapon) return;
-        callout(meta.label.toUpperCase(), meta.hint, meta.color, { minor: true, duration: 1100 });
-        playTone(880, 0.1, "triangle", 0.05);
-        updateWeaponHud();
-      }, 760);
-    }
-
-    function updateWeaponHud() {
-      if (!els.weaponSlot) return;
-      const now = performance.now();
-      const rolling = now < state.weaponRollUntil;
-      els.weaponSlot.classList.toggle("is-rolling", rolling);
-      if (rolling) {
-        const keys = Object.keys(weaponMeta);
-        const meta = weaponMeta[keys[Math.floor(now / 90) % keys.length]];
-        els.weaponGlyph.textContent = meta.glyph;
-        els.weaponName.textContent = "Rolling...";
-        els.weaponCharges.textContent = "Mystery crate";
-        els.weaponSlot.style.setProperty("--weapon-color", meta.color);
-        return;
+    function presentFinalFrenzy() {
+      if (state.mode === "arena") {
+        callout("FINAL FRENZY", "Double points. No mercy.", FRENZY_COLOR, { voice: "final frenzy", duration: 2200 });
+      } else {
+        speak("final frenzy");
       }
-      const meta = weaponMeta[state.car.weapon];
-      els.weaponSlot.classList.toggle("is-armed", Boolean(meta));
-      if (!meta) {
-        els.weaponGlyph.textContent = "?";
-        els.weaponName.textContent = "No weapon";
-        els.weaponCharges.textContent = "Grab a purple crate";
-        els.weaponSlot.style.removeProperty("--weapon-color");
-        return;
-      }
-      const charges = state.car.weaponCharges;
-      els.weaponGlyph.textContent = meta.glyph;
-      els.weaponName.textContent = meta.label;
-      els.weaponCharges.textContent = `${charges} ${charges === 1 ? "charge" : "charges"} · F / click`;
-      els.weaponSlot.style.setProperty("--weapon-color", meta.color);
-    }
-
-    function fireWeapon() {
-      if (state.mode !== "arena" || !state.joined || state.menuOpen || state.podium.active || state.room.phase !== "live") return;
-      const car = state.car;
-      const now = performance.now();
-      if (now < state.weaponRollUntil || now < state.nextFireAt) return;
-      if (!car.weapon || car.weaponCharges <= 0) {
-        lightweightNotice("No weapon. Grab a purple Mystery Crate.");
-        return;
-      }
-      // Match the server's per-weapon cooldown so presses are never silently dropped.
-      state.nextFireAt = now + (weaponMeta[car.weapon]?.cooldownMs || 300) + 40;
-      sendMessage({ type: "fire", x: car.x, y: car.y, z: car.z, angle: car.angle, vx: car.velocity.x, vz: car.velocity.y });
+      flashScreen(FRENZY_COLOR, 0.32);
+      playSweep(180, 720, 0.7, "sawtooth", 0.035);
+      toast("Final Frenzy: double points for the last 30 seconds.", "danger");
     }
 
     function comboValue() {
@@ -2796,7 +2574,7 @@ import("three")
       return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : fallback;
     }
 
-    function addKillfeed(msg, mine, victim, selfInflicted) {
+    function addKillfeed(msg, mine, victim) {
       if (!els.killfeed) return;
       const row = document.createElement("div");
       row.className = `killfeed-row${mine || victim ? " is-you" : ""}`;
@@ -2807,8 +2585,7 @@ import("three")
       if (msg.streak >= 3) tags.push(`${msg.streak} streak`);
       if (msg.bounty) tags.push(`+${msg.bounty} bounty`);
       for (const extra of msg.callouts || []) if (extra !== "STREAK SNAPPED") tags.push(extra);
-      const source = selfInflicted ? "" : `<b style="color:${sourceColor}">${escapeHtml(msg.sourceName || "???")}</b>`;
-      row.innerHTML = `${source}<i>${causeGlyphs[msg.cause] || causeGlyphs.ram}</i><b style="color:${targetColor}">${escapeHtml(msg.targetName || "???")}</b>${
+      row.innerHTML = `<b style="color:${sourceColor}">${escapeHtml(msg.sourceName || "???")}</b><i>${causeGlyphs[msg.cause] || causeGlyphs.ram}</i><b style="color:${targetColor}">${escapeHtml(msg.targetName || "???")}</b>${
         tags.length ? `<em>${escapeHtml(tags.join(" · "))}</em>` : ""
       }`;
       els.killfeed.prepend(row);
@@ -2820,13 +2597,12 @@ import("three")
     function handleWreckMessage(msg) {
       const mine = String(msg.sourceId) === state.id;
       const victim = String(msg.targetId) === state.id;
-      const selfInflicted = String(msg.sourceId) === String(msg.targetId);
       spawnCarExplosion(msg.x, msg.y || 0, msg.z, safeColor(msg.color, "#ffcf6b"));
-      addKillfeed(msg, mine, victim, selfInflicted);
+      addKillfeed(msg, mine, victim);
       const entry = players.get(String(msg.targetId));
       if (entry?.isBot) entry.wreckedUntil = getServerNow() + 1700;
 
-      if (mine && !selfInflicted) {
+      if (mine) {
         addCombo("WRECK", 10);
         triggerSlowmo(480);
         flashScreen("#ffcf6b", 0.35);
@@ -2840,378 +2616,7 @@ import("three")
         breakCombo();
         triggerSlowmo(650);
         flashScreen("#ff2d55", 0.45);
-        callout("WRECKED", selfInflicted ? "Own goal. Yikes." : `by ${msg.sourceName}`, "#ff2d55", { voice: "wrecked", duration: 1600 });
-      }
-    }
-
-    function handleExplosionMessage(msg) {
-      spawnExplosionFx(msg.x, msg.y || 0, msg.z, msg.radius || 9, msg.kind);
-      if (msg.kind === "meteor") removeHazardNear(msg.x, msg.z);
-      if (msg.kind === "shockwave" && String(msg.sourceId) === state.id) {
-        callout("SHOCKWAVE", "Everyone off my lawn", "#7eb8ff", { minor: true, duration: 800 });
-      }
-      applyExplosionToLocalCar(msg);
-    }
-
-    function applyExplosionToLocalCar(msg) {
-      if (state.mode !== "arena" || !state.joined || state.podium.active) return;
-      if (msg.excludeId && String(msg.excludeId) === state.id) return;
-      const car = state.car;
-      const dx = car.x - msg.x;
-      const dz = car.z - msg.z;
-      let falloff;
-      if (msg.hits) {
-        // The server's hit list decides, so the knockback always matches the damage taken.
-        falloff = msg.hits[state.id];
-        if (!Number.isFinite(falloff)) return;
-      } else {
-        const dy = (car.y - (msg.y || 0)) * 0.6;
-        const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
-        if (distance > msg.radius) return;
-        falloff = 1 - distance / msg.radius;
-      }
-      const flat = Math.hypot(dx, dz) || 1;
-      car.velocity.x += (dx / flat) * msg.force * falloff;
-      car.velocity.y += (dz / flat) * msg.force * falloff;
-      launchCar(msg.lift * (0.4 + falloff * 0.6));
-      car.airPitch += (Math.random() - 0.5) * 0.9;
-      car.airRoll += (Math.random() - 0.5) * 1.3;
-      car.overspeedUntil = performance.now() + 900;
-      car.cameraShake = Math.max(car.cameraShake, 0.4 + falloff * 0.6);
-      car.damageFlash = Math.max(car.damageFlash || 0, 0.5);
-    }
-
-    function handleBombPassed(msg) {
-      const event = state.room.event;
-      const previous = event ? String(event.holderId) : null;
-      if (event) {
-        event.holderId = msg.holderId;
-        if (msg.fuseEndsAt) event.fuseEndsAt = msg.fuseEndsAt;
-      }
-      if (String(msg.holderId) === state.id) {
-        callout("YOU HAVE THE BOMB", "Ram someone. Fast.", "#ff2d55", { voice: "you have the bomb", duration: 1600 });
-        flashScreen("#ff2d55", 0.4);
-        playTone(220, 0.2, "square", 0.06);
-      } else if (previous === state.id && String(msg.passerId) === state.id) {
-        callout("PASSED IT!", `${msg.holderName} has the bomb now`, "#59f0c2", { minor: true });
-        addCombo("BOMB PASS", 6);
-      }
-    }
-
-    function handleWeaponFired(msg) {
-      const position = getPlayerPosition(msg.playerId);
-      const mine = String(msg.playerId) === state.id;
-      const distance = position ? camera.position.distanceTo(scratch3.set(position.x, position.y, position.z)) : 999;
-      const near = mine ? 1 : THREE.MathUtils.clamp(1 - distance / 160, 0, 1);
-      if (mine) state.car.cameraShake = Math.max(state.car.cameraShake, 0.22);
-      if (near <= 0.02) return;
-      if (msg.kind === "rocket") {
-        playSweep(900, 180, 0.4, "sawtooth", 0.03 * near);
-        playNoise({ duration: 0.35, volume: 0.05 * near, filter: 3000, filterEnd: 400, type: "bandpass" });
-      } else if (msg.kind === "mine") {
-        playTone(260, 0.07, "square", 0.04 * near);
-      } else if (msg.kind === "blackhole") {
-        playSweep(240, 50, 1.1, "sine", 0.08 * near);
-      }
-    }
-
-    function startChaosPresentation(event) {
-      if (!event) return;
-      const color = chaosMeta[event.kind]?.color || "#ff4f8b";
-      document.body.style.setProperty("--event-color", color);
-      if (els.chaosBanner && state.mode === "arena" && !state.podium.active) {
-        els.chaosKicker.textContent = event.kind === "frenzy" ? "Final 30 seconds" : "Chaos Event";
-        els.chaosTitle.textContent = event.name;
-        els.chaosTitle.dataset.text = event.name;
-        els.chaosTagline.textContent = event.tagline;
-        els.chaosBanner.classList.add("hidden");
-        void els.chaosBanner.offsetWidth;
-        els.chaosBanner.classList.remove("hidden");
-        clearTimeout(state.bannerTimer);
-        state.bannerTimer = setTimeout(() => els.chaosBanner.classList.add("hidden"), 2800);
-      }
-      flashScreen(color, 0.32);
-      playSiren();
-      speak(event.name);
-      toast(`${event.name}: ${event.tagline}`, "danger");
-    }
-
-    function endChaosPresentation(kind) {
-      if (kind === "frenzy") return;
-      lightweightNotice("Chaos event over. Back to regular mayhem.");
-    }
-
-    function clearArenaChaos() {
-      for (const id of [...projectiles.keys()]) removeProjectile(id);
-      for (const id of [...hazards.keys()]) removeHazard(id);
-      resetCombo();
-      document.body.classList.remove("is-bomb-holder");
-      els.chaosBanner?.classList.add("hidden");
-    }
-
-    function getProjectileAssets() {
-      if (fx.projectiles) return fx.projectiles;
-      const assets = {
-        rocketBody: new THREE.CylinderGeometry(0.24, 0.24, 1.8, 8),
-        rocketNose: new THREE.ConeGeometry(0.24, 0.6, 8),
-        rocketFin: new THREE.BoxGeometry(0.9, 0.06, 0.4),
-        rocketMat: new THREE.MeshStandardMaterial({ color: "#d9dee8", metalness: 0.6, roughness: 0.3 }),
-        rocketTipMat: new THREE.MeshBasicMaterial({ color: glowColor("#ff4f1f", 1.6) }),
-        exhaustMat: fx.additive(glowColor("#ffb36b", 2.2), 0.95),
-        mineBody: new THREE.CylinderGeometry(1.0, 1.25, 0.45, 18),
-        mineMat: new THREE.MeshStandardMaterial({ color: "#1b1f27", metalness: 0.7, roughness: 0.35 }),
-        mineLightMat: fx.additive(glowColor("#ff2d55", 2.4), 1),
-        mineRingMat: fx.additive(glowColor("#ff2d55", 1.2), 0.45),
-        holeCoreMat: new THREE.MeshBasicMaterial({ color: "#000000" }),
-        holeDiskMat: fx.additive(glowColor("#c084fc", 1.8), 0.75),
-        holeHaloMat: fx.additive(glowColor("#7c3aed", 1.0), 0.18),
-        diskGeometry: new THREE.RingGeometry(2.0, 5.6, 64)
-      };
-      assets.holeDiskMat.side = THREE.DoubleSide;
-      assets.mineRingMat.side = THREE.DoubleSide;
-      assets.holeHaloMat.side = THREE.BackSide;
-      fx.projectiles = assets;
-      return assets;
-    }
-
-    function createProjectileMesh(kind) {
-      const assets = getProjectileAssets();
-      const group = new THREE.Group();
-      if (kind === "rocket") {
-        const body = new THREE.Mesh(assets.rocketBody, assets.rocketMat);
-        body.rotation.x = Math.PI / 2;
-        const nose = new THREE.Mesh(assets.rocketNose, assets.rocketTipMat);
-        nose.rotation.x = Math.PI / 2;
-        nose.position.z = 1.2;
-        const finA = new THREE.Mesh(assets.rocketFin, assets.rocketMat);
-        finA.position.z = -0.75;
-        const finB = finA.clone();
-        finB.rotation.z = Math.PI / 2;
-        const exhaust = new THREE.Mesh(fx.sphereGeometry, assets.exhaustMat);
-        exhaust.scale.set(0.35, 0.35, 0.7);
-        exhaust.position.z = -1.1;
-        group.add(body, nose, finA, finB, exhaust);
-        group.userData.exhaust = exhaust;
-      } else if (kind === "mine") {
-        const body = new THREE.Mesh(assets.mineBody, assets.mineMat);
-        const light = new THREE.Mesh(fx.sphereGeometry, assets.mineLightMat);
-        light.scale.setScalar(0.32);
-        light.position.y = 0.38;
-        const ring = new THREE.Mesh(fx.ringGeometry, assets.mineRingMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.y = -0.18;
-        ring.scale.setScalar(4.4);
-        group.add(body, light, ring);
-        group.userData.light = light;
-        group.userData.ring = ring;
-      } else if (kind === "blackhole") {
-        const core = new THREE.Mesh(fx.sphereGeometry, assets.holeCoreMat);
-        core.scale.setScalar(1.7);
-        const disk = new THREE.Mesh(assets.diskGeometry, assets.holeDiskMat);
-        disk.rotation.x = -Math.PI / 2 + 0.35;
-        const disk2 = new THREE.Mesh(assets.diskGeometry, assets.holeDiskMat);
-        disk2.rotation.x = -Math.PI / 2 - 0.6;
-        disk2.scale.setScalar(0.75);
-        const halo = new THREE.Mesh(fx.sphereGeometry, assets.holeHaloMat);
-        halo.scale.setScalar(9);
-        group.add(core, disk, disk2, halo);
-        Object.assign(group.userData, { disk, disk2, halo });
-        group.scale.setScalar(0.35);
-      }
-      return group;
-    }
-
-    function upsertProjectile(data) {
-      if (!data) return;
-      const id = String(data.id);
-      let entry = projectiles.get(id);
-      if (!entry) {
-        entry = { id, kind: data.kind, mesh: createProjectileMesh(data.kind), lastTrailAt: 0, bornAt: performance.now() };
-        entry.mesh.position.set(data.x, data.y, data.z);
-        entry.mesh.rotation.y = data.angle || 0;
-        fxRoot.add(entry.mesh);
-        projectiles.set(id, entry);
-      }
-      Object.assign(entry, {
-        ownerId: data.ownerId,
-        x: data.x,
-        y: data.y,
-        z: data.z,
-        vx: data.vx || 0,
-        vz: data.vz || 0,
-        angle: data.angle || 0,
-        phase: data.phase || "flying",
-        armed: Boolean(data.armed),
-        collapseAt: data.collapseAt || 0,
-        syncedAt: performance.now()
-      });
-    }
-
-    function syncProjectiles(list = []) {
-      const seen = new Set();
-      for (const data of list) {
-        seen.add(String(data.id));
-        upsertProjectile(data);
-      }
-      const now = performance.now();
-      for (const [id, entry] of projectiles) {
-        if (!seen.has(id) && now - entry.bornAt > 600) removeProjectile(id);
-      }
-    }
-
-    function removeProjectile(id) {
-      const entry = projectiles.get(String(id));
-      if (!entry) return;
-      fxRoot.remove(entry.mesh);
-      projectiles.delete(String(id));
-    }
-
-    function updateProjectiles(dt) {
-      const now = performance.now();
-      const quality = settings.quality;
-      for (const [id, entry] of projectiles) {
-        const mesh = entry.mesh;
-        const age = (now - entry.syncedAt) / 1000;
-        if (entry.kind === "rocket" || (entry.kind === "blackhole" && entry.phase === "flying")) {
-          if (age > 3.5) {
-            removeProjectile(id);
-            continue;
-          }
-          const k = Math.min(1, dt * 20);
-          mesh.position.x += (entry.x + entry.vx * age - mesh.position.x) * k;
-          mesh.position.z += (entry.z + entry.vz * age - mesh.position.z) * k;
-          mesh.position.y += (entry.y - mesh.position.y) * k;
-        } else if (entry.kind === "blackhole") {
-          // Once pulling, the server has settled the hole at car height (and outside any building).
-          const k = Math.min(1, dt * 8);
-          mesh.position.x += (entry.x - mesh.position.x) * k;
-          mesh.position.y += (entry.y - mesh.position.y) * k;
-          mesh.position.z += (entry.z - mesh.position.z) * k;
-        }
-        if (entry.kind === "rocket") {
-          mesh.rotation.y += angleDelta(mesh.rotation.y, entry.angle) * Math.min(1, dt * 14);
-          mesh.userData.exhaust.scale.z = 0.6 + Math.random() * 0.5;
-          if (now - entry.lastTrailAt > (quality === "performance" ? 90 : 28)) {
-            entry.lastTrailAt = now;
-            const p = mesh.position;
-            spawnParticle(
-              p.x - Math.sin(mesh.rotation.y) * 1.3,
-              p.y,
-              p.z - Math.cos(mesh.rotation.y) * 1.3,
-              Math.random() < 0.5 ? "#ffb36b" : "#9aa4b2",
-              0.55,
-              2.2,
-              new THREE.Vector3((Math.random() - 0.5) * 1.2, 0.6, (Math.random() - 0.5) * 1.2),
-              0.5
-            );
-          }
-        } else if (entry.kind === "mine") {
-          mesh.userData.light.visible = entry.armed ? Math.sin(now * 0.018) > 0.2 : Math.sin(now * 0.006) > 0.6;
-          mesh.userData.ring.visible = entry.armed;
-          mesh.userData.ring.scale.setScalar(4.4 + Math.sin(now * 0.008) * 0.3);
-          mesh.rotation.y += dt * 0.8;
-        } else if (entry.kind === "blackhole") {
-          const targetScale = entry.phase === "pulling" ? 1 : 0.35;
-          mesh.scale.setScalar(mesh.scale.x + (targetScale - mesh.scale.x) * Math.min(1, dt * 5));
-          const { disk, disk2, halo } = mesh.userData;
-          disk.rotation.z += dt * 4;
-          disk2.rotation.z -= dt * 6.5;
-          if (entry.phase !== "pulling") continue;
-          const left = entry.collapseAt ? (entry.collapseAt - getServerNow()) / 1000 : 3;
-          halo.scale.setScalar(9 * (1 + Math.sin(now * 0.03) * 0.04 + (left < 0.8 ? (0.8 - Math.max(0, left)) * 0.7 : 0)));
-          if (quality !== "performance" && now - entry.lastTrailAt > 40) {
-            entry.lastTrailAt = now;
-            const angle = Math.random() * TWO_PI;
-            const radius = 14 + Math.random() * 20;
-            const px = mesh.position.x + Math.cos(angle) * radius;
-            const pz = mesh.position.z + Math.sin(angle) * radius;
-            const velocity = new THREE.Vector3(mesh.position.x - px, 0, mesh.position.z - pz).multiplyScalar(1.6);
-            velocity.x += -Math.sin(angle) * 10;
-            velocity.z += Math.cos(angle) * 10;
-            spawnParticle(px, 0.8 + Math.random() * 3, pz, Math.random() < 0.5 ? "#c084fc" : "#e9d5ff", 0.6, -0.8, velocity, 0.7);
-          }
-        }
-      }
-    }
-
-    function getHazardAssets() {
-      if (fx.hazards) return fx.hazards;
-      const assets = {
-        discGeometry: new THREE.CircleGeometry(1, 40),
-        warnRingMat: fx.additive(glowColor("#ff2d55", 1.6), 0.85),
-        warnFillMat: fx.additive(glowColor("#ff2d55", 1.0), 0.22),
-        rockMat: new THREE.MeshBasicMaterial({ color: glowColor("#ff7a1f", 1.8) }),
-        rockGlowMat: fx.additive(glowColor("#ff4f1f", 1.4), 0.35)
-      };
-      assets.warnRingMat.side = THREE.DoubleSide;
-      assets.warnFillMat.side = THREE.DoubleSide;
-      fx.hazards = assets;
-      return assets;
-    }
-
-    function upsertHazard(data) {
-      if (!data || hazards.has(String(data.id))) return;
-      const assets = getHazardAssets();
-      const telegraph = new THREE.Group();
-      const ring = new THREE.Mesh(fx.ringGeometry, assets.warnRingMat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.scale.setScalar(11);
-      const fill = new THREE.Mesh(assets.discGeometry, assets.warnFillMat);
-      fill.rotation.x = -Math.PI / 2;
-      fill.scale.setScalar(0.01);
-      telegraph.add(ring, fill);
-      telegraph.position.set(data.x, ARENA.groundHeightAt(data.x, data.z) + 0.12, data.z);
-      const rock = new THREE.Mesh(fx.rockGeometry, assets.rockMat);
-      const glow = new THREE.Mesh(fx.sphereGeometry, assets.rockGlowMat);
-      glow.scale.setScalar(1.6);
-      rock.add(glow);
-      rock.position.set(data.x + 46, 150, data.z - 34);
-      fxRoot.add(telegraph, rock);
-      hazards.set(String(data.id), { ...data, telegraph, ring, fill, rock, lastTrailAt: 0 });
-    }
-
-    function syncHazards(list = []) {
-      for (const data of list) upsertHazard(data);
-    }
-
-    function removeHazard(id) {
-      const hazard = hazards.get(String(id));
-      if (!hazard) return;
-      fxRoot.remove(hazard.telegraph, hazard.rock);
-      hazards.delete(String(id));
-    }
-
-    function removeHazardNear(x, z) {
-      for (const [id, hazard] of hazards) {
-        if (Math.hypot(hazard.x - x, hazard.z - z) < 2) {
-          removeHazard(id);
-          return;
-        }
-      }
-    }
-
-    function updateHazards(dt) {
-      const serverNow = getServerNow();
-      const now = performance.now();
-      for (const [id, hazard] of hazards) {
-        const total = Math.max(1, hazard.impactAt - hazard.spawnedAt);
-        const remaining = hazard.impactAt - serverNow;
-        if (remaining < -600) {
-          removeHazard(id);
-          continue;
-        }
-        const t = THREE.MathUtils.clamp(1 - remaining / total, 0, 1);
-        hazard.fill.scale.setScalar(Math.max(0.01, t * 11));
-        hazard.ring.scale.setScalar(11 + Math.sin(now * 0.02) * 0.4);
-        const fall = 1 - t * t;
-        hazard.rock.position.set(hazard.x + 46 * fall, (hazard.y || 0) + 0.8 + 150 * fall, hazard.z - 34 * fall);
-        hazard.rock.rotation.x += dt * 3;
-        hazard.rock.rotation.y += dt * 2;
-        if (settings.quality !== "performance" && now - hazard.lastTrailAt > 45) {
-          hazard.lastTrailAt = now;
-          const p = hazard.rock.position;
-          spawnParticle(p.x, p.y, p.z, Math.random() < 0.6 ? "#ff7a1f" : "#3b3f48", 0.7, 2.4, new THREE.Vector3(2, 6, -1.5), 0.6);
-        }
+        callout("WRECKED", `by ${msg.sourceName}`, "#ff2d55", { voice: "wrecked", duration: 1600 });
       }
     }
 
@@ -3234,21 +2639,21 @@ import("three")
       slot.light.intensity = slot.peak;
     }
 
-    function spawnExplosionFx(x, y, z, radius = 9, kind = "rocket", options = {}) {
+    function spawnExplosionFx(x, y, z, radius, kind, options = {}) {
       if (document.hidden) return;
       while (blasts.length > 40) {
         const oldest = blasts.shift();
         fxRoot.remove(oldest.mesh);
         oldest.mesh.material.dispose();
       }
-      const style = explosionStyles[kind] || explosionStyles.rocket;
+      const style = explosionStyles[kind];
       const quality = settings.quality;
       const base = Math.max(0.2, y);
       const core = new THREE.Mesh(fx.sphereGeometry, fx.additive(glowColor(style.core, 1.5), 0.8));
       core.position.set(x, base + 0.8, z);
       core.scale.setScalar(radius * 0.15);
       fxRoot.add(core);
-      const coreSize = kind === "shockwave" ? Math.min(radius * 0.18, 3) : Math.min(radius * 0.55, 7);
+      const coreSize = kind === "launch" ? Math.min(radius * 0.18, 3) : Math.min(radius * 0.55, 7);
       blasts.push({ mesh: core, life: 0.34, maxLife: 0.34, from: Math.min(radius * 0.15, coreSize * 0.4), to: coreSize, opacity: 0.8 });
       const ring = new THREE.Mesh(fx.ringGeometry, fx.additive(glowColor(style.ring, 1.3), 0.7));
       ring.material.side = THREE.DoubleSide;
@@ -3278,13 +2683,13 @@ import("three")
           0.5
         );
       }
-      spawnFlashLight(x, base + 3, z, style.ring, kind === "bomb" ? 260 : radius > 14 ? 150 : 90, 0.35);
+      spawnFlashLight(x, base + 3, z, style.ring, 90, 0.35);
       if (options.quiet) return;
       const distance = camera.position.distanceTo(scratch3.set(x, base, z));
       const near = THREE.MathUtils.clamp(1 - distance / 240, 0.12, 1);
-      playBoom(near * (kind === "bomb" ? 1.4 : radius > 15 ? 1.1 : 0.8));
+      playBoom(near * 0.8);
       if (state.mode === "arena") {
-        const shake = THREE.MathUtils.clamp(1 - distance / (radius * 6), 0, 1) * (kind === "bomb" ? 1.2 : 0.8);
+        const shake = THREE.MathUtils.clamp(1 - distance / (radius * 6), 0, 1) * 0.8;
         state.car.cameraShake = Math.max(state.car.cameraShake, shake);
       }
     }
@@ -3413,12 +2818,6 @@ import("three")
       playSweep(130, 34, 0.4 + intensity * 0.3, "sine", 0.12 * intensity);
     }
 
-    function playSiren() {
-      for (let i = 0; i < 4; i += 1) {
-        playSweep(i % 2 ? 880 : 560, i % 2 ? 560 : 880, 0.22, "square", 0.022, i * 0.24);
-      }
-    }
-
     function midiToFreq(note) {
       return 440 * Math.pow(2, (note - 69) / 12);
     }
@@ -3426,9 +2825,7 @@ import("three")
     function computeMusicIntensity() {
       if (state.podium.active || state.menuOpen) return 0;
       if (state.mode !== "arena") return 1;
-      const event = state.room.phase === "live" ? state.room.event : null;
-      if (event?.kind === "frenzy" || (event?.kind === "bomb" && String(event.holderId) === state.id)) return 3;
-      return event ? 2 : 1;
+      return isFinalFrenzy() ? 3 : 1;
     }
 
     function updateMusic() {
@@ -3527,15 +2924,9 @@ import("three")
         state.podium.active ||
         state.room.phase !== "live" ||
         car.wreckedUntil > serverNow;
-      const event = state.room.phase === "live" ? state.room.event : null;
-      const eventKind = event?.kind || null;
-      const nitro = eventKind === "nitro";
-      const ice = eventKind === "ice";
-      const holdingBomb = eventKind === "bomb" && String(event.holderId) === state.id;
-      const gravity = ARENA.GRAVITY * (eventKind === "lowgrav" ? ARENA.LOW_GRAVITY_SCALE : 1);
       const throttle = blocked ? 0 : axis("w", "arrowup") - axis("s", "arrowdown");
       const steer = blocked ? 0 : axis("d", "arrowright") - axis("a", "arrowleft");
-      const boosting = !blocked && input.has("shift") && (car.boost > 3 || nitro) && (throttle > 0 || car.airborne);
+      const boosting = !blocked && input.has("shift") && car.boost > 3 && (throttle > 0 || car.airborne);
       car.boosting = boosting;
 
       const forward = new THREE.Vector2(Math.sin(car.angle), Math.cos(car.angle));
@@ -3549,8 +2940,7 @@ import("three")
         updateAirControl(dt, steer, throttle, blocked, boosting);
       } else {
         const driftIntent = Math.abs(steer) > 0.45 && absForward > 14;
-        let grip = driftIntent ? 3.4 : 8.5 + speedRatio * 5.4;
-        if (ice) grip *= 0.16;
+        const grip = driftIntent ? 3.4 : 8.5 + speedRatio * 5.4;
 
         lateralSpeed *= Math.exp(-grip * dt);
         car.velocity.copy(forward.multiplyScalar(forwardSpeed)).add(right.multiplyScalar(lateralSpeed));
@@ -3558,17 +2948,15 @@ import("three")
         let engine = 0;
         if (throttle > 0) engine = 42 + speedRatio * 10;
         if (throttle < 0) engine = forwardSpeed > 5 ? -66 : -30;
-        if (ice) engine *= 0.75;
         if (boosting) engine += 58;
 
         const accelForward = new THREE.Vector2(Math.sin(car.angle), Math.cos(car.angle));
         car.velocity.addScaledVector(accelForward, engine * dt);
 
-        const drag = 1 - THREE.MathUtils.clamp((0.34 + car.velocity.length() * 0.018) * dt * (ice ? 0.45 : 1), 0, 0.12);
+        const drag = 1 - THREE.MathUtils.clamp((0.34 + car.velocity.length() * 0.018) * dt, 0, 0.12);
         car.velocity.multiplyScalar(drag);
 
-        const speedMultiplier = (nitro ? 1.3 : 1) * (holdingBomb ? 1.12 : 1);
-        const baseMax = (boosting ? 50 : 38) * speedMultiplier;
+        const baseMax = boosting ? 50 : 38;
         const maxSpeed = performance.now() < car.overspeedUntil ? Math.max(baseMax, 74) : baseMax;
         const currentSpeed = car.velocity.length();
         if (currentSpeed > maxSpeed) car.velocity.setLength(Math.max(maxSpeed, currentSpeed - 46 * dt));
@@ -3579,21 +2967,20 @@ import("three")
       }
 
       if (boosting) {
-        if (!nitro) car.boost = Math.max(0, car.boost - 30 * dt);
+        car.boost = Math.max(0, car.boost - 30 * dt);
         spawnBoostTrail();
       } else {
-        car.boost = Math.min(MAX_BOOST, car.boost + (absForward < 9 ? 15 : 8) * dt * (nitro ? 4 : 1));
+        car.boost = Math.min(MAX_BOOST, car.boost + (absForward < 9 ? 15 : 8) * dt);
       }
 
       car.prevX = car.x;
       car.prevZ = car.z;
       car.prevAngle = car.angle;
-      if (!blocked) applyHazardForces(dt);
       if (car.velocity.length() > 110) car.velocity.setLength(110);
       car.x += car.velocity.x * dt;
       car.z += car.velocity.y * dt;
       handleWorldBounds();
-      updateVerticalMotion(dt, gravity);
+      updateVerticalMotion(dt);
       handleStaticCollision();
       handlePlayerCollisions();
       handlePickupCollections();
@@ -3636,8 +3023,7 @@ import("three")
           streak: car.streak,
           shielded: car.shieldUntil > serverNow,
           slamming: car.slamUntil > serverNow,
-          isLeader: getLeaderId() === state.id,
-          hasBomb: holdingBomb
+          isLeader: getLeaderId() === state.id
         },
         performance.now(),
         dt
@@ -3675,13 +3061,13 @@ import("three")
       return Math.abs(delta) <= amount ? target : angle + Math.sign(delta) * amount;
     }
 
-    function updateVerticalMotion(dt, gravity) {
+    function updateVerticalMotion(dt) {
       const car = state.car;
       const ground = ARENA.groundHeightAt(car.x, car.z);
       const prevGround = ARENA.groundHeightAt(car.prevX, car.prevZ);
       if (car.airborne) {
         const prevY = car.y;
-        car.vy -= gravity * dt;
+        car.vy -= ARENA.GRAVITY * dt;
         car.y += car.vy * dt;
         car.airTime += dt;
         if (ARENA.hitsRampFace(car.prevX, car.prevZ, car.x, car.z, 1, prevY, car.y)) {
@@ -3733,9 +3119,9 @@ import("three")
       const pad = ARENA.jumpPadAt(car.x, car.z);
       if (pad && now > car.padCooldownUntil && state.mode === "arena") {
         car.padCooldownUntil = now + 700;
-        launchCar(pad.power * (state.room.event?.kind === "lowgrav" ? 0.75 : 1));
+        launchCar(pad.power);
         addCombo("LAUNCH PAD", 2);
-        spawnExplosionFx(pad.x, 0.2, pad.z, 6, "shockwave", { quiet: true });
+        spawnExplosionFx(pad.x, 0.2, pad.z, 6, "launch", { quiet: true });
         playSweep(220, 900, 0.35, "triangle", 0.05);
       }
       const strip = ARENA.boostPadAt(car.x, car.z);
@@ -3781,7 +3167,7 @@ import("three")
       const now = performance.now();
       if (now - car.lastHopAt < HOP_COOLDOWN_MS) return;
       car.lastHopAt = now;
-      launchCar(HOP_POWER * (state.room.event?.kind === "lowgrav" ? 1.15 : 1));
+      launchCar(HOP_POWER);
       car.hopped = true;
       playTone(300, 0.08, "triangle", 0.04);
       spawnImpact(car.x, car.y + 0.3, car.z, "#d6f4ff", 5);
@@ -4000,22 +3386,6 @@ import("three")
       }
     }
 
-    function applyHazardForces(dt) {
-      const car = state.car;
-      for (const entry of projectiles.values()) {
-        if (entry.kind !== "blackhole" || entry.phase !== "pulling" || String(entry.ownerId) === state.id) continue;
-        const dx = entry.x - car.x;
-        const dz = entry.z - car.z;
-        const distance = Math.hypot(dx, dz);
-        if (distance > BLACKHOLE_PULL_RADIUS || distance < 0.5) continue;
-        const strength = 1 - distance / BLACKHOLE_PULL_RADIUS;
-        car.velocity.x += (dx / distance) * strength * 70 * dt;
-        car.velocity.y += (dz / distance) * strength * 70 * dt;
-        car.overspeedUntil = performance.now() + 300;
-        car.cameraShake = Math.max(car.cameraShake, strength * 0.3);
-      }
-    }
-
     function getRemoteCollisionBody(entry) {
       const group = entry.mesh?.group;
       return {
@@ -4167,8 +3537,6 @@ import("three")
       const now = performance.now();
       const serverNow = getServerNow();
       const leaderId = getLeaderId();
-      const event = state.room.phase === "live" ? state.room.event : null;
-      const bombHolder = event?.kind === "bomb" ? String(event.holderId) : null;
       const blend = 1 - Math.pow(0.002, dt);
       for (const [id, entry] of players) {
         if (id === state.id) continue;
@@ -4207,8 +3575,7 @@ import("three")
             streak: entry.streak,
             shielded: entry.shieldUntil > serverNow,
             slamming: entry.slamUntil > serverNow,
-            isLeader: leaderId === id,
-            hasBomb: bombHolder === id
+            isLeader: leaderId === id
           },
           now,
           dt
@@ -4219,7 +3586,6 @@ import("three")
           spawnParticle(p.x + (Math.random() - 0.5) * 2.5, p.y + 2, p.z + (Math.random() - 0.5) * 2.5, "#ff7a1f", 0.5, 1.6, new THREE.Vector3(0, 4, 0), 0.6);
         }
       }
-      updateBountyBeam(event, serverNow);
     }
 
     function getLeaderId() {
@@ -4229,26 +3595,6 @@ import("three")
         if (!best || entry.score > best.score) best = entry;
       }
       return best ? best.id : null;
-    }
-
-    function updateBountyBeam(event, serverNow) {
-      if (!fx.bountyBeam) {
-        fx.bountyBeam = new THREE.Mesh(
-          new THREE.CylinderGeometry(1.6, 3.2, 90, 16, 1, true),
-          fx.additive(glowColor("#ffd166", 1.4), 0.22)
-        );
-        fx.bountyBeam.material.side = THREE.DoubleSide;
-        fx.bountyBeam.visible = false;
-        fxRoot.add(fx.bountyBeam);
-      }
-      const targetId = event?.kind === "bounty" ? String(event.targetId) : null;
-      const target = targetId ? (targetId === state.id ? { mode: state.mode } : players.get(targetId)) : null;
-      const visible = Boolean(target && target.mode === "arena" && !(target.wreckedUntil > serverNow));
-      fx.bountyBeam.visible = visible;
-      if (!visible) return;
-      const position = targetId === state.id ? localCar.group.position : target.mesh.group.position;
-      fx.bountyBeam.position.set(position.x, position.y + 45, position.z);
-      fx.bountyBeam.material.opacity = 0.16 + Math.sin(performance.now() * 0.006) * 0.06;
     }
 
     function updatePickups(dt) {
@@ -4285,12 +3631,8 @@ import("three")
       state.gulag.muzzleFlash = Math.max(0, (state.gulag.muzzleFlash || 0) - dt * 9);
       state.gulag.enemyMuzzleFlash = Math.max(0, (state.gulag.enemyMuzzleFlash || 0) - dt * 8);
       if (els.damage) {
-        if (document.body.classList.contains("is-bomb-holder")) {
-          els.damage.style.removeProperty("opacity");
-        } else {
-          const maxDamageOpacity = state.mode === "gulag" ? 0.28 : 0.56;
-          els.damage.style.opacity = String(Math.min(maxDamageOpacity, state.car.damageFlash || 0));
-        }
+        const maxDamageOpacity = state.mode === "gulag" ? 0.28 : 0.56;
+        els.damage.style.opacity = String(Math.min(maxDamageOpacity, state.car.damageFlash || 0));
       }
     }
 
@@ -4318,8 +3660,6 @@ import("three")
       state.gulag.pitch = 0;
       clearInput();
       resetCombo();
-      cancelWeaponRoll();
-      els.chaosBanner?.classList.add("hidden");
       gulagWorld.group.visible = true;
       gulagWorld.enemy.visible = true;
       setArenaWorldVisible(false);
@@ -4328,12 +3668,12 @@ import("three")
       if (gulagWorld.enemy.userData.label) {
         updateNameLabel(gulagWorld.enemy.userData.label, state.gulag.opponentName, "#ffcf6b");
       }
-      weapon.visible = true;
+      gulagGun.visible = true;
       localCar.group.visible = false;
       setMenu(false);
       setStatus("Gulag duel: win to redeploy.", "offline");
       showModeOverlay("GULAG", "Win your 1v1 or spectate.", "WASD move. Mouse aim. Click or Space shoots.", { combatHud: true });
-      document.body.requestPointerLock?.();
+      lockPointer();
     }
 
     function endGulag() {
@@ -4341,7 +3681,7 @@ import("three")
       state.gulag.firing = false;
       clearInput();
       gulagWorld.group.visible = false;
-      weapon.visible = false;
+      gulagGun.visible = false;
       modeOverlay.root.classList.add("hidden");
       if (!state.podium.active) {
         setArenaWorldVisible(true);
@@ -4398,7 +3738,6 @@ import("three")
       document.exitPointerLock?.();
       clearInput();
       resetCombo();
-      cancelWeaponRoll();
       setMenu(false);
       state.podium.active = true;
       state.podium.round = state.room.round;
@@ -4540,14 +3879,13 @@ import("three")
       clearInput();
       localCar.group.visible = false;
       resetCombo();
-      cancelWeaponRoll();
       state.spectator.position.set(state.car.x || 0, 58, (state.car.z || 0) + 76);
       state.spectator.yaw = 0;
       state.spectator.pitch = -Math.atan2(58, 76);
       state.spectator.velocity.set(0, 0, 0);
       showModeOverlay("SPECTATOR", "Free cam enabled.", `${reason}. WASD + mouse to fly around. You redeploy automatically when the timer hits zero.`);
       setStatus("Spectating the arena in free cam.", "offline");
-      document.body.requestPointerLock?.();
+      lockPointer();
     }
 
     function updateGulag(dt) {
@@ -4581,7 +3919,7 @@ import("three")
         camera.position.z += (Math.random() - 0.5) * shake;
         state.car.cameraShake = Math.max(0, state.car.cameraShake - dt * 3.6);
       }
-      updateGulagWeapon(dt);
+      updateGulagGun(dt);
       const targetFov = 62 + THREE.MathUtils.clamp(gulag.velocity.length() / 18, 0, 1) * 2.5;
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.pow(0.002, dt));
@@ -4667,22 +4005,22 @@ import("three")
       }
     }
 
-    function updateGulagWeapon(dt) {
+    function updateGulagGun(dt) {
       const flash = state.gulag.muzzleFlash || 0;
       const moveSway = THREE.MathUtils.clamp(state.gulag.velocity.length() / 18, 0, 1);
       const cycle = performance.now() * 0.009;
-      weapon.position.set(
+      gulagGun.position.set(
         0.48 + Math.sin(cycle) * 0.012 * moveSway,
         -0.48 - Math.abs(Math.cos(cycle)) * 0.014 * moveSway,
         -0.08 + flash * 0.075
       );
-      weapon.rotation.x = -flash * 0.08 + Math.sin(cycle * 0.7) * 0.006 * moveSway;
-      weapon.rotation.y = Math.sin(cycle * 0.55) * 0.012 * moveSway;
-      weapon.rotation.z = THREE.MathUtils.lerp(weapon.rotation.z, 0, 1 - Math.pow(0.0005, dt));
-      weapon.userData.muzzle.visible = flash > 0;
-      weapon.userData.muzzleLight.intensity = flash * 8;
-      if (weapon.userData.muzzle.visible) {
-        weapon.userData.muzzle.scale.setScalar(1 + flash * 4);
+      gulagGun.rotation.x = -flash * 0.08 + Math.sin(cycle * 0.7) * 0.006 * moveSway;
+      gulagGun.rotation.y = Math.sin(cycle * 0.55) * 0.012 * moveSway;
+      gulagGun.rotation.z = THREE.MathUtils.lerp(gulagGun.rotation.z, 0, 1 - Math.pow(0.0005, dt));
+      gulagGun.userData.muzzle.visible = flash > 0;
+      gulagGun.userData.muzzleLight.intensity = flash * 8;
+      if (gulagGun.userData.muzzle.visible) {
+        gulagGun.userData.muzzle.scale.setScalar(1 + flash * 4);
       }
     }
 
@@ -4695,7 +4033,7 @@ import("three")
       gulag.muzzleFlash = 0.18;
       state.car.cameraShake = Math.max(state.car.cameraShake, 0.25);
       playTone(520, 0.038, "square", 0.05);
-      weapon.rotation.z = (Math.random() - 0.5) * 0.055;
+      gulagGun.rotation.z = (Math.random() - 0.5) * 0.055;
 
       const aim = new THREE.Vector3(-Math.sin(gulag.yaw) * Math.cos(gulag.pitch), Math.sin(gulag.pitch), -Math.cos(gulag.yaw) * Math.cos(gulag.pitch)).normalize();
       const ray = new THREE.Ray(gulag.position.clone(), aim);
@@ -4837,8 +4175,7 @@ import("three")
       if (els.objective && (state.podium.active || now >= (state.noticeUntil || 0))) {
         els.objective.textContent = getModeObjectiveText();
       }
-      updateChaosHud();
-      updateWeaponHud();
+      updateFrenzyHud();
       updateComboHud();
       if (now - state.lastLeaderboardDrawAt >= (settings.quality === "performance" ? 900 : 450)) {
         state.lastLeaderboardDrawAt = now;
@@ -4898,8 +4235,6 @@ import("three")
         state.car.wreckedUntil = player.wreckedUntil || 0;
         state.car.gulagUntil = player.gulagUntil || 0;
         state.car.streak = player.streak || 0;
-        state.car.weapon = player.weapon || null;
-        state.car.weaponCharges = player.weaponCharges || 0;
         if (hardSync) syncLocalTransform(player);
       }
 
@@ -4944,7 +4279,6 @@ import("three")
         boosting: Boolean(player.boosting),
         airborne: Boolean(player.airborne),
         streak: player.streak || 0,
-        weapon: player.weapon || null,
         isBot: Boolean(player.isBot)
       });
       entry.mesh.group.visible = entry.mode === "arena" && state.arenaWorldVisible !== false;
@@ -4984,9 +4318,7 @@ import("three")
       if (!localCar.group.parent) scene.add(localCar.group);
       endPodiumShow();
       endGulag();
-      clearArenaChaos();
       resetCombo();
-      cancelWeaponRoll();
       state.mode = "arena";
     }
 
@@ -5010,46 +4342,9 @@ import("three")
       }
     }
 
-    function makeCrateTexture() {
-      if (makeCrateTexture.texture) return makeCrateTexture.texture;
-      const canvas = document.createElement("canvas");
-      canvas.width = 128;
-      canvas.height = 128;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#2a0f45";
-      ctx.fillRect(0, 0, 128, 128);
-      ctx.strokeStyle = "#e9d5ff";
-      ctx.lineWidth = 8;
-      ctx.strokeRect(8, 8, 112, 112);
-      ctx.fillStyle = "#f5e9ff";
-      ctx.font = "900 86px Trebuchet MS, Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("?", 64, 70);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      makeCrateTexture.texture = texture;
-      return texture;
-    }
-
     function createPickupMesh(pickup) {
       const meta = pickupMeta[pickup.type] || pickupMeta.boost;
       const group = new THREE.Group();
-      if (pickup.type === "crate") {
-        const crate = new THREE.Mesh(
-          new THREE.BoxGeometry(2.3, 2.3, 2.3),
-          new THREE.MeshBasicMaterial({ map: makeCrateTexture(), color: glowColor("#ffffff", 1.25) })
-        );
-        crate.rotation.set(0.5, 0, 0.35);
-        const crateHalo = new THREE.Mesh(
-          new THREE.TorusGeometry(2.4, 0.1, 8, 40),
-          new THREE.MeshBasicMaterial({ color: glowColor(meta.color, 1.5), transparent: true, opacity: 0.8 })
-        );
-        crateHalo.rotation.x = Math.PI / 2;
-        group.add(crate, crateHalo);
-        group.position.set(pickup.x, 1.4, pickup.z);
-        return group;
-      }
       const detail = settings.quality === "performance" ? 0 : 1;
       const haloSegments = settings.quality === "performance" ? 20 : 48;
       const core = new THREE.Mesh(
@@ -5104,15 +4399,14 @@ import("three")
     function drawRadar(all) {
       if (!radarCtx || !els.radar) return;
       const size = els.radar.width;
-      const now = performance.now();
       const serverNow = getServerNow();
-      const event = state.room.phase === "live" ? state.room.event : null;
+      const frenzy = isFinalFrenzy();
       radarCtx.clearRect(0, 0, size, size);
       radarCtx.fillStyle = "rgba(3, 8, 14, 0.72)";
       radarCtx.fillRect(0, 0, size, size);
-      const ringPoint = radarPoint(state.ring.x, state.ring.z, size);
-      radarCtx.strokeStyle = state.ring.mult > 1 ? "rgba(255, 207, 107, 0.95)" : "rgba(255, 207, 107, 0.38)";
-      radarCtx.lineWidth = state.ring.mult > 1 ? 3 : 2;
+      const ringPoint = radarPoint(ARENA.RING.x, ARENA.RING.z, size);
+      radarCtx.strokeStyle = frenzy ? "rgba(255, 207, 107, 0.95)" : "rgba(255, 207, 107, 0.38)";
+      radarCtx.lineWidth = frenzy ? 3 : 2;
       radarCtx.beginPath();
       radarCtx.arc(ringPoint.x, ringPoint.y, (CENTER_MAX / WORLD_SIZE) * size * 0.5, 0, Math.PI * 2);
       radarCtx.stroke();
@@ -5124,43 +4418,13 @@ import("three")
         radarCtx.fillRect(p.x - 2, p.y - 2, 4, 4);
       }
 
-      for (const hazard of hazards.values()) {
-        const p = radarPoint(hazard.x, hazard.z, size);
-        radarCtx.strokeStyle = "rgba(255, 45, 85, 0.9)";
-        radarCtx.lineWidth = 1.5;
-        radarCtx.beginPath();
-        radarCtx.arc(p.x, p.y, (11 / WORLD_SIZE) * size * 0.48, 0, Math.PI * 2);
-        radarCtx.stroke();
-      }
-
-      for (const projectile of projectiles.values()) {
-        const p = radarPoint(projectile.mesh.position.x, projectile.mesh.position.z, size);
-        if (projectile.kind === "blackhole") {
-          radarCtx.strokeStyle = "rgba(192, 132, 252, 0.9)";
-          radarCtx.lineWidth = 1.5;
-          radarCtx.beginPath();
-          radarCtx.arc(p.x, p.y, projectile.phase === "pulling" ? (BLACKHOLE_PULL_RADIUS / WORLD_SIZE) * size * 0.48 : 3, 0, Math.PI * 2);
-          radarCtx.stroke();
-        } else {
-          radarCtx.fillStyle = projectile.kind === "mine" ? "#ffcf6b" : "#ffffff";
-          radarCtx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
-        }
-      }
-
       const leaderId = getLeaderId();
-      const bombHolder = event?.kind === "bomb" ? String(event.holderId) : null;
       for (const player of all) {
         if (player.mode && player.mode !== "arena") continue;
         if (player.id !== state.id && player.wreckedUntil > serverNow) continue;
         const x = player.id === state.id ? state.car.x : player.x;
         const z = player.id === state.id ? state.car.z : player.z;
         const p = radarPoint(x, z, size);
-        if (player.id === bombHolder) {
-          radarCtx.fillStyle = Math.sin(now * 0.02) > 0 ? "#ff2d55" : "#ffffff";
-          radarCtx.beginPath();
-          radarCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-          radarCtx.fill();
-        }
         if (player.id === leaderId) {
           radarCtx.strokeStyle = "#ffcf6b";
           radarCtx.lineWidth = 2;
@@ -5331,7 +4595,7 @@ import("three")
       if (state.car.slamUntil > now) return `Slam ${Math.ceil((state.car.slamUntil - now) / 1000)}s`;
       if (state.car.shieldUntil > now) return `Shield ${Math.ceil((state.car.shieldUntil - now) / 1000)}s`;
       if (state.car.airborne) return "Airborne";
-      return state.car.inZone ? (state.ring.mult > 1 ? `Ring x${state.ring.mult}` : "Ring") : "None";
+      return state.car.inZone ? "Ring" : "None";
     }
 
     function formatTimer() {
@@ -5350,8 +4614,8 @@ import("three")
     }
 
     function isInCenterRing(x, z) {
-      const dist = Math.hypot(x - state.ring.x, z - state.ring.z);
-      return dist >= state.ring.min && dist <= state.ring.max;
+      const dist = Math.hypot(x - ARENA.RING.x, z - ARENA.RING.z);
+      return dist >= CENTER_MIN && dist <= CENTER_MAX;
     }
 
     function axis(positive, altPositive) {

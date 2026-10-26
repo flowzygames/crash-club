@@ -1,0 +1,4229 @@
+{
+ "_about": "Generated asset manifest for Crash Club (see ASSETS.md). Units are glTF units = metres. Car Kit models: +Y up, forward = +Z, vehicle left = +X. Racing Kit props: +Y up, pivot NOT centred (apply `recenter` as a position offset on a child group). All Kenney assets are CC0.",
+ "textures": {
+  "colormap": "cars/Textures/colormap.png",
+  "pbr": "cars/Textures/colormap-pbr.png",
+  "emissive": "cars/Textures/colormap-emissive.png",
+  "paletteGrid": [
+   16,
+   4
+  ],
+  "cellPx": [
+   32,
+   128
+  ]
+ },
+ "sharedPaintCells": [
+  [
+   7,
+   1
+  ],
+  [
+   9,
+   1
+  ],
+  [
+   13,
+   1
+  ],
+  [
+   15,
+   1
+  ]
+ ],
+ "cars": [
+  {
+   "id": "delivery",
+   "file": "cars/delivery.glb",
+   "bytes": 240264,
+   "triangles": 2476,
+   "size": [
+    1.5,
+    1.65,
+    3.25
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.65
+   ],
+   "max": [
+    0.75,
+    1.65,
+    1.6
+   ],
+   "nodes": [
+    "door",
+    "wheel-front-right",
+    "wheel-front-left",
+    "wheel-back-right",
+    "wheel-back-left",
+    "body"
+   ],
+   "wheelBase": 1.62,
+   "track": 0.9,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      1.01
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      1.01
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      1.01
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      1.01
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.61
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      -0.61
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.61
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      -0.61
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    }
+   },
+   "paintCells": [
+    [
+     7,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     224,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 30.4
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "hatchback-sports",
+   "file": "cars/hatchback-sports.glb",
+   "bytes": 197804,
+   "triangles": 2088,
+   "size": [
+    1.3,
+    1.1,
+    2.85
+   ],
+   "min": [
+    -0.65,
+    0,
+    -1.45
+   ],
+   "max": [
+    0.65,
+    1.1,
+    1.4
+   ],
+   "nodes": [
+    "wheel-front-right",
+    "wheel-front-left",
+    "wheel-back-right",
+    "wheel-back-left",
+    "body"
+   ],
+   "wheelBase": 1.62,
+   "track": 0.85,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.81
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.81
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     7,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     224,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 39.6
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "police",
+   "file": "cars/police.glb",
+   "bytes": 195336,
+   "triangles": 2304,
+   "size": [
+    1.5,
+    1.3,
+    3.1
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.55
+   ],
+   "max": [
+    0.75,
+    1.3,
+    1.55
+   ],
+   "nodes": [
+    "wheel-back-left",
+    "wheel-front-left",
+    "wheel-back-right",
+    "body",
+    "body/grill",
+    "wheel-front-right"
+   ],
+   "wheelBase": 1.62,
+   "track": 0.9,
+   "wheels": {
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.81
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      -0.81
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.81
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      -0.81
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    }
+   },
+   "paintCells": [
+    [
+     13,
+     2
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     256,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 33,
+    "grill": 6.5
+   },
+   "cellsUsed": [
+    "1,3",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2",
+    "7,3"
+   ]
+  },
+  {
+   "id": "race-future",
+   "file": "cars/race-future.glb",
+   "bytes": 173164,
+   "triangles": 2068,
+   "size": [
+    1.2,
+    0.833,
+    2.66
+   ],
+   "min": [
+    -0.6,
+    0,
+    -1.33
+   ],
+   "max": [
+    0.6,
+    0.833,
+    1.33
+   ],
+   "nodes": [
+    "body",
+    "wheel-back-left",
+    "wheel-back-right",
+    "wheel-front-left",
+    "wheel-front-right"
+   ],
+   "wheelBase": 1.52,
+   "track": 0.9,
+   "wheels": {
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.93
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      -0.93
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.93
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      -0.93
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.59
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      0.59
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.59
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      0.59
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    }
+   },
+   "paintCells": [
+    [
+     15,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     480,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 50.5
+   },
+   "cellsUsed": [
+    "1,3",
+    "13,2",
+    "15,1",
+    "5,2",
+    "7,2",
+    "9,1"
+   ]
+  },
+  {
+   "id": "race",
+   "file": "cars/race.glb",
+   "bytes": 167272,
+   "triangles": 1952,
+   "size": [
+    1.3,
+    0.733,
+    2.56
+   ],
+   "min": [
+    -0.65,
+    0,
+    -1.28
+   ],
+   "max": [
+    0.65,
+    0.733,
+    1.28
+   ],
+   "nodes": [
+    "body",
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ],
+   "wheelBase": 1.52,
+   "track": 1,
+   "wheels": {
+    "wheel-front-left": {
+     "node": [
+      0.35,
+      0.3,
+      0.64
+     ],
+     "hub": [
+      0.5,
+      0.3,
+      0.64
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.35,
+      0.3,
+      0.64
+     ],
+     "hub": [
+      -0.5,
+      0.3,
+      0.64
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-left": {
+     "node": [
+      0.35,
+      0.3,
+      -0.88
+     ],
+     "hub": [
+      0.5,
+      0.3,
+      -0.88
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.35,
+      0.3,
+      -0.88
+     ],
+     "hub": [
+      -0.5,
+      0.3,
+      -0.88
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    }
+   },
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 46.4
+   },
+   "cellsUsed": [
+    "1,3",
+    "13,1",
+    "13,2",
+    "5,2",
+    "7,2",
+    "9,1"
+   ]
+  },
+  {
+   "id": "sedan-sports",
+   "file": "cars/sedan-sports.glb",
+   "bytes": 177676,
+   "triangles": 2088,
+   "size": [
+    1.3,
+    1.1,
+    2.55
+   ],
+   "min": [
+    -0.65,
+    0,
+    -1.3
+   ],
+   "max": [
+    0.65,
+    1.1,
+    1.25
+   ],
+   "nodes": [
+    "wheel-back-right",
+    "body",
+    "body/spoiler",
+    "wheel-back-left",
+    "wheel-front-left",
+    "wheel-front-right"
+   ],
+   "wheelBase": 1.32,
+   "track": 0.85,
+   "wheels": {
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.66
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.66
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.66
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.66
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 27.7,
+    "spoiler": 78.3
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,1",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2"
+   ]
+  },
+  {
+   "id": "sedan",
+   "file": "cars/sedan.glb",
+   "bytes": 172216,
+   "triangles": 2032,
+   "size": [
+    1.5,
+    1.3,
+    2.55
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.3
+   ],
+   "max": [
+    0.75,
+    1.3,
+    1.25
+   ],
+   "nodes": [
+    "wheel-front-right",
+    "body",
+    "wheel-back-left",
+    "wheel-back-right",
+    "wheel-front-left"
+   ],
+   "wheelBase": 1.32,
+   "track": 0.85,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.66
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.66
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.66
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.66
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.66
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 33.6
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,1",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2"
+   ]
+  },
+  {
+   "id": "suv-luxury",
+   "file": "cars/suv-luxury.glb",
+   "bytes": 175908,
+   "triangles": 2086,
+   "size": [
+    1.5,
+    1.3,
+    2.85
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.4
+   ],
+   "max": [
+    0.75,
+    1.3,
+    1.45
+   ],
+   "nodes": [
+    "wheel-back-right",
+    "wheel-front-right",
+    "wheel-front-left",
+    "body",
+    "wheel-back-left"
+   ],
+   "wheelBase": 1.52,
+   "track": 0.85,
+   "wheels": {
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.71
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.71
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.81
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.81
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.71
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.71
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     9,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     288,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 36.9
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2",
+    "9,1"
+   ]
+  },
+  {
+   "id": "suv",
+   "file": "cars/suv.glb",
+   "bytes": 207572,
+   "triangles": 2474,
+   "size": [
+    1.5,
+    1.3,
+    2.7
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.35
+   ],
+   "max": [
+    0.75,
+    1.3,
+    1.35
+   ],
+   "nodes": [
+    "body",
+    "body/wheel-back",
+    "wheel-back-left",
+    "wheel-back-right",
+    "wheel-front-left",
+    "wheel-front-right"
+   ],
+   "wheelBase": 1.32,
+   "track": 0.85,
+   "wheels": {
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.56
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.56
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.56
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.56
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     7,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     224,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 19.5
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "taxi",
+   "file": "cars/taxi.glb",
+   "bytes": 175608,
+   "triangles": 2072,
+   "size": [
+    1.5,
+    1.5,
+    2.75
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.4
+   ],
+   "max": [
+    0.75,
+    1.5,
+    1.35
+   ],
+   "nodes": [
+    "body",
+    "wheel-front-right",
+    "wheel-front-left",
+    "wheel-back-left",
+    "wheel-back-right"
+   ],
+   "wheelBase": 1.52,
+   "track": 0.9,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      0.45,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      -0.45,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.3
+    }
+   },
+   "paintCells": [
+    [
+     9,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     288,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 32.6
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2",
+    "9,1"
+   ]
+  },
+  {
+   "id": "truck",
+   "file": "cars/truck.glb",
+   "bytes": 176360,
+   "triangles": 2082,
+   "size": [
+    1.5,
+    1.3,
+    2.95
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.5
+   ],
+   "max": [
+    0.75,
+    1.3,
+    1.45
+   ],
+   "nodes": [
+    "body",
+    "wheel-front-right",
+    "wheel-front-left",
+    "wheel-back-right",
+    "wheel-back-left"
+   ],
+   "wheelBase": 1.62,
+   "track": 0.85,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.86
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.86
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.86
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.86
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     7,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     224,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 29.6
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "van",
+   "file": "cars/van.glb",
+   "bytes": 175664,
+   "triangles": 2082,
+   "size": [
+    1.5,
+    1.35,
+    2.75
+   ],
+   "min": [
+    -0.75,
+    0,
+    -1.4
+   ],
+   "max": [
+    0.75,
+    1.35,
+    1.35
+   ],
+   "nodes": [
+    "wheel-front-right",
+    "wheel-front-left",
+    "wheel-back-right",
+    "wheel-back-left",
+    "body"
+   ],
+   "wheelBase": 1.52,
+   "track": 0.85,
+   "wheels": {
+    "wheel-front-right": {
+     "node": [
+      -0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-front-left": {
+     "node": [
+      0.3,
+      0.3,
+      0.76
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-right": {
+     "node": [
+      -0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      -0.425,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    },
+    "wheel-back-left": {
+     "node": [
+      0.3,
+      0.3,
+      -0.76
+     ],
+     "hub": [
+      0.425,
+      0.3,
+      -0.76
+     ],
+     "radius": 0.3,
+     "width": 0.35
+    }
+   },
+   "paintCells": [
+    [
+     15,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     480,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "body": 39.8
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,2",
+    "15,1",
+    "3,3",
+    "5,2",
+    "5,3",
+    "7,2"
+   ]
+  }
+ ],
+ "wheels": [
+  {
+   "id": "wheel-dark",
+   "file": "cars/wheel-dark.glb",
+   "bytes": 29116,
+   "triangles": 332,
+   "size": [
+    0.4,
+    0.6,
+    0.6
+   ],
+   "min": [
+    -0.2,
+    -0.3,
+    -0.3
+   ],
+   "max": [
+    0.2,
+    0.3,
+    0.3
+   ],
+   "nodes": [
+    "wheel-dark"
+   ],
+   "cellsUsed": [
+    "5,2",
+    "7,2"
+   ]
+  },
+  {
+   "id": "wheel-default",
+   "file": "cars/wheel-default.glb",
+   "bytes": 26820,
+   "triangles": 332,
+   "size": [
+    0.4,
+    0.6,
+    0.6
+   ],
+   "min": [
+    -0.2,
+    -0.3,
+    -0.3
+   ],
+   "max": [
+    0.2,
+    0.3,
+    0.3
+   ],
+   "nodes": [
+    "wheel-default"
+   ],
+   "cellsUsed": [
+    "13,2",
+    "5,2"
+   ]
+  },
+  {
+   "id": "wheel-racing",
+   "file": "cars/wheel-racing.glb",
+   "bytes": 29120,
+   "triangles": 332,
+   "size": [
+    0.4,
+    0.6,
+    0.6
+   ],
+   "min": [
+    -0.2,
+    -0.3,
+    -0.3
+   ],
+   "max": [
+    0.2,
+    0.3,
+    0.3
+   ],
+   "nodes": [
+    "wheel-racing"
+   ],
+   "paintCells": [
+    [
+     9,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     288,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "wheel-racing": 9.7
+   },
+   "cellsUsed": [
+    "5,2",
+    "7,2",
+    "9,1"
+   ]
+  },
+  {
+   "id": "wheel-truck",
+   "file": "cars/wheel-truck.glb",
+   "bytes": 34304,
+   "triangles": 428,
+   "size": [
+    0.35,
+    0.6,
+    0.6
+   ],
+   "min": [
+    -0.175,
+    -0.3,
+    -0.3
+   ],
+   "max": [
+    0.175,
+    0.3,
+    0.3
+   ],
+   "nodes": [
+    "wheel-truck"
+   ],
+   "cellsUsed": [
+    "13,2",
+    "5,2",
+    "7,2"
+   ]
+  }
+ ],
+ "debris": [
+  {
+   "id": "box",
+   "file": "debris/box.glb",
+   "bytes": 14108,
+   "triangles": 124,
+   "size": [
+    0.715,
+    0.715,
+    0.715
+   ],
+   "min": [
+    -0.357,
+    0,
+    -0.357
+   ],
+   "max": [
+    0.357,
+    0.715,
+    0.357
+   ],
+   "nodes": [
+    "box"
+   ],
+   "cellsUsed": [
+    "15,2",
+    "3,1"
+   ]
+  },
+  {
+   "id": "cone-flat",
+   "file": "debris/cone-flat.glb",
+   "bytes": 16712,
+   "triangles": 172,
+   "size": [
+    0.476,
+    0.281,
+    0.476
+   ],
+   "min": [
+    -0.238,
+    0,
+    -0.238
+   ],
+   "max": [
+    0.238,
+    0.281,
+    0.238
+   ],
+   "nodes": [
+    "cone-flat"
+   ],
+   "cellsUsed": [
+    "11,1",
+    "13,2"
+   ]
+  },
+  {
+   "id": "cone",
+   "file": "debris/cone.glb",
+   "bytes": 16696,
+   "triangles": 172,
+   "size": [
+    0.476,
+    0.595,
+    0.476
+   ],
+   "min": [
+    -0.238,
+    0,
+    -0.238
+   ],
+   "max": [
+    0.238,
+    0.595,
+    0.238
+   ],
+   "nodes": [
+    "cone"
+   ],
+   "cellsUsed": [
+    "11,1",
+    "13,2"
+   ]
+  },
+  {
+   "id": "debris-bolt",
+   "file": "debris/debris-bolt.glb",
+   "bytes": 4768,
+   "triangles": 36,
+   "size": [
+    0.173,
+    0.26,
+    0.2
+   ],
+   "min": [
+    -0.087,
+    0,
+    -0.1
+   ],
+   "max": [
+    0.087,
+    0.26,
+    0.1
+   ],
+   "nodes": [
+    "debris-bolt"
+   ],
+   "cellsUsed": [
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-bumper",
+   "file": "debris/debris-bumper.glb",
+   "bytes": 11312,
+   "triangles": 116,
+   "size": [
+    1.3,
+    0.4,
+    0.45
+   ],
+   "min": [
+    -0.65,
+    0,
+    -0.225
+   ],
+   "max": [
+    0.65,
+    0.4,
+    0.225
+   ],
+   "nodes": [
+    "debris-bumper"
+   ],
+   "cellsUsed": [
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-door-window",
+   "file": "debris/debris-door-window.glb",
+   "bytes": 7576,
+   "triangles": 74,
+   "size": [
+    0.188,
+    0.9,
+    0.8
+   ],
+   "min": [
+    -0.094,
+    0,
+    -0.4
+   ],
+   "max": [
+    0.094,
+    0.9,
+    0.4
+   ],
+   "nodes": [
+    "debris-door-window"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-door-window": 28.8
+   },
+   "cellsUsed": [
+    "1,3",
+    "11,2",
+    "13,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-door",
+   "file": "debris/debris-door.glb",
+   "bytes": 7052,
+   "triangles": 68,
+   "size": [
+    0.188,
+    0.9,
+    0.8
+   ],
+   "min": [
+    -0.094,
+    0,
+    -0.4
+   ],
+   "max": [
+    0.094,
+    0.9,
+    0.4
+   ],
+   "nodes": [
+    "debris-door"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-door": 30.8
+   },
+   "cellsUsed": [
+    "11,2",
+    "13,1",
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-drivetrain-axle",
+   "file": "debris/debris-drivetrain-axle.glb",
+   "bytes": 18740,
+   "triangles": 200,
+   "size": [
+    1.204,
+    0.296,
+    0.348
+   ],
+   "min": [
+    -0.602,
+    0,
+    -0.174
+   ],
+   "max": [
+    0.602,
+    0.296,
+    0.174
+   ],
+   "nodes": [
+    "debris-drivetrain-axle"
+   ],
+   "cellsUsed": [
+    "11,2",
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-drivetrain",
+   "file": "debris/debris-drivetrain.glb",
+   "bytes": 36896,
+   "triangles": 412,
+   "size": [
+    1.204,
+    0.296,
+    1.92
+   ],
+   "min": [
+    -0.602,
+    0,
+    -0.96
+   ],
+   "max": [
+    0.602,
+    0.296,
+    0.96
+   ],
+   "nodes": [
+    "debris-drivetrain"
+   ],
+   "cellsUsed": [
+    "11,2",
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-nut",
+   "file": "debris/debris-nut.glb",
+   "bytes": 4744,
+   "triangles": 40,
+   "size": [
+    0.173,
+    0.1,
+    0.2
+   ],
+   "min": [
+    -0.087,
+    0,
+    -0.1
+   ],
+   "max": [
+    0.087,
+    0.1,
+    0.1
+   ],
+   "nodes": [
+    "debris-nut"
+   ],
+   "cellsUsed": [
+    "7,2"
+   ]
+  },
+  {
+   "id": "debris-plate-a",
+   "file": "debris/debris-plate-a.glb",
+   "bytes": 5048,
+   "triangles": 40,
+   "size": [
+    0.9,
+    0.1,
+    0.9
+   ],
+   "min": [
+    -0.45,
+    0,
+    -0.45
+   ],
+   "max": [
+    0.45,
+    0.1,
+    0.45
+   ],
+   "nodes": [
+    "debris-plate-a"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-plate-a": 83
+   },
+   "cellsUsed": [
+    "11,2",
+    "13,1"
+   ]
+  },
+  {
+   "id": "debris-plate-b",
+   "file": "debris/debris-plate-b.glb",
+   "bytes": 5380,
+   "triangles": 44,
+   "size": [
+    0.9,
+    0.2,
+    0.9
+   ],
+   "min": [
+    -0.45,
+    0,
+    -0.45
+   ],
+   "max": [
+    0.45,
+    0.2,
+    0.45
+   ],
+   "nodes": [
+    "debris-plate-b"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-plate-b": 82.8
+   },
+   "cellsUsed": [
+    "11,2",
+    "13,1"
+   ]
+  },
+  {
+   "id": "debris-plate-small-a",
+   "file": "debris/debris-plate-small-a.glb",
+   "bytes": 4224,
+   "triangles": 28,
+   "size": [
+    0.45,
+    0.1,
+    0.45
+   ],
+   "min": [
+    -0.225,
+    0,
+    -0.225
+   ],
+   "max": [
+    0.225,
+    0.1,
+    0.225
+   ],
+   "nodes": [
+    "debris-plate-small-a"
+   ],
+   "cellsUsed": [
+    "11,2",
+    "5,2"
+   ]
+  },
+  {
+   "id": "debris-plate-small-b",
+   "file": "debris/debris-plate-small-b.glb",
+   "bytes": 5392,
+   "triangles": 44,
+   "size": [
+    0.45,
+    0.2,
+    0.45
+   ],
+   "min": [
+    -0.225,
+    0,
+    -0.225
+   ],
+   "max": [
+    0.225,
+    0.2,
+    0.225
+   ],
+   "nodes": [
+    "debris-plate-small-b"
+   ],
+   "cellsUsed": [
+    "11,2",
+    "5,2"
+   ]
+  },
+  {
+   "id": "debris-spoiler-a",
+   "file": "debris/debris-spoiler-a.glb",
+   "bytes": 5616,
+   "triangles": 48,
+   "size": [
+    1.1,
+    0.3,
+    0.237
+   ],
+   "min": [
+    -0.55,
+    0,
+    -0.119
+   ],
+   "max": [
+    0.55,
+    0.3,
+    0.119
+   ],
+   "nodes": [
+    "debris-spoiler-a"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-spoiler-a": 78.3
+   },
+   "cellsUsed": [
+    "13,1",
+    "5,2"
+   ]
+  },
+  {
+   "id": "debris-spoiler-b",
+   "file": "debris/debris-spoiler-b.glb",
+   "bytes": 8596,
+   "triangles": 88,
+   "size": [
+    1,
+    0.35,
+    0.337
+   ],
+   "min": [
+    -0.5,
+    0,
+    -0.169
+   ],
+   "max": [
+    0.5,
+    0.35,
+    0.169
+   ],
+   "nodes": [
+    "debris-spoiler-b"
+   ],
+   "paintCells": [
+    [
+     13,
+     1
+    ]
+   ],
+   "paintRectsPx": [
+    [
+     416,
+     128,
+     32,
+     128
+    ]
+   ],
+   "paintShareByNode": {
+    "debris-spoiler-b": 81.2
+   },
+   "cellsUsed": [
+    "13,1",
+    "5,2"
+   ]
+  },
+  {
+   "id": "debris-tire",
+   "file": "debris/debris-tire.glb",
+   "bytes": 26548,
+   "triangles": 288,
+   "size": [
+    0.35,
+    0.6,
+    0.6
+   ],
+   "min": [
+    -0.175,
+    -0.3,
+    -0.3
+   ],
+   "max": [
+    0.175,
+    0.3,
+    0.3
+   ],
+   "nodes": [
+    "debris-tire"
+   ],
+   "cellsUsed": [
+    "5,2"
+   ]
+  }
+ ],
+ "props": [
+  {
+   "id": "bannerTowerGreen",
+   "file": "props/bannerTowerGreen.glb",
+   "bytes": 34108,
+   "triangles": 426,
+   "size": [
+    0.385,
+    1.246,
+    0.385
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.035
+   ],
+   "max": [
+    0.035,
+    1.236,
+    -0.65
+   ],
+   "recenter": [
+    0.157,
+    0.01,
+    0.843
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "grass"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "bannerTowerGreen(Clone)"
+   ]
+  },
+  {
+   "id": "bannerTowerRed",
+   "file": "props/bannerTowerRed.glb",
+   "bytes": 34100,
+   "triangles": 426,
+   "size": [
+    0.385,
+    1.246,
+    0.385
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.035
+   ],
+   "max": [
+    0.035,
+    1.236,
+    -0.65
+   ],
+   "recenter": [
+    0.157,
+    0.01,
+    0.843
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "bannerTowerRed(Clone)"
+   ]
+  },
+  {
+   "id": "barrierRed",
+   "file": "props/barrierRed.glb",
+   "bytes": 3360,
+   "triangles": 28,
+   "size": [
+    0.25,
+    0.131,
+    0.123
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.773
+   ],
+   "max": [
+    -0.1,
+    0.121,
+    -0.65
+   ],
+   "recenter": [
+    0.225,
+    0.01,
+    0.712
+   ],
+   "materials": [
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "barrierRed(Clone)"
+   ]
+  },
+  {
+   "id": "barrierWall",
+   "file": "props/barrierWall.glb",
+   "bytes": 5920,
+   "triangles": 76,
+   "size": [
+    1,
+    0.131,
+    0.123
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.773
+   ],
+   "max": [
+    0.65,
+    0.121,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.712
+   ],
+   "materials": [
+    "grey",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "barrierWall(Clone)"
+   ]
+  },
+  {
+   "id": "barrierWhite",
+   "file": "props/barrierWhite.glb",
+   "bytes": 3368,
+   "triangles": 28,
+   "size": [
+    0.25,
+    0.131,
+    0.123
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.773
+   ],
+   "max": [
+    -0.1,
+    0.121,
+    -0.65
+   ],
+   "recenter": [
+    0.225,
+    0.01,
+    0.712
+   ],
+   "materials": [
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "barrierWhite(Clone)"
+   ]
+  },
+  {
+   "id": "billboard",
+   "file": "props/billboard.glb",
+   "bytes": 14620,
+   "triangles": 136,
+   "size": [
+    1,
+    1,
+    0.476
+   ],
+   "min": [
+    -0.414,
+    -0.01,
+    -1.086
+   ],
+   "max": [
+    0.586,
+    0.99,
+    -0.61
+   ],
+   "recenter": [
+    -0.086,
+    0.01,
+    0.848
+   ],
+   "materials": [
+    "bark",
+    "road",
+    "tankco",
+    "grey"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "billboard(Clone)"
+   ]
+  },
+  {
+   "id": "billboardDouble_exclusive",
+   "file": "props/billboardDouble_exclusive.glb",
+   "bytes": 14788,
+   "triangles": 126,
+   "size": [
+    1,
+    1,
+    0.364
+   ],
+   "min": [
+    -0.414,
+    -0.01,
+    -0.974
+   ],
+   "max": [
+    0.586,
+    0.99,
+    -0.61
+   ],
+   "recenter": [
+    -0.086,
+    0.01,
+    0.792
+   ],
+   "materials": [
+    "bark",
+    "road",
+    "tankco",
+    "grey"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "billboardDouble_exclusive(Clone)"
+   ]
+  },
+  {
+   "id": "billboardLow",
+   "file": "props/billboardLow.glb",
+   "bytes": 14624,
+   "triangles": 136,
+   "size": [
+    1,
+    0.69,
+    0.476
+   ],
+   "min": [
+    -0.414,
+    -0.01,
+    -1.086
+   ],
+   "max": [
+    0.586,
+    0.68,
+    -0.61
+   ],
+   "recenter": [
+    -0.086,
+    0.01,
+    0.848
+   ],
+   "materials": [
+    "bark",
+    "road",
+    "tankco",
+    "grey"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "billboardLow(Clone)"
+   ]
+  },
+  {
+   "id": "billboardLower",
+   "file": "props/billboardLower.glb",
+   "bytes": 12608,
+   "triangles": 72,
+   "size": [
+    0.5,
+    0.28,
+    0.072
+   ],
+   "min": [
+    -0.35,
+    -0.04,
+    -0.722
+   ],
+   "max": [
+    0.15,
+    0.24,
+    -0.65
+   ],
+   "recenter": [
+    0.1,
+    0.04,
+    0.686
+   ],
+   "materials": [
+    "grey",
+    "road",
+    "bark",
+    "tankco",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "billboardLower(Clone)"
+   ]
+  },
+  {
+   "id": "camera_exclusive",
+   "file": "props/camera_exclusive.glb",
+   "bytes": 11664,
+   "triangles": 136,
+   "size": [
+    0.107,
+    0.409,
+    0.264
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.827
+   ],
+   "max": [
+    -0.243,
+    0.399,
+    -0.563
+   ],
+   "recenter": [
+    0.297,
+    0.01,
+    0.695
+   ],
+   "materials": [
+    "road",
+    "grey",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "camera_exclusive(Clone)"
+   ]
+  },
+  {
+   "id": "fenceCurved",
+   "file": "props/fenceCurved.glb",
+   "bytes": 24548,
+   "triangles": 352,
+   "size": [
+    1,
+    0.82,
+    0.32
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.886
+   ],
+   "max": [
+    0.65,
+    0.81,
+    -0.566
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.726
+   ],
+   "materials": [
+    "grey",
+    "net"
+   ],
+   "texturedMaterials": [
+    "net"
+   ],
+   "alphaBlendMaterials": [
+    "net"
+   ],
+   "nodes": [
+    "fenceCurved(Clone)"
+   ]
+  },
+  {
+   "id": "fenceStraight",
+   "file": "props/fenceStraight.glb",
+   "bytes": 7868,
+   "triangles": 36,
+   "size": [
+    1,
+    0.5,
+    0.034
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.684
+   ],
+   "max": [
+    0.65,
+    0.49,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.667
+   ],
+   "materials": [
+    "grey",
+    "net"
+   ],
+   "texturedMaterials": [
+    "net"
+   ],
+   "alphaBlendMaterials": [
+    "net"
+   ],
+   "nodes": [
+    "fenceStraight(Clone)"
+   ]
+  },
+  {
+   "id": "flagCheckers",
+   "file": "props/flagCheckers.glb",
+   "bytes": 15292,
+   "triangles": 184,
+   "size": [
+    0.197,
+    1.25,
+    0.035
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.685
+   ],
+   "max": [
+    -0.153,
+    1.24,
+    -0.65
+   ],
+   "recenter": [
+    0.251,
+    0.01,
+    0.668
+   ],
+   "materials": [
+    "checkers",
+    "_defaultMat",
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [
+    "checkers"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "flagCheckers(Clone)",
+    "flagCheckers(Clone)/Group"
+   ]
+  },
+  {
+   "id": "flagCheckersSmall",
+   "file": "props/flagCheckersSmall.glb",
+   "bytes": 10712,
+   "triangles": 132,
+   "size": [
+    0.19,
+    0.3,
+    0.035
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.678
+   ],
+   "max": [
+    -0.16,
+    0.29,
+    -0.642
+   ],
+   "recenter": [
+    0.255,
+    0.01,
+    0.66
+   ],
+   "materials": [
+    "checkers",
+    "_defaultMat",
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [
+    "checkers"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "flagCheckersSmall(Clone)"
+   ]
+  },
+  {
+   "id": "flagGreen",
+   "file": "props/flagGreen.glb",
+   "bytes": 17276,
+   "triangles": 184,
+   "size": [
+    0.197,
+    1.25,
+    0.035
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.685
+   ],
+   "max": [
+    -0.153,
+    1.24,
+    -0.65
+   ],
+   "recenter": [
+    0.251,
+    0.01,
+    0.668
+   ],
+   "materials": [
+    "grass",
+    "_defaultMat",
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "flagGreen(Clone)",
+    "flagGreen(Clone)/Group"
+   ]
+  },
+  {
+   "id": "flagRed",
+   "file": "props/flagRed.glb",
+   "bytes": 17268,
+   "triangles": 184,
+   "size": [
+    0.197,
+    1.25,
+    0.035
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.685
+   ],
+   "max": [
+    -0.153,
+    1.24,
+    -0.65
+   ],
+   "recenter": [
+    0.251,
+    0.01,
+    0.668
+   ],
+   "materials": [
+    "red",
+    "_defaultMat",
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "flagRed(Clone)",
+    "flagRed(Clone)/Group"
+   ]
+  },
+  {
+   "id": "flagTankco",
+   "file": "props/flagTankco.glb",
+   "bytes": 18820,
+   "triangles": 184,
+   "size": [
+    0.197,
+    1.25,
+    0.035
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.685
+   ],
+   "max": [
+    -0.153,
+    1.24,
+    -0.65
+   ],
+   "recenter": [
+    0.251,
+    0.01,
+    0.668
+   ],
+   "materials": [
+    "tankco",
+    "_defaultMat",
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "flagTankco(Clone)",
+    "flagTankco(Clone)/Group"
+   ]
+  },
+  {
+   "id": "grandStand",
+   "file": "props/grandStand.glb",
+   "bytes": 12580,
+   "triangles": 128,
+   "size": [
+    1,
+    0.896,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.886,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "grey",
+    "_defaultMat",
+    "red",
+    "road"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "grandStand(Clone)"
+   ]
+  },
+  {
+   "id": "grandStandAwning",
+   "file": "props/grandStandAwning.glb",
+   "bytes": 20680,
+   "triangles": 280,
+   "size": [
+    1,
+    1.385,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    1.375,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "grey",
+    "red",
+    "road"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "grandStandAwning(Clone)"
+   ]
+  },
+  {
+   "id": "grandStandCovered",
+   "file": "props/grandStandCovered.glb",
+   "bytes": 15292,
+   "triangles": 168,
+   "size": [
+    1,
+    1.186,
+    1.02
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    1.176,
+    -0.63
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.14
+   ],
+   "materials": [
+    "grey",
+    "_defaultMat",
+    "red",
+    "road",
+    "glass"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "grandStandCovered(Clone)"
+   ]
+  },
+  {
+   "id": "grandStandCoveredRound",
+   "file": "props/grandStandCoveredRound.glb",
+   "bytes": 92080,
+   "triangles": 1302,
+   "size": [
+    1.637,
+    1.186,
+    1.637
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    1.287,
+    1.176,
+    -0.013
+   ],
+   "recenter": [
+    -0.468,
+    0.01,
+    0.832
+   ],
+   "materials": [
+    "road",
+    "red",
+    "glass",
+    "grey",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "grandStandCoveredRound(Clone)"
+   ]
+  },
+  {
+   "id": "grandStandRound",
+   "file": "props/grandStandRound.glb",
+   "bytes": 71200,
+   "triangles": 1022,
+   "size": [
+    1.637,
+    0.896,
+    1.637
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    1.287,
+    0.886,
+    -0.013
+   ],
+   "recenter": [
+    -0.468,
+    0.01,
+    0.832
+   ],
+   "materials": [
+    "grey",
+    "red",
+    "road",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "grandStandRound(Clone)"
+   ]
+  },
+  {
+   "id": "lightColored",
+   "file": "props/lightColored.glb",
+   "bytes": 18744,
+   "triangles": 268,
+   "size": [
+    0.071,
+    0.646,
+    0.109
+   ],
+   "min": [
+    -0.385,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.315,
+    0.636,
+    -0.559
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.613
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "road",
+    "pylon",
+    "red",
+    "grass"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightColored(Clone)"
+   ]
+  },
+  {
+   "id": "lightPostLarge",
+   "file": "props/lightPostLarge.glb",
+   "bytes": 23644,
+   "triangles": 340,
+   "size": [
+    0.38,
+    0.796,
+    0.097
+   ],
+   "min": [
+    -0.54,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.16,
+    0.786,
+    -0.571
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.619
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "pylon"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightPostLarge(Clone)"
+   ]
+  },
+  {
+   "id": "lightPostModern",
+   "file": "props/lightPostModern.glb",
+   "bytes": 16700,
+   "triangles": 198,
+   "size": [
+    0.049,
+    0.781,
+    0.178
+   ],
+   "min": [
+    -0.375,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.325,
+    0.771,
+    -0.49
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.579
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightPostModern(Clone)"
+   ]
+  },
+  {
+   "id": "lightPost_exclusive",
+   "file": "props/lightPost_exclusive.glb",
+   "bytes": 16932,
+   "triangles": 228,
+   "size": [
+    0.2,
+    0.796,
+    0.097
+   ],
+   "min": [
+    -0.45,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.25,
+    0.786,
+    -0.571
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.619
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "pylon"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightPost_exclusive(Clone)"
+   ]
+  },
+  {
+   "id": "lightRed",
+   "file": "props/lightRed.glb",
+   "bytes": 19792,
+   "triangles": 308,
+   "size": [
+    0.071,
+    0.713,
+    0.109
+   ],
+   "min": [
+    -0.385,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.315,
+    0.703,
+    -0.559
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.613
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "road",
+    "pylon",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightRed(Clone)"
+   ]
+  },
+  {
+   "id": "lightRedDouble",
+   "file": "props/lightRedDouble.glb",
+   "bytes": 31532,
+   "triangles": 560,
+   "size": [
+    0.142,
+    0.683,
+    0.109
+   ],
+   "min": [
+    -0.421,
+    -0.01,
+    -0.668
+   ],
+   "max": [
+    -0.279,
+    0.673,
+    -0.559
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.613
+   ],
+   "materials": [
+    "_defaultMat",
+    "grey",
+    "road",
+    "pylon",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "lightRedDouble(Clone)"
+   ]
+  },
+  {
+   "id": "overhead",
+   "file": "props/overhead.glb",
+   "bytes": 9304,
+   "triangles": 124,
+   "size": [
+    1.26,
+    0.668,
+    0.19
+   ],
+   "min": [
+    -0.48,
+    -0.01,
+    -0.65
+   ],
+   "max": [
+    0.78,
+    0.658,
+    -0.46
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.555
+   ],
+   "materials": [
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "overhead(Clone)"
+   ]
+  },
+  {
+   "id": "overheadLights",
+   "file": "props/overheadLights.glb",
+   "bytes": 26168,
+   "triangles": 432,
+   "size": [
+    1.26,
+    0.694,
+    0.19
+   ],
+   "min": [
+    -0.48,
+    -0.01,
+    -0.65
+   ],
+   "max": [
+    0.78,
+    0.684,
+    -0.46
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.555
+   ],
+   "materials": [
+    "grey",
+    "road",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "overheadLights(Clone)"
+   ]
+  },
+  {
+   "id": "overheadRound",
+   "file": "props/overheadRound.glb",
+   "bytes": 9240,
+   "triangles": 132,
+   "size": [
+    1.867,
+    0.933,
+    0.33
+   ],
+   "min": [
+    -0.783,
+    -0.01,
+    -0.98
+   ],
+   "max": [
+    1.083,
+    0.923,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.815
+   ],
+   "materials": [
+    "road",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "overheadRound(Clone)"
+   ]
+  },
+  {
+   "id": "overheadRoundColored",
+   "file": "props/overheadRoundColored.glb",
+   "bytes": 8172,
+   "triangles": 100,
+   "size": [
+    1.867,
+    0.933,
+    0.33
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.98
+   ],
+   "max": [
+    1.517,
+    0.923,
+    -0.65
+   ],
+   "recenter": [
+    -0.583,
+    0.01,
+    0.815
+   ],
+   "materials": [
+    "red",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "overheadRoundColored(Clone)"
+   ]
+  },
+  {
+   "id": "pitsGarage",
+   "file": "props/pitsGarage.glb",
+   "bytes": 13136,
+   "triangles": 96,
+   "size": [
+    1,
+    0.7,
+    1.09
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.69,
+    -0.56
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.105
+   ],
+   "materials": [
+    "grey",
+    "_defaultMat",
+    "tankco",
+    "red"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsGarage(Clone)"
+   ]
+  },
+  {
+   "id": "pitsGarageClosed",
+   "file": "props/pitsGarageClosed.glb",
+   "bytes": 16284,
+   "triangles": 162,
+   "size": [
+    1,
+    0.7,
+    1.09
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.69,
+    -0.56
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.105
+   ],
+   "materials": [
+    "grey",
+    "_defaultMat",
+    "tankco",
+    "red",
+    "glass"
+   ],
+   "texturedMaterials": [
+    "tankco"
+   ],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsGarageClosed(Clone)"
+   ]
+  },
+  {
+   "id": "pitsGarageCorner",
+   "file": "props/pitsGarageCorner.glb",
+   "bytes": 9896,
+   "triangles": 109,
+   "size": [
+    1.05,
+    0.7,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.7,
+    0.69,
+    -0.65
+   ],
+   "recenter": [
+    -0.175,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "grey",
+    "_defaultMat",
+    "red",
+    "road",
+    "glass"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsGarageCorner(Clone)"
+   ]
+  },
+  {
+   "id": "pitsOffice",
+   "file": "props/pitsOffice.glb",
+   "bytes": 8284,
+   "triangles": 88,
+   "size": [
+    1,
+    0.51,
+    1.04
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.5,
+    -0.61
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.13
+   ],
+   "materials": [
+    "grey",
+    "red",
+    "glass",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsOffice(Clone)"
+   ]
+  },
+  {
+   "id": "pitsOfficeCorner",
+   "file": "props/pitsOfficeCorner.glb",
+   "bytes": 10120,
+   "triangles": 126,
+   "size": [
+    1.04,
+    0.51,
+    1.04
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.69,
+    0.5,
+    -0.61
+   ],
+   "recenter": [
+    -0.17,
+    0.01,
+    1.13
+   ],
+   "materials": [
+    "grey",
+    "glass",
+    "red"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsOfficeCorner(Clone)"
+   ]
+  },
+  {
+   "id": "pitsOfficeRoof",
+   "file": "props/pitsOfficeRoof.glb",
+   "bytes": 11704,
+   "triangles": 142,
+   "size": [
+    1,
+    0.852,
+    1.04
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.842,
+    -0.61
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.13
+   ],
+   "materials": [
+    "grey",
+    "red",
+    "glass",
+    "_defaultMat"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pitsOfficeRoof(Clone)"
+   ]
+  },
+  {
+   "id": "pylon",
+   "file": "props/pylon.glb",
+   "bytes": 8200,
+   "triangles": 108,
+   "size": [
+    0.12,
+    0.132,
+    0.12
+   ],
+   "min": [
+    -0.41,
+    -0.01,
+    -0.71
+   ],
+   "max": [
+    -0.29,
+    0.122,
+    -0.59
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.65
+   ],
+   "materials": [
+    "pylon"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "pylon(Clone)"
+   ]
+  },
+  {
+   "id": "radarEquipment",
+   "file": "props/radarEquipment.glb",
+   "bytes": 20396,
+   "triangles": 292,
+   "size": [
+    0.589,
+    0.543,
+    0.413
+   ],
+   "min": [
+    -0.189,
+    -0.01,
+    -1.27
+   ],
+   "max": [
+    0.4,
+    0.533,
+    -0.857
+   ],
+   "recenter": [
+    -0.106,
+    0.01,
+    1.063
+   ],
+   "materials": [
+    "grey",
+    "road"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "radarEquipment(Clone)"
+   ]
+  },
+  {
+   "id": "rail",
+   "file": "props/rail.glb",
+   "bytes": 6056,
+   "triangles": 68,
+   "size": [
+    1,
+    0.16,
+    0.05
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.65
+   ],
+   "max": [
+    0.65,
+    0.15,
+    -0.6
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.625
+   ],
+   "materials": [
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "rail(Clone)"
+   ]
+  },
+  {
+   "id": "railDouble",
+   "file": "props/railDouble.glb",
+   "bytes": 8772,
+   "triangles": 112,
+   "size": [
+    1,
+    0.28,
+    0.05
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -0.65
+   ],
+   "max": [
+    0.65,
+    0.27,
+    -0.6
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    0.625
+   ],
+   "materials": [
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "railDouble(Clone)"
+   ]
+  },
+  {
+   "id": "ramp",
+   "file": "props/ramp.glb",
+   "bytes": 7104,
+   "triangles": 94,
+   "size": [
+    0.55,
+    0.33,
+    0.73
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.38
+   ],
+   "max": [
+    0.2,
+    0.32,
+    -0.65
+   ],
+   "recenter": [
+    0.075,
+    0.01,
+    1.015
+   ],
+   "materials": [
+    "bark",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "ramp(Clone)"
+   ]
+  },
+  {
+   "id": "tent",
+   "file": "props/tent.glb",
+   "bytes": 7056,
+   "triangles": 86,
+   "size": [
+    1,
+    0.7,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.69,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "red",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tent(Clone)"
+   ]
+  },
+  {
+   "id": "tentClosed",
+   "file": "props/tentClosed.glb",
+   "bytes": 8700,
+   "triangles": 110,
+   "size": [
+    1,
+    0.7,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    0.65,
+    0.69,
+    -0.65
+   ],
+   "recenter": [
+    -0.15,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "grass",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tentClosed(Clone)"
+   ]
+  },
+  {
+   "id": "tentClosedLong",
+   "file": "props/tentClosedLong.glb",
+   "bytes": 8700,
+   "triangles": 110,
+   "size": [
+    2,
+    0.7,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    1.65,
+    0.69,
+    -0.65
+   ],
+   "recenter": [
+    -0.65,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "grass",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tentClosedLong(Clone)"
+   ]
+  },
+  {
+   "id": "tentLong",
+   "file": "props/tentLong.glb",
+   "bytes": 7060,
+   "triangles": 86,
+   "size": [
+    2,
+    0.7,
+    1
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.65
+   ],
+   "max": [
+    1.65,
+    0.69,
+    -0.65
+   ],
+   "recenter": [
+    -0.65,
+    0.01,
+    1.15
+   ],
+   "materials": [
+    "red",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tentLong(Clone)"
+   ]
+  },
+  {
+   "id": "tentRoof",
+   "file": "props/tentRoof.glb",
+   "bytes": 10308,
+   "triangles": 132,
+   "size": [
+    0.56,
+    0.63,
+    0.99
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.64
+   ],
+   "max": [
+    0.21,
+    0.62,
+    -0.65
+   ],
+   "recenter": [
+    0.07,
+    0.01,
+    1.145
+   ],
+   "materials": [
+    "grey",
+    "grass"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tentRoof(Clone)"
+   ]
+  },
+  {
+   "id": "tentRoofDouble",
+   "file": "props/tentRoofDouble.glb",
+   "bytes": 16248,
+   "triangles": 236,
+   "size": [
+    1.12,
+    0.63,
+    0.99
+   ],
+   "min": [
+    -0.35,
+    -0.01,
+    -1.64
+   ],
+   "max": [
+    0.77,
+    0.62,
+    -0.65
+   ],
+   "recenter": [
+    -0.21,
+    0.01,
+    1.145
+   ],
+   "materials": [
+    "grass",
+    "grey"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "tentRoofDouble(Clone)"
+   ]
+  },
+  {
+   "id": "treeLarge",
+   "file": "props/treeLarge.glb",
+   "bytes": 7068,
+   "triangles": 72,
+   "size": [
+    0.357,
+    1.507,
+    0.412
+   ],
+   "min": [
+    -0.528,
+    -0.01,
+    -0.856
+   ],
+   "max": [
+    -0.172,
+    1.497,
+    -0.444
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.65
+   ],
+   "materials": [
+    "grass",
+    "bark"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "treeLarge(Clone)"
+   ]
+  },
+  {
+   "id": "treeSmall",
+   "file": "props/treeSmall.glb",
+   "bytes": 7068,
+   "triangles": 72,
+   "size": [
+    0.253,
+    1.07,
+    0.292
+   ],
+   "min": [
+    -0.477,
+    -0.01,
+    -0.796
+   ],
+   "max": [
+    -0.223,
+    1.06,
+    -0.504
+   ],
+   "recenter": [
+    0.35,
+    0.01,
+    0.65
+   ],
+   "materials": [
+    "grass",
+    "bark"
+   ],
+   "texturedMaterials": [],
+   "alphaBlendMaterials": [],
+   "nodes": [
+    "treeSmall(Clone)"
+   ]
+  }
+ ],
+ "audio": {
+  "impact": {
+   "impactGeneric_light": [
+    "audio/impact/impactGeneric_light_000.mp3",
+    "audio/impact/impactGeneric_light_001.mp3",
+    "audio/impact/impactGeneric_light_002.mp3",
+    "audio/impact/impactGeneric_light_003.mp3",
+    "audio/impact/impactGeneric_light_004.mp3"
+   ],
+   "impactGlass_heavy": [
+    "audio/impact/impactGlass_heavy_000.mp3",
+    "audio/impact/impactGlass_heavy_001.mp3",
+    "audio/impact/impactGlass_heavy_002.mp3",
+    "audio/impact/impactGlass_heavy_003.mp3",
+    "audio/impact/impactGlass_heavy_004.mp3"
+   ],
+   "impactGlass_light": [
+    "audio/impact/impactGlass_light_000.mp3",
+    "audio/impact/impactGlass_light_001.mp3",
+    "audio/impact/impactGlass_light_002.mp3",
+    "audio/impact/impactGlass_light_003.mp3",
+    "audio/impact/impactGlass_light_004.mp3"
+   ],
+   "impactGlass_medium": [
+    "audio/impact/impactGlass_medium_000.mp3",
+    "audio/impact/impactGlass_medium_001.mp3",
+    "audio/impact/impactGlass_medium_002.mp3",
+    "audio/impact/impactGlass_medium_003.mp3",
+    "audio/impact/impactGlass_medium_004.mp3"
+   ],
+   "impactMetal_heavy": [
+    "audio/impact/impactMetal_heavy_000.mp3",
+    "audio/impact/impactMetal_heavy_001.mp3",
+    "audio/impact/impactMetal_heavy_002.mp3",
+    "audio/impact/impactMetal_heavy_003.mp3",
+    "audio/impact/impactMetal_heavy_004.mp3"
+   ],
+   "impactMetal_light": [
+    "audio/impact/impactMetal_light_000.mp3",
+    "audio/impact/impactMetal_light_001.mp3",
+    "audio/impact/impactMetal_light_002.mp3",
+    "audio/impact/impactMetal_light_003.mp3",
+    "audio/impact/impactMetal_light_004.mp3"
+   ],
+   "impactMetal_medium": [
+    "audio/impact/impactMetal_medium_000.mp3",
+    "audio/impact/impactMetal_medium_001.mp3",
+    "audio/impact/impactMetal_medium_002.mp3",
+    "audio/impact/impactMetal_medium_003.mp3",
+    "audio/impact/impactMetal_medium_004.mp3"
+   ],
+   "impactPlate_heavy": [
+    "audio/impact/impactPlate_heavy_000.mp3",
+    "audio/impact/impactPlate_heavy_001.mp3",
+    "audio/impact/impactPlate_heavy_002.mp3",
+    "audio/impact/impactPlate_heavy_003.mp3",
+    "audio/impact/impactPlate_heavy_004.mp3"
+   ],
+   "impactPlate_light": [
+    "audio/impact/impactPlate_light_000.mp3",
+    "audio/impact/impactPlate_light_001.mp3",
+    "audio/impact/impactPlate_light_002.mp3",
+    "audio/impact/impactPlate_light_003.mp3",
+    "audio/impact/impactPlate_light_004.mp3"
+   ],
+   "impactPlate_medium": [
+    "audio/impact/impactPlate_medium_000.mp3",
+    "audio/impact/impactPlate_medium_001.mp3",
+    "audio/impact/impactPlate_medium_002.mp3",
+    "audio/impact/impactPlate_medium_003.mp3",
+    "audio/impact/impactPlate_medium_004.mp3"
+   ],
+   "impactPunch_heavy": [
+    "audio/impact/impactPunch_heavy_000.mp3",
+    "audio/impact/impactPunch_heavy_001.mp3",
+    "audio/impact/impactPunch_heavy_002.mp3",
+    "audio/impact/impactPunch_heavy_003.mp3",
+    "audio/impact/impactPunch_heavy_004.mp3"
+   ],
+   "impactSoft_heavy": [
+    "audio/impact/impactSoft_heavy_000.mp3",
+    "audio/impact/impactSoft_heavy_001.mp3",
+    "audio/impact/impactSoft_heavy_002.mp3",
+    "audio/impact/impactSoft_heavy_003.mp3",
+    "audio/impact/impactSoft_heavy_004.mp3"
+   ],
+   "impactTin_medium": [
+    "audio/impact/impactTin_medium_000.mp3",
+    "audio/impact/impactTin_medium_001.mp3",
+    "audio/impact/impactTin_medium_002.mp3",
+    "audio/impact/impactTin_medium_003.mp3",
+    "audio/impact/impactTin_medium_004.mp3"
+   ]
+  },
+  "ui": {
+   "back": [
+    "audio/ui/back_001.mp3",
+    "audio/ui/back_002.mp3",
+    "audio/ui/back_003.mp3",
+    "audio/ui/back_004.mp3"
+   ],
+   "bong": [
+    "audio/ui/bong_001.mp3"
+   ],
+   "click": [
+    "audio/ui/click_001.mp3",
+    "audio/ui/click_002.mp3",
+    "audio/ui/click_003.mp3",
+    "audio/ui/click_004.mp3",
+    "audio/ui/click_005.mp3"
+   ],
+   "close": [
+    "audio/ui/close_001.mp3",
+    "audio/ui/close_002.mp3",
+    "audio/ui/close_003.mp3",
+    "audio/ui/close_004.mp3"
+   ],
+   "confirmation": [
+    "audio/ui/confirmation_001.mp3",
+    "audio/ui/confirmation_002.mp3",
+    "audio/ui/confirmation_003.mp3",
+    "audio/ui/confirmation_004.mp3"
+   ],
+   "drop": [
+    "audio/ui/drop_001.mp3",
+    "audio/ui/drop_002.mp3",
+    "audio/ui/drop_003.mp3",
+    "audio/ui/drop_004.mp3"
+   ],
+   "error": [
+    "audio/ui/error_001.mp3",
+    "audio/ui/error_002.mp3",
+    "audio/ui/error_003.mp3",
+    "audio/ui/error_004.mp3",
+    "audio/ui/error_005.mp3",
+    "audio/ui/error_006.mp3",
+    "audio/ui/error_007.mp3",
+    "audio/ui/error_008.mp3"
+   ],
+   "glass": [
+    "audio/ui/glass_001.mp3",
+    "audio/ui/glass_002.mp3",
+    "audio/ui/glass_003.mp3",
+    "audio/ui/glass_004.mp3",
+    "audio/ui/glass_005.mp3",
+    "audio/ui/glass_006.mp3"
+   ],
+   "glitch": [
+    "audio/ui/glitch_001.mp3",
+    "audio/ui/glitch_002.mp3",
+    "audio/ui/glitch_003.mp3",
+    "audio/ui/glitch_004.mp3"
+   ],
+   "maximize": [
+    "audio/ui/maximize_001.mp3",
+    "audio/ui/maximize_002.mp3",
+    "audio/ui/maximize_003.mp3",
+    "audio/ui/maximize_004.mp3",
+    "audio/ui/maximize_005.mp3",
+    "audio/ui/maximize_006.mp3",
+    "audio/ui/maximize_007.mp3",
+    "audio/ui/maximize_008.mp3",
+    "audio/ui/maximize_009.mp3"
+   ],
+   "minimize": [
+    "audio/ui/minimize_001.mp3",
+    "audio/ui/minimize_002.mp3",
+    "audio/ui/minimize_003.mp3",
+    "audio/ui/minimize_004.mp3",
+    "audio/ui/minimize_005.mp3",
+    "audio/ui/minimize_006.mp3",
+    "audio/ui/minimize_007.mp3",
+    "audio/ui/minimize_008.mp3",
+    "audio/ui/minimize_009.mp3"
+   ],
+   "open": [
+    "audio/ui/open_001.mp3",
+    "audio/ui/open_002.mp3",
+    "audio/ui/open_003.mp3",
+    "audio/ui/open_004.mp3"
+   ],
+   "pluck": [
+    "audio/ui/pluck_001.mp3",
+    "audio/ui/pluck_002.mp3"
+   ],
+   "question": [
+    "audio/ui/question_001.mp3",
+    "audio/ui/question_002.mp3",
+    "audio/ui/question_003.mp3",
+    "audio/ui/question_004.mp3"
+   ],
+   "scroll": [
+    "audio/ui/scroll_001.mp3",
+    "audio/ui/scroll_002.mp3",
+    "audio/ui/scroll_003.mp3",
+    "audio/ui/scroll_004.mp3",
+    "audio/ui/scroll_005.mp3"
+   ],
+   "select": [
+    "audio/ui/select_001.mp3",
+    "audio/ui/select_002.mp3",
+    "audio/ui/select_003.mp3",
+    "audio/ui/select_004.mp3",
+    "audio/ui/select_005.mp3",
+    "audio/ui/select_006.mp3",
+    "audio/ui/select_007.mp3",
+    "audio/ui/select_008.mp3"
+   ],
+   "switch": [
+    "audio/ui/switch_001.mp3",
+    "audio/ui/switch_002.mp3",
+    "audio/ui/switch_003.mp3",
+    "audio/ui/switch_004.mp3",
+    "audio/ui/switch_005.mp3",
+    "audio/ui/switch_006.mp3",
+    "audio/ui/switch_007.mp3"
+   ],
+   "tick": [
+    "audio/ui/tick_001.mp3",
+    "audio/ui/tick_002.mp3",
+    "audio/ui/tick_004.mp3"
+   ],
+   "toggle": [
+    "audio/ui/toggle_001.mp3",
+    "audio/ui/toggle_002.mp3",
+    "audio/ui/toggle_003.mp3",
+    "audio/ui/toggle_004.mp3"
+   ]
+  }
+ }
+}
