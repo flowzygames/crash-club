@@ -25,6 +25,7 @@ import("three")
     const COMBO_MAX_CASHOUT = 40;
     const BLACKHOLE_PULL_RADIUS = 46;
     const TWO_PI = Math.PI * 2;
+    const GAME_KEY_PATTERN = /^(arrow(up|down|left|right)|[wasdqefr ]|shift)$/i;
 
     const pickupMeta = {
       boost: { label: "Boost", color: "#ffcf6b", emissive: "#8a5c00" },
@@ -305,6 +306,8 @@ import("three")
       }
     };
     let lightweightNoticeTimer = 0;
+    let lastPointerDownAt = 0;
+    let keyboardFocusTarget = null;
 
     if (els.room) els.room.textContent = roomCode;
     if (els.version) els.version.textContent = VERSION;
@@ -1818,17 +1821,30 @@ import("three")
         touchLook.delete(event.pointerId);
       });
       addEventListener("pointercancel", (event) => touchLook.delete(event.pointerId));
+      // Remember whether focus arrived from a click or from the keyboard (Tab), for the keydown handler below.
+      addEventListener("pointerdown", () => (lastPointerDownAt = performance.now()), true);
+      addEventListener("focusin", (event) => {
+        keyboardFocusTarget = performance.now() - lastPointerDownAt > 300 ? event.target : null;
+      });
       // Keys released while another window has focus never send keyup: drop everything held.
       addEventListener("blur", clearInput);
-      renderer.domElement.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
+      // A context menu swallows the keyup of anything held, wherever it was opened.
+      addEventListener("contextmenu", (event) => {
+        if (event.target === renderer.domElement) event.preventDefault();
         clearInput();
       });
       document.addEventListener("visibilitychange", () => {
         clearInput();
-        if (!playTone.ctx) return;
-        if (document.hidden) playTone.ctx.suspend?.();
-        else if (playTone.enabled) playTone.ctx.resume?.();
+        const ctx = playTone.ctx;
+        if (!ctx) return;
+        if (document.hidden) {
+          // Silence the always-on engine and music first, in case anything resumes the context while hidden.
+          updateEngineAudio.gain?.gain.setValueAtTime(0.0001, ctx.currentTime);
+          music.gain?.gain.setValueAtTime(0.0001, ctx.currentTime);
+          ctx.suspend?.();
+        } else if (playTone.enabled) {
+          ctx.resume?.();
+        }
       });
 
       addEventListener("keydown", (event) => {
@@ -1838,6 +1854,14 @@ import("three")
           active?.isContentEditable ||
           (active?.tagName === "INPUT" && /^(text|search|email|url|tel|password|number)$/i.test(active.type || "text"));
         if (typing && event.key !== "Escape") return;
+        if (!typing && active && active !== document.body && /^(SELECT|INPUT|BUTTON)$/.test(active.tagName) && GAME_KEY_PATTERN.test(event.key)) {
+          // A clicked settings control keeps focus. Driving keys should not also nudge the volume, step the
+          // graphics select, or toggle a checkbox, so the control gives focus back. Controls reached with Tab
+          // keep their arrow and Space keys for keyboard navigation.
+          if (keyboardFocusTarget === active && /^(arrow(up|down|left|right)| )$/i.test(event.key)) return;
+          event.preventDefault();
+          active.blur();
+        }
         const key = normalizeKey(event.key);
         if (key === "escape") {
           if (state.mode === "gulag" || state.mode === "spectator") {
@@ -2292,7 +2316,9 @@ import("three")
 
       if (msg.type === "joined") {
         const joinedId = String(msg.id);
-        if (state.id && state.id !== joinedId) resetForRejoin();
+        // Any earlier id means this is a reconnect. A restarted server can hand back the same id, so reset
+        // regardless: the Gulag, spectator cam or podium the old session was in are gone.
+        if (state.id) resetForRejoin();
         state.id = joinedId;
         state.joined = true;
         state.preconnected = false;
@@ -2833,10 +2859,17 @@ import("three")
       const car = state.car;
       const dx = car.x - msg.x;
       const dz = car.z - msg.z;
-      const dy = (car.y - (msg.y || 0)) * 0.6;
-      const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
-      if (distance > msg.radius) return;
-      const falloff = 1 - distance / msg.radius;
+      let falloff;
+      if (msg.hits) {
+        // The server's hit list decides, so the knockback always matches the damage taken.
+        falloff = msg.hits[state.id];
+        if (!Number.isFinite(falloff)) return;
+      } else {
+        const dy = (car.y - (msg.y || 0)) * 0.6;
+        const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
+        if (distance > msg.radius) return;
+        falloff = 1 - distance / msg.radius;
+      }
       const flat = Math.hypot(dx, dz) || 1;
       car.velocity.x += (dx / flat) * msg.force * falloff;
       car.velocity.y += (dz / flat) * msg.force * falloff;
@@ -3048,6 +3081,12 @@ import("three")
           mesh.position.x += (entry.x + entry.vx * age - mesh.position.x) * k;
           mesh.position.z += (entry.z + entry.vz * age - mesh.position.z) * k;
           mesh.position.y += (entry.y - mesh.position.y) * k;
+        } else if (entry.kind === "blackhole") {
+          // Once pulling, the server has settled the hole at car height (and outside any building).
+          const k = Math.min(1, dt * 8);
+          mesh.position.x += (entry.x - mesh.position.x) * k;
+          mesh.position.y += (entry.y - mesh.position.y) * k;
+          mesh.position.z += (entry.z - mesh.position.z) * k;
         }
         if (entry.kind === "rocket") {
           mesh.rotation.y += angleDelta(mesh.rotation.y, entry.angle) * Math.min(1, dt * 14);
@@ -3315,7 +3354,7 @@ import("three")
     }
 
     function audioReady() {
-      return Boolean(playTone.enabled && settings.sound && settings.volume > 0 && playTone.ctx);
+      return Boolean(!document.hidden && playTone.enabled && settings.sound && settings.volume > 0 && playTone.ctx);
     }
 
     function getNoiseBuffer(ctx) {
@@ -3645,34 +3684,29 @@ import("three")
         car.vy -= gravity * dt;
         car.y += car.vy * dt;
         car.airTime += dt;
-        if (car.y <= ground) {
-          if (ground - prevY > 1 && prevGround < ground - 1) {
-            // Flew into a ramp's tall face or side: bounce off it instead of popping onto the top.
-            car.x = car.prevX;
-            car.z = car.prevZ;
-            car.velocity.multiplyScalar(-0.3);
-            car.cameraShake = Math.max(car.cameraShake, 0.4);
-            spawnImpact(car.x, car.y + 1.2, car.z, "#59f0c2", 8);
-            if (car.y <= prevGround) landCar(prevGround);
-          } else {
-            landCar(ground);
-          }
+        if (ARENA.hitsRampFace(car.prevX, car.prevZ, car.x, car.z, 1, prevY, car.y)) {
+          // Flew into a ramp's tall face or side: bounce off it instead of popping onto the top.
+          car.x = car.prevX;
+          car.z = car.prevZ;
+          car.velocity.multiplyScalar(-0.3);
+          car.cameraShake = Math.max(car.cameraShake, 0.4);
+          spawnImpact(car.x, car.y + 1.2, car.z, "#59f0c2", 8);
+          if (car.y <= prevGround) landCar(prevGround);
+        } else if (car.y <= ground) {
+          landCar(ground);
         }
         return;
       }
 
-      // The rise allowed per step grows with step length while already climbing, so fast climbs at low
-      // frame rates do not hit a phantom wall near the top of a ramp.
-      const stepLength = Math.hypot(car.x - car.prevX, car.z - car.prevZ);
-      const allowedRise = 1.6 + (prevGround > 0.3 ? 0.55 * stepLength : 0);
-      if (ground - car.y > allowedRise) {
-        if (prevGround - car.y > 1.6) {
-          // Already inside a ramp body (shoved in): stand on the surface instead of staying pinned.
-          car.y = ground;
-          car.vy = 0;
-          return;
-        }
-        // Drove into the tall lip of a ramp: it behaves like a wall.
+      if (ground - car.y > 1.6 && prevGround - car.y > 1.6) {
+        // Already inside a ramp body (shoved in): stand on the surface instead of staying pinned.
+        car.y = ground;
+        car.vy = 0;
+        return;
+      }
+      // The move is checked in short samples, so fast climbs at low frame rates never hit a phantom wall.
+      if (ARENA.hitsRampFace(car.prevX, car.prevZ, car.x, car.z, 1.6, car.y, car.y)) {
+        // Drove into the tall lip or side of a ramp: it behaves like a wall.
         const hitSpeed = car.velocity.length();
         car.x = car.prevX;
         car.z = car.prevZ;
@@ -3883,6 +3917,7 @@ import("three")
               targetId: id,
               impulse: 1.4,
               stomp: true,
+              y: car.y,
               contactX: collision.contactX,
               contactZ: collision.contactZ
             });
@@ -3933,6 +3968,7 @@ import("three")
             type: "hit",
             targetId: id,
             impulse: THREE.MathUtils.clamp(impactSpeed / 34, 0.22, 1.65),
+            y: car.y,
             contactX: collision.contactX,
             contactZ: collision.contactZ
           });
@@ -4798,16 +4834,8 @@ import("three")
         const leader = all[0] || { name: "You", score: car.score || 0 };
         els.leader.textContent = `${leader.name} - ${Math.round(leader.score || 0)}`;
       }
-      if (els.objective) {
-        if (state.podium.active) {
-          els.objective.textContent = "Podium ceremony: top 3 drivers are flexing before the next round.";
-        } else if (state.mode === "gulag") {
-          els.objective.textContent = `Gulag: eliminate ${state.gulag.opponentName} to redeploy.`;
-        } else if (state.mode === "spectator") {
-          els.objective.textContent = "Spectator free cam: WASD to fly, mouse to look, Q/E for height.";
-        } else if (now >= (state.noticeUntil || 0)) {
-          els.objective.textContent = getObjectiveText();
-        }
+      if (els.objective && (state.podium.active || now >= (state.noticeUntil || 0))) {
+        els.objective.textContent = getModeObjectiveText();
       }
       updateChaosHud();
       updateWeaponHud();
@@ -4957,6 +4985,8 @@ import("three")
       endPodiumShow();
       endGulag();
       clearArenaChaos();
+      resetCombo();
+      cancelWeaponRoll();
       state.mode = "arena";
     }
 
@@ -5202,9 +5232,16 @@ import("three")
       clearTimeout(lightweightNoticeTimer);
       lightweightNoticeTimer = setTimeout(() => {
         if (els.objective) {
-          els.objective.textContent = getObjectiveText();
+          els.objective.textContent = getModeObjectiveText();
         }
       }, 950);
+    }
+
+    function getModeObjectiveText() {
+      if (state.podium.active) return "Podium ceremony: top 3 drivers are flexing before the next round.";
+      if (state.mode === "gulag") return `Gulag: eliminate ${state.gulag.opponentName} to redeploy.`;
+      if (state.mode === "spectator") return "Spectator free cam: WASD to fly, mouse to look, Q/E for height.";
+      return getObjectiveText();
     }
 
     function showBanner(kicker, message) {
@@ -5390,7 +5427,8 @@ import("three")
     }
 
     function playTone(frequency, duration, type = "sine", volume = 0.04) {
-      if (!playTone.enabled || !settings.sound || settings.volume <= 0) return;
+      // Socket messages keep arriving in a hidden tab; playing them would resume the suspended context.
+      if (!playTone.enabled || !settings.sound || settings.volume <= 0 || document.hidden) return;
       if (!playTone.ctx) {
         const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
         if (!AudioCtx) return;

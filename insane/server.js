@@ -674,6 +674,7 @@ function resetPlayerForRound(player) {
     gulagUntil: 0,
     spectatorUntil: 0,
     nextStyleScoreAt: 0,
+    pendingStyle: 0,
     botPlan: null
   });
 }
@@ -868,9 +869,38 @@ function startNextRound(room, now = Date.now()) {
   broadcastEvent(room, `Round ${room.round.round} is live. First to ${ROUND_WIN_SCORE} wins.`, "start");
 }
 
+function awardStyle(room, player, points, reason, now) {
+  const awarded = addScore(room, player, points);
+  player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
+  send(player.ws, {
+    type: "style-awarded",
+    reason,
+    points: awarded,
+    player: serializePlayer(player)
+  });
+  if (awarded >= 15) {
+    broadcastEvent(room, `${player.name} cashed a ${awarded} pt ${reason}.`, "combo");
+  }
+}
+
+// Pays held cashouts once the cooldown is over, or all of them when the clock runs out.
+function flushPendingStyle(room, now, ignoreCooldown = false) {
+  for (const player of room.players.values()) {
+    if (!player.pendingStyle) continue;
+    if (!ignoreCooldown && player.nextStyleScoreAt > now) continue;
+    const points = player.pendingStyle;
+    player.pendingStyle = 0;
+    if (player.mode !== "arena" || player.health <= 0 || player.wreckedUntil > now) continue;
+    awardStyle(room, player, points, player.pendingStyleReason || "style", now);
+  }
+}
+
 function maybeFinishRound(room, now = Date.now()) {
   if (room.round.phase !== "live") {
     return;
+  }
+  if (now >= room.round.endsAt) {
+    flushPendingStyle(room, now, true);
   }
   if (process.env.CRASH_CLUB_README_SAFE_ARENA === "1") {
     return;
@@ -1046,9 +1076,11 @@ function handleWreck(room, source, target, cause, now, rawSource) {
 }
 
 // Humans report their position every ~80ms; project it forward so blast checks match where the car really is.
+// A stalled stream (hidden tab, hitch) is not projected: everyone sees that car frozen where it last reported.
 function effectivePosition(player, now) {
   if (player.isBot) return player;
-  const staleness = clamp((now - (player.lastStateAt || now)) / 1000, 0, 0.2);
+  const age = now - (player.lastStateAt || now);
+  const staleness = age > 250 ? 0 : clamp(age / 1000, 0, 0.12);
   return { x: player.x + (player.vx || 0) * staleness, y: player.y || 0, z: player.z + (player.vz || 0) * staleness };
 }
 
@@ -1062,6 +1094,21 @@ function explode(room, options, now = Date.now()) {
   if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(y)) return;
   const id = `fx-${nextEntityId++}`;
 
+  const caught = [];
+  for (const target of arenaPlayers(room, now)) {
+    if (options.excludeId && target.id === options.excludeId) continue;
+    const position = effectivePosition(target, now);
+    const dx = position.x - x;
+    const dz = position.z - z;
+    const dy = ((position.y || 0) - y) * 0.6;
+    const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
+    if (distance > radius) continue;
+    caught.push({ target, dx, dz, falloff: 1 - distance / radius });
+  }
+
+  // The server decides who was caught, so a client knocks itself back only when it also takes the damage.
+  const hits = {};
+  for (const { target, falloff } of caught) hits[target.id] = round2(falloff);
   broadcastRoom(room, {
     type: "explosion",
     id,
@@ -1073,18 +1120,11 @@ function explode(room, options, now = Date.now()) {
     force: spec.force,
     lift: spec.lift,
     sourceId: source?.id || null,
-    excludeId: options.excludeId || null
+    excludeId: options.excludeId || null,
+    hits
   });
 
-  for (const target of arenaPlayers(room, now)) {
-    if (options.excludeId && target.id === options.excludeId) continue;
-    const position = effectivePosition(target, now);
-    const dx = position.x - x;
-    const dz = position.z - z;
-    const dy = ((position.y || 0) - y) * 0.6;
-    const distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
-    if (distance > radius) continue;
-    const falloff = 1 - distance / radius;
+  for (const { target, dx, dz, falloff } of caught) {
     damagePlayer(room, source, target, spec.damage * (0.35 + 0.65 * falloff), now, { cause: options.kind });
     if (target.isBot && target.mode === "arena") {
       const flat = Math.hypot(dx, dz) || 1;
@@ -1306,6 +1346,17 @@ function updateProjectiles(room, now, deltaSeconds) {
           projectile.phase = "pulling";
           projectile.vx = 0;
           projectile.vz = 0;
+          // A hole that stopped above a building or rail would drop into it: settle just outside its footprint.
+          for (const collider of ARENA.colliders) {
+            const dx = projectile.x - collider.x;
+            const dz = projectile.z - collider.z;
+            const distance = Math.hypot(dx, dz);
+            if (distance >= collider.r) continue;
+            const outX = distance > 0.01 ? dx / distance : -Math.sin(projectile.angle || 0);
+            const outZ = distance > 0.01 ? dz / distance : -Math.cos(projectile.angle || 0);
+            projectile.x = clamp(collider.x + outX * (collider.r + 0.5), -WORLD_SIZE, WORLD_SIZE);
+            projectile.z = clamp(collider.z + outZ * (collider.r + 0.5), -WORLD_SIZE, WORLD_SIZE);
+          }
           // The pull is flat, so settle at car height or the collapse would miss what it pulled in.
           projectile.y = ARENA.groundHeightAt(projectile.x, projectile.z) + 2.2;
           if (hitWall) projectile.collapseAt = now + 3600;
@@ -1394,7 +1445,16 @@ function assignBomb(room, preferred, now, message, passerId = null) {
 function maybePassBomb(room, source, target, now) {
   const event = room.event;
   if (!event || event.kind !== "bomb" || event.holderId !== source.id || now < (event.passLockUntil || 0)) return;
-  if (!isLive(target, now)) return;
+  if (!isLive(target, now)) {
+    // The ram wrecked them, so the bomb bounces to the nearest rival still driving instead.
+    const heir = arenaPlayers(room, now)
+      .filter((player) => player.id !== source.id && player.id !== target.id && isLive(player, now))
+      .sort((a, b) => distanceSq2D(a.x, a.z, source.x, source.z) - distanceSq2D(b.x, b.z, source.x, source.z))[0];
+    if (heir) {
+      assignBomb(room, heir, now, `${source.name} wrecked ${target.name} and the bomb bounced to ${heir.name}!`, source.id);
+    }
+    return;
+  }
   assignBomb(room, target, now, `${source.name} passed the bomb to ${target.name}!`, source.id);
 }
 
@@ -1679,19 +1739,18 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
     bot.vy -= gravity * deltaSeconds;
     bot.y += bot.vy * deltaSeconds;
     bot.pitch = clamp(-bot.vy * 0.02, -0.45, 0.45);
-    if (bot.y <= ground) {
-      if (ground - prevY > 1 && prevGround < ground - 1) {
-        // Flew into a ramp's tall face: bounce off it instead of popping onto the top.
-        bot.x = prevX;
-        bot.z = prevZ;
-        bot.speed *= 0.4;
-        bot.kx = (bot.kx || 0) * -0.3;
-        bot.kz = (bot.kz || 0) * -0.3;
-        if (bot.y > prevGround) return;
-        bot.y = prevGround;
-      } else {
-        bot.y = ground;
-      }
+    let landY = ground;
+    if (ARENA.hitsRampFace(prevX, prevZ, bot.x, bot.z, 1, prevY, bot.y)) {
+      // Flew into a ramp's tall face: bounce off it instead of popping onto the top.
+      bot.x = prevX;
+      bot.z = prevZ;
+      bot.speed *= 0.4;
+      bot.kx = (bot.kx || 0) * -0.3;
+      bot.kz = (bot.kz || 0) * -0.3;
+      landY = prevGround;
+    }
+    if (bot.y <= landY) {
+      bot.y = landY;
       bot.vy = 0;
       bot.airborne = false;
       bot.pitch = 0;
@@ -1699,18 +1758,17 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
     return;
   }
 
-  const stepLength = Math.hypot(bot.x - prevX, bot.z - prevZ);
-  const allowedRise = 1.6 + (prevGround > 0.3 ? 0.55 * stepLength : 0);
-  if (ground - bot.y > allowedRise) {
-    if (prevGround - bot.y > 1.6) {
-      // Already inside a ramp body (shoved in): stand on the surface rather than staying trapped.
-      bot.y = ground;
-      bot.vy = 0;
-      return;
-    }
-    if (ARENA.groundHeightAt(bot.x, prevZ) - bot.y <= 1.6) {
+  if (ground - bot.y > 1.6 && prevGround - bot.y > 1.6) {
+    // Already inside a ramp body (shoved in): stand on the surface rather than staying trapped.
+    bot.y = ground;
+    bot.vy = 0;
+    return;
+  }
+  // Sampled along the move, so fast climbs at low tick rates never hit a phantom wall.
+  if (ARENA.hitsRampFace(prevX, prevZ, bot.x, bot.z, 1.6, bot.y, bot.y)) {
+    if (!ARENA.hitsRampFace(prevX, prevZ, bot.x, prevZ, 1.6, bot.y, bot.y)) {
       bot.z = prevZ;
-    } else if (ARENA.groundHeightAt(prevX, bot.z) - bot.y <= 1.6) {
+    } else if (!ARENA.hitsRampFace(prevX, prevZ, prevX, bot.z, 1.6, bot.y, bot.y)) {
       bot.x = prevX;
     } else {
       bot.x = prevX;
@@ -1737,15 +1795,17 @@ function updateBotVertical(room, bot, prevX, prevZ, deltaSeconds, now) {
   }
   const strip = ARENA.boostPadAt(bot.x, bot.z);
   if (strip) {
-    // Strips push along their arrows, the same as for human cars.
-    if (Math.cos(angleDelta(bot.angle, strip.angle)) > 0.7) {
+    // Strips push along their arrows. Bots heading against the arrow just cross, since their engine would
+    // keep driving them back onto it and the push would compound into an oscillation.
+    const facing = Math.cos(angleDelta(bot.angle, strip.angle));
+    if (facing > 0.7) {
       bot.speed = Math.max(bot.speed, strip.speed);
-    } else {
+    } else if (facing > -0.3) {
       const dirX = Math.sin(strip.angle);
       const dirZ = Math.cos(strip.angle);
-      const along = (bot.vx || 0) * dirX + (bot.vz || 0) * dirZ;
-      if (along < strip.speed) {
-        const add = strip.speed - Math.max(0, along);
+      const knockAlong = (bot.kx || 0) * dirX + (bot.kz || 0) * dirZ;
+      if (knockAlong < strip.speed) {
+        const add = strip.speed - Math.max(0, knockAlong);
         bot.kx = (bot.kx || 0) + dirX * add;
         bot.kz = (bot.kz || 0) + dirZ * add;
       }
@@ -1992,6 +2052,7 @@ function syncFireOrigin(player, msg) {
   player.angle = normalizeAngle(toNumber(msg.angle, player.angle || 0));
   player.vx = clamp(toNumber(msg.vx, 0), -110, 110);
   player.vz = clamp(toNumber(msg.vz, 0), -110, 110);
+  player.lastStateAt = Date.now();
 }
 
 function resetIdleRoom(room, now) {
@@ -2183,7 +2244,13 @@ wss.on("connection", (ws) => {
           return;
         }
         const slamReady = player.slamUntil > now;
-        const verticalGap = (player.y || 0) - (target.y || 0);
+        // The last state can be a few frames old while falling fast, so take the height sent with the hit
+        // when it is within what the car could have fallen or climbed since that state.
+        const stateAge = clamp((now - (player.lastStateAt || now)) / 1000, 0, 0.3);
+        const reportedY = toNumber(msg.y, NaN);
+        const attackerY =
+          Number.isFinite(reportedY) && Math.abs(reportedY - (player.y || 0)) <= stateAge * 60 + 0.5 ? reportedY : player.y || 0;
+        const verticalGap = attackerY - (target.y || 0);
         // A stomp needs the server's own view of the attacker falling from above, not just the client's claim.
         const stomp = Boolean(msg.stomp) && player.airborne && verticalGap > 0.6 && verticalGap < 6;
         const verticalOk = stomp || Math.abs(verticalGap) < 4.5;
@@ -2192,7 +2259,12 @@ wss.on("connection", (ws) => {
           return;
         }
         player.nextHitAt = now + HUMAN_HIT_COOLDOWN_MS;
-        const closingSpeed = getRelativeClosingSpeed(player, target, collision);
+        // The attacker hit the target where its client drew it, which lags the server's copy; like bot rams,
+        // the attacker's own reported speed is a floor so a skewed normal does not zero out a real hit.
+        const closingSpeed = Math.max(
+          getRelativeClosingSpeed(player, target, collision),
+          Math.hypot(player.vx || 0, player.vz || 0) * 0.9
+        );
         const validatedImpulse = clamp(Math.min(impulse, closingSpeed / 38 + 0.5), 0, slamReady ? 1.9 : 1.55);
         let damage = Math.round(validatedImpulse * (slamReady ? 38 : 24));
         if (stomp) damage = Math.max(damage, STOMP_DAMAGE);
@@ -2220,22 +2292,16 @@ wss.on("connection", (ws) => {
         if (room.round.phase !== "live" || player.mode !== "arena" || player.health <= 0 || player.wreckedUntil > now) {
           return;
         }
-        if (player.nextStyleScoreAt && player.nextStyleScoreAt > now) {
-          return;
-        }
         const points = clamp(Math.round(toNumber(msg.points, 1)), 1, STYLE_SCORE_MAX);
         const reason = (toText(msg.reason, "") || "style").replace(/[^a-z0-9 -]/gi, "").slice(0, 24) || "style";
-        const awarded = addScore(room, player, points);
-        player.nextStyleScoreAt = now + STYLE_SCORE_COOLDOWN_MS;
-        send(player.ws, {
-          type: "style-awarded",
-          reason,
-          points: awarded,
-          player: serializePlayer(player)
-        });
-        if (awarded >= 15) {
-          broadcastEvent(room, `${player.name} cashed a ${awarded} pt ${reason}.`, "combo");
+        if (player.nextStyleScoreAt && player.nextStyleScoreAt > now) {
+          // Back-to-back cashouts (common right before the round ends) are held, not dropped. The hold is
+          // capped at one cashout, so the cooldown still limits the rate.
+          player.pendingStyle = Math.min(STYLE_SCORE_MAX, (player.pendingStyle || 0) + points);
+          player.pendingStyleReason = reason;
+          return;
         }
+        awardStyle(room, player, points, reason, now);
         maybeFinishRound(room, now);
         return;
       }
@@ -2332,6 +2398,7 @@ function tickRoom(room, now, deltaSeconds) {
   }
 
   if (room.round.phase === "live") {
+    flushPendingStyle(room, now);
     updateChaos(room, now);
     updateBots(room, now, deltaSeconds);
     updateProjectiles(room, now, deltaSeconds);
@@ -2405,13 +2472,18 @@ function scoreRing(room, now) {
   const ring = getRing(room, now);
   // Humans are checked against the server's ring (it moves during Ring Rush) with a little latency slack,
   // and only while their client is still reporting.
-  const humanRing = { ...ring, min: ring.min - 1.5, max: ring.max + 1.5 };
+  const widen = (zone) => ({ ...zone, min: zone.min - 1.5, max: zone.max + 1.5 });
+  const humanRing = widen(ring);
   let scored = false;
   for (const player of room.players.values()) {
     if (player.mode !== "arena" || player.health <= 0) continue;
     const inZone = player.isBot
       ? player.inZone
-      : now - (player.lastStateAt || 0) < STATE_STALE_MS && !player.airborne && isInRing(humanRing, player.x, player.z);
+      : now - (player.lastStateAt || 0) < STATE_STALE_MS &&
+        !player.airborne &&
+        (isInRing(humanRing, player.x, player.z) ||
+          // A roaming ring has moved on since the client drew it: also accept where it was one round trip ago.
+          (ring.mult > 1 && isInRing(widen(getRing(room, Math.min(now, player.lastStateAt) - 250)), player.x, player.z)));
     if (inZone) {
       addScore(room, player, ring.mult);
       scored = true;

@@ -119,6 +119,23 @@
     return rise * (dirX * Math.sin(best.angle) + dirZ * Math.cos(best.angle));
   }
 
+  // Walks a move from (x0, z0) to (x1, z1) in short samples and reports whether it runs into a ramp face:
+  // a spot where the ground jumps up by more than maxRise between neighbouring samples and ends more than
+  // maxRise above the car (whose height goes from y0 to y1 over the move). Ramp slopes rise under 0.5 per
+  // unit, so climbing one never counts as a face, at any frame rate or speed.
+  function hitsRampFace(x0, z0, x1, z1, maxRise, y0, y1) {
+    const distance = Math.hypot(x1 - x0, z1 - z0);
+    const samples = Math.min(64, Math.max(1, Math.ceil(distance / 0.75)));
+    let previous = groundHeightAt(x0, z0);
+    for (let i = 1; i <= samples; i += 1) {
+      const t = i / samples;
+      const height = groundHeightAt(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t);
+      if (height - previous > maxRise && height - (y0 + (y1 - y0) * t) > maxRise) return true;
+      previous = height;
+    }
+    return false;
+  }
+
   function jumpPadAt(x, z) {
     for (const pad of jumpPads) {
       const dx = x - pad.x;
@@ -160,6 +177,7 @@
     rampHeightAt,
     groundHeightAt,
     groundSlopeAt,
+    hitsRampFace,
     jumpPadAt,
     boostPadAt,
     ringPathAt
