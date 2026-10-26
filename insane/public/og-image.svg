@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="70%" cy="40%" r="70%">
+      <stop stop-color="#1d3554"/>
+      <stop offset="1" stop-color="#060a12"/>
+    </radialGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#5af0c2"/>
+      <stop offset="1" stop-color="#7dd3fc"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="28" y="28" width="1144" height="574" rx="34" fill="none" stroke="#5af0c2" stroke-opacity=".26" stroke-width="3"/>
+  <path d="M430 720C560 310 850 160 1230 390" fill="none" stroke="#111827" stroke-width="170" stroke-linecap="round"/>
+  <path d="M430 720C560 310 850 160 1230 390" fill="none" stroke="#2a3345" stroke-width="132" stroke-linecap="round"/>
+  <path d="M430 720C560 310 850 160 1230 390" fill="none" stroke="#ffcf6b" stroke-width="5" stroke-dasharray="26 26" stroke-opacity=".7"/>
+  <g transform="translate(785 235) rotate(13)" filter="url(#glow)">
+    <path d="M0 26-190 26" stroke="#5af0c2" stroke-width="10" stroke-linecap="round" stroke-opacity=".55"/>
+    <path d="M14 10 48 0l92 13 22 20v28l-22 20-92 13-34-10Z" fill="#07111d" stroke="#5af0c2" stroke-width="5"/>
+    <path d="M58 22h50l28 15v19H48V35Z" fill="#5af0c2" fill-opacity=".22" stroke="#7dd3fc" stroke-width="2"/>
+    <circle cx="45" cy="87" r="14" fill="#05070d" stroke="#ffcf6b" stroke-width="5"/>
+    <circle cx="126" cy="87" r="14" fill="#05070d" stroke="#ffcf6b" stroke-width="5"/>
+  </g>
+  <text x="80" y="160" fill="#5af0c2" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="22" font-weight="800" letter-spacing="6">RELEASE 1.0</text>
+  <text x="74" y="292" fill="#ffffff" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="112" font-weight="900" letter-spacing="-6">CRASH CLUB</text>
+  <text x="80" y="348" fill="#a4b4c7" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="28">3D browser driving arena for Wi-Fi multiplayer chaos.</text>
+  <g transform="translate(80 420)">
+    <rect width="188" height="54" rx="16" fill="url(#mint)"/>
+    <text x="94" y="35" text-anchor="middle" fill="#07111d" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="20" font-weight="900">PLAYABLE</text>
+    <rect x="208" width="206" height="54" rx="16" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.16)"/>
+    <text x="311" y="35" text-anchor="middle" fill="#ffffff" font-family="Trebuchet MS, Segoe UI, sans-serif" font-size="20" font-weight="900">BOTS + ROOMS</text>
+  </g>
+</svg>

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crash Club INSANE</title>
+    <meta
+      name="description"
+      content="Crash Club INSANE is a multiplayer 3D browser derby with ramps, rockets, black holes, meteor showers, hot-potato bombs, stunt combos, and Gulag redeploys."
+    />
+    <meta name="theme-color" content="#08121d" />
+    <meta property="og:title" content="Crash Club INSANE" />
+    <meta property="og:description" content="The browser derby lost its mind: ramps, rockets, black holes, and meteor showers." />
+    <meta property="og:image" content="/og-image.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="is-menu-open">
+    <div class="release-screen" id="release-screen">
+      <div class="release-card">
+        <span class="eyebrow">Crash Club INSANE &middot; v2.0</span>
+        <h1 class="insane-title" data-text="The arena lost its mind.">The arena lost its mind.</h1>
+        <p>
+          Same derby, zero chill. Launch off mega ramps, stomp rivals from the sky, fire homing rockets,
+          drop black holes, survive meteor showers, pass the hot-potato bomb, and chain stunts into massive combos.
+        </p>
+        <div class="feature-chips">
+          <span style="--chip: #ff4f1f">Chaos Events</span>
+          <span style="--chip: #c084fc">Mystery Weapons</span>
+          <span style="--chip: #59f0c2">Ramps &amp; Stunts</span>
+          <span style="--chip: #ffcf6b">Combo Multipliers</span>
+          <span style="--chip: #ff4f8b">Streaks &amp; Bounties</span>
+          <span style="--chip: #7eb8ff">Final Frenzy</span>
+        </div>
+        <div class="release-actions">
+          <label>
+            Driver Name
+            <input id="name-input" maxlength="18" placeholder="Pick a name" />
+          </label>
+          <label>
+            Room Code
+            <input id="room-input" maxlength="16" placeholder="main" />
+          </label>
+          <button id="start-button" class="primary-action">Send It</button>
+          <button id="rename-button" class="secondary-action">Save Name</button>
+        </div>
+        <div class="release-notes">
+          <span><strong>WASD</strong> drive</span>
+          <span><strong>Shift</strong> boost</span>
+          <span><strong>Space</strong> hop</span>
+          <span><strong>F</strong> / click fire</span>
+          <span><strong>Air: W/S</strong> flip</span>
+          <span><strong>Air: A/D</strong> spin</span>
+          <span><strong>Air: Q/E</strong> roll</span>
+          <span><strong>R</strong> respawn</span>
+          <span><strong>Esc</strong> menu</span>
+        </div>
+        <div class="settings-card">
+          <div class="settings-header">
+            <span class="eyebrow">Settings</span>
+            <strong>Showcase adds bloom and every particle</strong>
+          </div>
+          <label>
+            Graphics
+            <select id="quality-select">
+              <option value="performance">Performance</option>
+              <option value="balanced">Balanced</option>
+              <option value="showcase" selected>Showcase</option>
+            </select>
+          </label>
+          <label class="settings-row">
+            <span>Sound Effects</span>
+            <input id="sound-toggle" type="checkbox" />
+          </label>
+          <label class="settings-row">
+            <span>Music</span>
+            <input id="music-toggle" type="checkbox" />
+          </label>
+          <label class="settings-row">
+            <span>Announcer Voice</span>
+            <input id="announcer-toggle" type="checkbox" />
+          </label>
+          <label>
+            Volume
+            <input id="volume-slider" type="range" min="0" max="100" value="55" />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div class="brand">
+        <span class="eyebrow">Crash Club INSANE</span>
+        <h1>Crash Club</h1>
+      </div>
+      <div class="status-grid">
+        <div class="panel">
+          <span class="label">Power</span>
+          <strong id="power-value">None</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Players</span>
+          <strong id="player-count">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Speed</span>
+          <strong><span id="speed-value">0</span> mph</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Boost</span>
+          <strong><span id="boost-value">0</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Score</span>
+          <strong id="score-value">0</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Health</span>
+          <strong><span id="health-value">100</span>%</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Round</span>
+          <strong id="round-value">1</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Timer</span>
+          <strong id="timer-value">3:00</strong>
+        </div>
+        <div class="panel">
+          <span class="label">Streak</span>
+          <strong id="streak-value">0</strong>
+        </div>
+      </div>
+      <div class="meter-stack">
+        <div class="meter health-meter">
+          <span id="health-bar"></span>
+        </div>
+        <div class="meter boost-meter">
+          <span id="boost-bar"></span>
+        </div>
+      </div>
+      <div class="card controls">
+        <p><kbd>Space</kbd> hops, <kbd>F</kbd> fires. In the air, <kbd>W</kbd>/<kbd>S</kbd> flip, <kbd>A</kbd>/<kbd>D</kbd> spin, <kbd>Q</kbd>/<kbd>E</kbd> roll. Land clean to cash combos.</p>
+        <p>Purple crates roll a random weapon. Fall onto rivals to stomp them. Streaks put a bounty on your head.</p>
+        <p>Share the room code in the URL. Example: <code>?room=crew</code></p>
+      </div>
+      <div class="card objective" id="objective-card">
+        Round live. Control the gold ring, hit the ramps, grab crates, and wreck your friends.
+      </div>
+      <div class="card radar-card">
+        <div class="leaderboard-header">
+          <span class="label">Radar</span>
+          <strong id="version-value">v2.0.0</strong>
+        </div>
+        <canvas id="radar-canvas" width="152" height="152" aria-label="Arena radar"></canvas>
+      </div>
+      <div class="card leaderboard">
+        <div class="leaderboard-header">
+          <span class="label">Leader</span>
+          <strong id="leader-value">You - 0</strong>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
+      </div>
+      <div class="card connection" id="connection-card">
+        Connecting to multiplayer server...
+      </div>
+    </div>
+
+    <div class="chaos-bar hidden" id="chaos-bar">
+      <span class="chaos-bar-name" id="chaos-bar-name">Chaos</span>
+      <span class="chaos-bar-detail" id="chaos-bar-detail"></span>
+      <i class="chaos-bar-track"><b id="chaos-bar-fill"></b></i>
+    </div>
+    <div class="chaos-banner hidden" id="chaos-banner">
+      <span class="chaos-kicker" id="chaos-kicker">Chaos Event</span>
+      <strong id="chaos-title" data-text="METEOR SHOWER">METEOR SHOWER</strong>
+      <p id="chaos-tagline">The sky is falling.</p>
+    </div>
+    <div class="callout hidden" id="callout">
+      <strong id="callout-text" data-text="">WRECKED</strong>
+      <span id="callout-sub"></span>
+    </div>
+    <div class="bomb-warning hidden" id="bomb-warning">
+      <strong>You have the bomb</strong>
+      <b id="bomb-timer">20.0</b>
+      <span>Ram a rival to pass it!</span>
+    </div>
+    <div class="combo-meter hidden" id="combo-meter">
+      <strong id="combo-mult">x1</strong>
+      <div>
+        <span id="combo-points">0 pts</span>
+        <em id="combo-labels"></em>
+      </div>
+      <i class="combo-track"><b id="combo-timer"></b></i>
+    </div>
+    <div class="weapon-slot" id="weapon-slot">
+      <span class="weapon-glyph" id="weapon-glyph">?</span>
+      <div class="weapon-copy">
+        <strong id="weapon-name">No weapon</strong>
+        <span id="weapon-charges">Grab a purple crate</span>
+      </div>
+      <kbd>F</kbd>
+    </div>
+    <div class="killfeed" id="killfeed"></div>
+
+    <div class="toast-stack" id="toast-stack"></div>
+    <div class="round-banner hidden" id="round-banner">
+      <span class="eyebrow" id="round-kicker">Round Live</span>
+      <strong id="round-message">Crash Club</strong>
+    </div>
+
+    <div class="quick-actions" id="quick-actions">
+      <button id="menu-button">Menu</button>
+      <button id="settings-button">Settings</button>
+      <button id="copy-invite-button">Copy Invite</button>
+    </div>
+    <div class="settings-popover hidden" id="settings-popover">
+      <div class="settings-header">
+        <span class="eyebrow">Settings</span>
+        <button id="settings-close-button">Close</button>
+      </div>
+      <label>
+        Graphics
+        <select id="quality-select-popover">
+          <option value="performance">Performance</option>
+          <option value="balanced">Balanced</option>
+          <option value="showcase" selected>Showcase</option>
+        </select>
+      </label>
+      <label class="settings-row">
+        <span>Sound Effects</span>
+        <input id="sound-toggle-popover" type="checkbox" />
+      </label>
+      <label class="settings-row">
+        <span>Music</span>
+        <input id="music-toggle-popover" type="checkbox" />
+      </label>
+      <label class="settings-row">
+        <span>Announcer Voice</span>
+        <input id="announcer-toggle-popover" type="checkbox" />
+      </label>
+      <label>
+        Volume
+        <input id="volume-slider-popover" type="range" min="0" max="100" value="55" />
+      </label>
+      <label>
+        Room Code
+        <input id="room-input-popover" maxlength="16" placeholder="main" />
+      </label>
+      <button id="room-join-button">Join Room</button>
+      <p>Showcase turns on bloom and the full particle budget. Drop to Balanced or Performance if your laptop needs a break.</p>
+    </div>
+
+    <div class="touch-controls" aria-label="Touch driving controls">
+      <button data-key="w">Gas</button>
+      <button data-key="a">Left</button>
+      <button data-key="d">Right</button>
+      <button data-key="s">Brake</button>
+      <button data-key="shift">Boost</button>
+      <button data-key=" ">Hop</button>
+      <button data-key="fire">Fire</button>
+      <button data-key="r">Reset</button>
+    </div>
+
+    <div class="damage-vignette" id="damage-vignette"></div>
+    <div class="flash-overlay" id="flash-overlay"></div>
+    <div class="speed-lines" id="speed-lines" aria-hidden="true"></div>
+    <div id="app"></div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three.module.js",
+          "three/addons/": "/vendor/jsm/"
+        }
+      }
+    </script>
+    <script src="/config.js"></script>
+    <script src="/shared/arena.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

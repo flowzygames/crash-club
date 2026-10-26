@@ -1,0 +1,29 @@
+{
+  "name": "crash-club-insane",
+  "version": "2.0.0",
+  "description": "Crash Club INSANE: the multiplayer 3D browser derby with ramps, stunt combos, mystery weapons, chaos events, streak bounties, Gulag redeploys, and podiums.",
+  "author": "flowzygames",
+  "license": "UNLICENSED",
+  "keywords": [
+    "threejs",
+    "websocket",
+    "multiplayer",
+    "browser-game",
+    "driving-game",
+    "arena"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "build": "node scripts/build-vercel.js",
+    "build:vercel": "node scripts/build-vercel.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/shared/arena.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "three": "^0.164.1",
+    "ws": "^8.18.0"
+  },
+  "private": true
+}

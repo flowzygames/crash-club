@@ -1,0 +1,17 @@
+{
+  "name": "Crash Club INSANE",
+  "short_name": "Crash Club",
+  "description": "The browser derby lost its mind: ramps, rockets, black holes, and meteor showers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08121d",
+  "theme_color": "#59f0c2",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
